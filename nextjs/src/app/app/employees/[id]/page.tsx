@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { FileDown, Plus, Trash2 } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
-import type { EsskaCenter, EsskaProfile, EsskaRole } from "@/lib/esska/types";
+import type { EsskaCenter, EsskaKubeDeclaration, EsskaProfile, EsskaRole } from "@/lib/esska/types";
 import { centToEuro, formatDate, formatMoney } from "@/lib/esska/types";
+import { generiereKubePdf, generiereStammdatenPdf, pdfHerunterladen } from "@/lib/esska/pdf";
+import DokumenteUpload from "@/components/esska/DokumenteUpload";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
 type AssignmentRow = {
@@ -18,6 +20,7 @@ type AssignmentRow = {
 export default function EmployeeDetailPage() {
     const params = useParams<{ id: string }>();
     const [profile, setProfile] = useState<EsskaProfile | null>(null);
+    const [kubes, setKubes] = useState<EsskaKubeDeclaration[]>([]);
     const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
     const [selectedCenterId, setSelectedCenterId] = useState("");
@@ -29,17 +32,19 @@ export default function EmployeeDetailPage() {
     const reload = async () => {
         try {
             const client = await getEsskaClient();
-            const [pRes, aRes, cRes] = await Promise.all([
+            const [pRes, aRes, cRes, kRes] = await Promise.all([
                 client.from("profiles").select("*").eq("id", params.id).single(),
                 client
                     .from("center_assignments")
                     .select("id, rolle_im_center, centers(*)")
                     .eq("profile_id", params.id),
                 client.from("centers").select("*").order("saison", { ascending: false }),
+                client.from("kube_declarations").select("*").eq("profile_id", params.id).order("saison", { ascending: false }),
             ]);
             if (pRes.error) throw pRes.error;
             if (aRes.error) throw aRes.error;
             if (cRes.error) throw cRes.error;
+            setKubes((kRes.data as EsskaKubeDeclaration[]) ?? []);
 
             setProfile(pRes.data as EsskaProfile);
             const rows = ((aRes.data as unknown) as Array<{ id: string; rolle_im_center: string | null; centers: EsskaCenter | null }> ?? []).flatMap((r) =>
@@ -250,6 +255,49 @@ export default function EmployeeDetailPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle>Formulare & Personalakte</CardTitle>
+                    <CardDescription>Ausgefüllte Formulare als PDF herunterladen, Dokumente einsehen.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                        <button
+                            onClick={async () => {
+                                const bytes = await generiereStammdatenPdf(profile);
+                                pdfHerunterladen(bytes, `Personalfragebogen_${profile.nachname ?? "Mitarbeiter"}.pdf`);
+                            }}
+                            className="inline-flex items-center px-3 py-2 border rounded-md text-sm hover:bg-gray-50"
+                        >
+                            <FileDown className="h-4 w-4 mr-2" />
+                            Personalfragebogen (PDF)
+                        </button>
+                        {kubes.map((k) => (
+                            <button
+                                key={k.id}
+                                onClick={async () => {
+                                    const bytes = await generiereKubePdf(k, profile);
+                                    pdfHerunterladen(bytes, `KuBe_${k.saison.replace("/", "-")}_${profile.nachname ?? "Mitarbeiter"}.pdf`);
+                                }}
+                                className="inline-flex items-center px-3 py-2 border rounded-md text-sm hover:bg-gray-50"
+                            >
+                                <FileDown className="h-4 w-4 mr-2" />
+                                KuBe-Erklärung {k.saison} (PDF)
+                            </button>
+                        ))}
+                        {kubes.length === 0 && (
+                            <span className="text-sm text-gray-500 self-center">
+                                Noch keine KuBe-Statuserklärung abgegeben.
+                            </span>
+                        )}
+                    </div>
+                    <div className="border-t pt-4">
+                        <p className="text-sm font-medium mb-2">Hochgeladene Dokumente</p>
+                        <DokumenteUpload profileId={profile.id} />
+                    </div>
+                </CardContent>
+            </Card>
 
             <Card>
                 <CardHeader>

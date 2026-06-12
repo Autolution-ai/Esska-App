@@ -17,6 +17,7 @@ interface GlobalContextType {
     loading: boolean;
     user: User | null;
     role: EsskaRole | null;
+    onboardingAbgeschlossen: boolean | null;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
@@ -25,6 +26,7 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
     const [role, setRole] = useState<EsskaRole | null>(null);
+    const [onboardingAbgeschlossen, setOnboardingAbgeschlossen] = useState<boolean | null>(null);
 
     useEffect(() => {
         async function loadData() {
@@ -45,12 +47,15 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
 
                 const { data: profile } = await client
                     .from('profiles')
-                    .select('role')
+                    .select('role, onboarding_abgeschlossen')
                     .eq('id', user.id)
                     .single();
 
                 if (profile?.role) {
                     setRole(profile.role as EsskaRole);
+                }
+                if (profile) {
+                    setOnboardingAbgeschlossen(!!profile.onboarding_abgeschlossen);
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -63,7 +68,7 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
-        <GlobalContext.Provider value={{ loading, user, role }}>
+        <GlobalContext.Provider value={{ loading, user, role, onboardingAbgeschlossen }}>
             {children}
         </GlobalContext.Provider>
     );

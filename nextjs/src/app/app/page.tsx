@@ -1,5 +1,6 @@
 "use client";
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Store, Users, CalendarDays, TrendingUp } from 'lucide-react';
@@ -19,7 +20,14 @@ const mitarbeiterKacheln = [
 ];
 
 export default function DashboardContent() {
-    const { loading, user, role } = useGlobal();
+    const { loading, user, role, onboardingAbgeschlossen } = useGlobal();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!loading && role === 'mitarbeiter' && onboardingAbgeschlossen === false) {
+            router.replace('/app/onboarding');
+        }
+    }, [loading, role, onboardingAbgeschlossen, router]);
 
     if (loading) {
         return (

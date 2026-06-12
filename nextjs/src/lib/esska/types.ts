@@ -88,6 +88,133 @@ export interface EsskaCenterAssignment {
     created_at: string;
 }
 
+// ---------------------------------------------------------------------------
+// KuBe-Statuserklaerung (kurzfristige Beschaeftigung)
+// ---------------------------------------------------------------------------
+
+export type EsskaKubeBegrenzung = "3_monate" | "70_arbeitstage";
+
+export type EsskaKubeStatus =
+    | "schueler"
+    | "student"
+    | "azubi"
+    | "arbeitnehmer_teilzeit"
+    | "arbeitnehmer_vollzeit"
+    | "selbststaendig"
+    | "rentner"
+    | "hausfrau_hausmann"
+    | "arbeitssuchend"
+    | "freiwilligendienst"
+    | "schulentlassen_ausbildung"
+    | "schulentlassen_studium"
+    | "schulentlassen_freiwilligendienst"
+    | "sonstiges";
+
+export type EsskaKubeLebensunterhalt =
+    | "hauptbeschaeftigung"
+    | "studium_schule"
+    | "ausbildung"
+    | "rente"
+    | "selbststaendigkeit"
+    | "unterhalt_familie"
+    | "sonstiges";
+
+export type EsskaKubeAlgLeistung = "sgb_iii" | "sgb_ii" | "keine";
+
+export interface EsskaKubeVorbeschaeftigung {
+    arbeitgeber: string;
+    zeitraum: string;
+    arbeitstage: number;
+    verdienst_eur_cent: number;
+}
+
+export interface EsskaKubeDeclaration {
+    id: string;
+    profile_id: string;
+    saison: string;
+    begrenzung: EsskaKubeBegrenzung;
+    erwerbsstatus: EsskaKubeStatus;
+    erwerbsstatus_sonstiges: string | null;
+    bafoeg_bezug: boolean | null;
+    aktueller_arbeitgeber: string | null;
+    aktueller_verdienst_eur_cent: number | null;
+    arbeitslosen_leistung: EsskaKubeAlgLeistung | null;
+    lebensunterhalt: EsskaKubeLebensunterhalt;
+    lebensunterhalt_sonstiges: string | null;
+    monate_ueber_geringfuegigkeit: number[];
+    weitere_kurzfristige_beschaeftigungen: EsskaKubeVorbeschaeftigung[];
+    erklaerung_zeitgrenze: boolean;
+    erklaerung_nichtberufsmaessig: boolean;
+    verpflichtung_mitteilung: boolean;
+    nachweis_zustimmung: boolean;
+    unterzeichnet_am: string | null;
+    unterzeichnet_ip: string | null;
+    unterzeichnet_ort: string | null;
+    unterschrift_minderjaehriger_vorhanden: boolean;
+    pdf_path: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export const KUBE_STATUS_LABELS: Record<EsskaKubeStatus, string> = {
+    schueler: "Schüler/in",
+    student: "Student/in",
+    azubi: "Auszubildende/r",
+    arbeitnehmer_teilzeit: "Arbeitnehmer/in (Teilzeit)",
+    arbeitnehmer_vollzeit: "Arbeitnehmer/in (Vollzeit)",
+    selbststaendig: "Selbstständige/r",
+    rentner: "Rentner/in",
+    hausfrau_hausmann: "Hausfrau/Hausmann",
+    arbeitssuchend: "Arbeitssuchende/r (gemeldet bei Agentur für Arbeit)",
+    freiwilligendienst: "Freiwilligendienstleistende/r",
+    schulentlassen_ausbildung: "Schulentlassene/r mit Berufsausbildungsabsicht",
+    schulentlassen_studium: "Schulentlassene/r mit Studienabsicht",
+    schulentlassen_freiwilligendienst: "Schulentlassene/r mit Freiwilligendienstabsicht",
+    sonstiges: "Sonstiges",
+};
+
+export const KUBE_LEBENSUNTERHALT_LABELS: Record<EsskaKubeLebensunterhalt, string> = {
+    hauptbeschaeftigung: "Hauptbeschäftigung",
+    studium_schule: "Studium/Schule",
+    ausbildung: "Ausbildung",
+    rente: "Rente",
+    selbststaendigkeit: "Selbstständigkeit",
+    unterhalt_familie: "Unterhalt durch Familie",
+    sonstiges: "Sonstiges",
+};
+
+export type EsskaDokumentTyp =
+    | "ausweis_vorderseite"
+    | "ausweis_rueckseite"
+    | "aufenthaltsgenehmigung"
+    | "immatrikulation"
+    | "schulbescheinigung"
+    | "rentenbescheid"
+    | "gewerbeanmeldung"
+    | "sonstiges";
+
+export const DOKUMENT_TYP_LABELS: Record<EsskaDokumentTyp, string> = {
+    ausweis_vorderseite: "Ausweis – Vorderseite",
+    ausweis_rueckseite: "Ausweis – Rückseite",
+    aufenthaltsgenehmigung: "Aufenthaltsgenehmigung",
+    immatrikulation: "Immatrikulationsbescheinigung",
+    schulbescheinigung: "Schulbescheinigung",
+    rentenbescheid: "Rentenbescheid",
+    gewerbeanmeldung: "Gewerbeanmeldung",
+    sonstiges: "Sonstiges Dokument",
+};
+
+export interface EsskaEmployeeDocument {
+    id: string;
+    profile_id: string;
+    dokument_typ: EsskaDokumentTyp;
+    storage_path: string;
+    hochgeladen_von: string;
+    hochgeladen_am: string;
+    gueltig_bis: string | null;
+    notiz: string | null;
+}
+
 // Hilfsfunktionen fuer Geld in Cent <-> Euro
 export function centToEuro(cent: number | null | undefined): string {
     if (cent === null || cent === undefined) return "";
