@@ -51,7 +51,7 @@ export async function POST(request: Request) {
             `${request.headers.get("x-forwarded-proto") ?? "http"}://${request.headers.get("host")}`;
 
         const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${origin}/auth/login`,
+            redirectTo: `${origin}/api/auth/callback`,
         });
 
         if (error) {
