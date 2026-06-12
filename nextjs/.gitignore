@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Vorlage darf ins Repo (enthaelt keine echten Secrets)
+!.env.template
