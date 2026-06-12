@@ -35,16 +35,16 @@ Daraus ergeben sich konkrete Probleme: Informationen liegen verstreut und nicht 
 
 Eine **All-in-One-App**, die alle bisher manuellen, fragmentierten Saisonprozesse in einer einzigen digitalen Anwendung bündelt. Ziel ist die **Digitalisierung und Zentralisierung** der heute personengebundenen Steuerung – weg von Papier, Foto und WhatsApp, hin zu einer gemeinsamen Datenbasis mit klaren Rollen.
 
-Die App hat **zwei Nutzungsseiten** auf einer gemeinsamen Datenbasis:
+Es gibt **eine einzige App** mit **rollenbasierten Ansichten** auf einer gemeinsamen Datenbasis: Je nachdem, ob sich ein Mitarbeiter oder der Inhaber (Admin) anmeldet, zeigt die App eine andere Oberfläche. Das Admin-Dashboard ist also **Teil derselben App** – kein separates System.
 
-### 3.1 Mitarbeiterseite (mobil, Smartphone)
+### 3.1 Mitarbeiter-Ansicht (mobil, Smartphone)
 
 - **Personalstammdatenblatt** in der App pflegen (eigene Stammdaten erfassen und aktualisieren).
 - **Center-Zuordnung** einsehen (welchem Standort bin ich zugeordnet).
 - **Verfügbarkeit pflegen** (wann kann ich arbeiten – ersetzt die WhatsApp-Abfrage).
 - **Veröffentlichte Wochenpläne einsehen** (meine Schichten).
 
-### 3.2 Inhaberseite (Controlling-Tool, Web-Dashboard am Desktop)
+### 3.2 Admin-Ansicht des Inhabers (Controlling, in derselben App)
 
 - **Jährliche Anlage der Center** (Standorte für die Saison anlegen und verwalten).
 - **Zuordnung der Mitarbeiter** zu Centern.
@@ -53,7 +53,11 @@ Die App hat **zwei Nutzungsseiten** auf einer gemeinsamen Datenbasis:
 
 ### 3.3 Plattform-Entscheidung
 
-Festgelegter Rahmen: **Mitarbeiter nutzen die App mobil auf dem Smartphone, der Inhaber nutzt ein Web-Dashboard am Desktop** – zwei Oberflächen, **eine gemeinsame Datenbasis**. Die konkrete technische Umsetzung dieser Konstellation (native App vs. plattformübergreifendes Framework vs. Progressive Web App mit Dashboard) ist Teil des Planungsauftrags und soll mit Begründung empfohlen werden.
+Festgelegter Rahmen: **Es gibt genau eine App für alle Nutzer.** Mitarbeiter nutzen sie mobil auf dem Smartphone; der Inhaber meldet sich in derselben App als Admin an und erhält eine andere, erweiterte Ansicht (Admin-Dashboard). Er soll die App auch bequem am Desktop nutzen können (z. B. als responsive Web-App), aber es handelt sich um **eine Anwendung mit rollenbasierten Ansichten auf einer gemeinsamen Datenbasis** – nicht um zwei getrennte Systeme.
+
+Wichtig für die Umsetzung: Die Rollentrennung darf nicht nur in der Oberfläche stattfinden (Ausblenden von Menüpunkten reicht nicht), sondern muss **serverseitig erzwungen** werden – ein Mitarbeiter-Account darf Admin-Daten auch über direkte Anfragen niemals abrufen können.
+
+Die konkrete technische Umsetzung (native App vs. plattformübergreifendes Framework vs. Progressive Web App) ist Teil des Planungsauftrags und soll mit Begründung empfohlen werden.
 
 ---
 
@@ -86,7 +90,7 @@ Das gewählte Setup muss diese Punkte tragen können. Eine Architektur, die Secu
 
 Auf Basis dieses Briefings soll ein **Umsetzungsplan** erstellt werden. Da keine Entwicklungserfahrung vorliegt, muss der Plan besonders auf das *Wie anfangen* und *Worauf achten* eingehen. Erwartet werden:
 
-1. **Empfehlung des technischen Setups** mit Begründung – Frontend (mobil für Mitarbeiter + Web-Dashboard für Inhaber), Backend, Datenbank, Authentifizierung, Hosting. Die Wahl ist an den Rahmenbedingungen aus Abschnitt 4 und 5 zu messen (Security-first, DSGVO/EU, einsteigerfreundlich, wartbar).
+1. **Empfehlung des technischen Setups** mit Begründung – Frontend (eine App mit rollenbasierten Ansichten: mobil für Mitarbeiter, Admin-Ansicht für den Inhaber), Backend, Datenbank, Authentifizierung, Hosting. Die Wahl ist an den Rahmenbedingungen aus Abschnitt 4 und 5 zu messen (Security-first, DSGVO/EU, einsteigerfreundlich, wartbar).
 
 2. **Ein passendes GitHub-Starter-Repository finden und vorschlagen**, das als solide, sichere Grundlage für genau diese Art von App dient (z. B. ein gepflegtes Starter-Kit/Boilerplate mit bereits integrierter Authentifizierung, Rollen, sicherer Datenhaltung und sauberer Projektstruktur). Auswahlkriterien: aktiv gepflegt, gute Dokumentation, etablierte Sicherheits-Defaults, geeignet für mobile App + Web-Dashboard auf gemeinsamer Datenbasis, anfängertauglich. Mehrere Optionen kurz gegenüberstellen und eine begründete Empfehlung aussprechen, die dann tatsächlich genutzt werden kann.
 
@@ -100,4 +104,4 @@ Auf Basis dieses Briefings soll ein **Umsetzungsplan** erstellt werden. Da keine
 
 ### Kurzfassung in einem Satz
 
-Gebaut wird eine sichere, DSGVO-konforme All-in-One-App für ein saisonales Einzelhandels-Einzelunternehmen, die die heute über Papier, Foto und WhatsApp verstreute Steuerung von Personal, Schichtplanung und Umsatzreporting auf einer gemeinsamen, zugriffsgeschützten Datenbasis zusammenführt – mobil für die Mitarbeiter, als Web-Dashboard für den Inhaber.
+Gebaut wird eine sichere, DSGVO-konforme All-in-One-App für ein saisonales Einzelhandels-Einzelunternehmen, die die heute über Papier, Foto und WhatsApp verstreute Steuerung von Personal, Schichtplanung und Umsatzreporting auf einer gemeinsamen, zugriffsgeschützten Datenbasis zusammenführt – als eine einzige App mit rollenbasierten Ansichten: mobil für die Mitarbeiter, mit Admin-Dashboard-Ansicht für den Inhaber.
