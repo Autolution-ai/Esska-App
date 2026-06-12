@@ -1,68 +1,79 @@
 "use client";
-import React, { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useGlobal } from '@/lib/context/GlobalContext';
-import { createSPASassClientAuthenticated as createSPASassClient } from '@/lib/supabase/client';
-import { Key, User, CheckCircle } from 'lucide-react';
-import { MFASetup } from '@/components/MFASetup';
+
+import React, { useEffect, useState } from "react";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useGlobal } from "@/lib/context/GlobalContext";
+import { createSPASassClientAuthenticated as createSPASassClient } from "@/lib/supabase/client";
+import { getEsskaClient } from "@/lib/esska/client";
+import { Key, CheckCircle } from "lucide-react";
+import { MFASetup } from "@/components/MFASetup";
+import StammdatenForm from "@/components/esska/StammdatenForm";
+import type { EsskaProfile } from "@/lib/esska/types";
 
 export default function UserSettingsPage() {
     const { user } = useGlobal();
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
+    const [profile, setProfile] = useState<EsskaProfile | null>(null);
+    const [profileLoading, setProfileLoading] = useState(true);
+    const [profileError, setProfileError] = useState<string | null>(null);
+
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
-
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const client = await getEsskaClient();
+                const { data: { user: authUser } } = await client.auth.getUser();
+                if (!authUser) throw new Error("Nicht angemeldet");
+                const { data, error: e } = await client
+                    .from("profiles")
+                    .select("*")
+                    .eq("id", authUser.id)
+                    .single();
+                if (e) throw e;
+                setProfile(data as EsskaProfile);
+            } catch (err) {
+                setProfileError(err instanceof Error ? err.message : "Stammdaten konnten nicht geladen werden");
+            } finally {
+                setProfileLoading(false);
+            }
+        };
+        load();
+    }, []);
 
     const handlePasswordChange = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newPassword !== confirmPassword) {
-            setError("New passwords don't match");
+            setError("Die Passwörter stimmen nicht überein.");
             return;
         }
-
         setLoading(true);
-        setError('');
-        setSuccess('');
-
+        setError("");
+        setSuccess("");
         try {
             const supabase = await createSPASassClient();
             const client = supabase.getSupabaseClient();
-
-            const { error } = await client.auth.updateUser({
-                password: newPassword
-            });
-
-            if (error) throw error;
-
-            setSuccess('Password updated successfully');
-            setNewPassword('');
-            setConfirmPassword('');
-        } catch (err: Error | unknown) {
-            if (err instanceof Error) {
-                console.error('Error updating password:', err);
-                setError(err.message);
-            } else {
-                console.error('Error updating password:', err);
-                setError('Failed to update password');
-            }
+            const { error: e } = await client.auth.updateUser({ password: newPassword });
+            if (e) throw e;
+            setSuccess("Passwort erfolgreich geändert.");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Passwort konnte nicht geändert werden.");
         } finally {
             setLoading(false);
         }
     };
 
-
-
     return (
-        <div className="space-y-6 p-6">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight">User Settings</h1>
-                <p className="text-muted-foreground">
-                    Manage your account settings and preferences
-                </p>
+        <div className="space-y-6 p-2 md:p-6">
+            <div>
+                <h1 className="text-2xl font-bold">Einstellungen & Stammdaten</h1>
+                <p className="text-gray-500">Persönliche Daten, Passwort und Sicherheits-Einstellungen.</p>
             </div>
 
             {error && (
@@ -70,7 +81,6 @@ export default function UserSettingsPage() {
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}
-
             {success && (
                 <Alert>
                     <CheckCircle className="h-4 w-4" />
@@ -78,82 +88,78 @@ export default function UserSettingsPage() {
                 </Alert>
             )}
 
-            <div className="grid gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <User className="h-5 w-5" />
-                                User Details
-                            </CardTitle>
-                            <CardDescription>Your account information</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-500">User ID</label>
-                                <p className="mt-1 text-sm">{user?.id}</p>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-500">Email</label>
-                                <p className="mt-1 text-sm">{user?.email}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Persönliche Stammdaten</CardTitle>
+                    <CardDescription>
+                        Daten aus dem Esska-Personalfragebogen. Felder mit * sind nur bei Teilzeit/Vollzeit Pflicht.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {profileLoading ? (
+                        <p className="text-gray-500">Lädt…</p>
+                    ) : profileError ? (
+                        <p className="text-red-600 text-sm">{profileError}</p>
+                    ) : profile ? (
+                        <StammdatenForm
+                            profile={profile}
+                            onSaved={(p) => {
+                                setProfile(p);
+                                setSuccess("Stammdaten gespeichert.");
+                            }}
+                        />
+                    ) : null}
+                </CardContent>
+            </Card>
 
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <Key className="h-5 w-5" />
-                                Change Password
-                            </CardTitle>
-                            <CardDescription>Update your account password</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <form onSubmit={handlePasswordChange} className="space-y-4">
-                                <div>
-                                    <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
-                                        New Password
-                                    </label>
-                                    <input
-                                        type="password"
-                                        id="new-password"
-                                        value={newPassword}
-                                        onChange={(e) => setNewPassword(e.target.value)}
-                                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 text-sm"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                                        Confirm New Password
-                                    </label>
-                                    <input
-                                        type="password"
-                                        id="confirm-password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500 text-sm"
-                                        required
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-                                >
-                                    {loading ? 'Updating...' : 'Update Password'}
-                                </button>
-                            </form>
-                        </CardContent>
-                    </Card>
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Key className="h-5 w-5" />
+                        Passwort ändern
+                    </CardTitle>
+                    <CardDescription>Angemeldet als {user?.email}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Neues Passwort</label>
+                            <input
+                                type="password"
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                required
+                                minLength={10}
+                                className="mt-1 block w-full rounded-md border px-3 py-2 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Passwort wiederholen</label>
+                            <input
+                                type="password"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                required
+                                minLength={10}
+                                className="mt-1 block w-full rounded-md border px-3 py-2 text-sm"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                        >
+                            {loading ? "Speichern…" : "Passwort ändern"}
+                        </button>
+                    </form>
+                </CardContent>
+            </Card>
 
-                    <MFASetup
-                        onStatusChange={() => {
-                            setSuccess('Two-factor authentication settings updated successfully');
-                        }}
-                    />
-                </div>
-            </div>
+            <MFASetup
+                onStatusChange={() => {
+                    setSuccess("Zwei-Faktor-Authentifizierung aktualisiert.");
+                }}
+            />
         </div>
     );
 }
