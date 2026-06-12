@@ -215,6 +215,82 @@ export interface EsskaEmployeeDocument {
     notiz: string | null;
 }
 
+// ---------------------------------------------------------------------------
+// Verfuegbarkeit & Schichtplan
+// ---------------------------------------------------------------------------
+
+export type EsskaAvailability =
+    | "verfuegbar"
+    | "nicht_verfuegbar"
+    | "nur_vormittag"
+    | "nur_nachmittag";
+
+export const AVAILABILITY_LABELS: Record<EsskaAvailability, string> = {
+    verfuegbar: "Verfügbar",
+    nicht_verfuegbar: "Nicht verfügbar",
+    nur_vormittag: "Nur Vormittag",
+    nur_nachmittag: "Nur Nachmittag",
+};
+
+export interface EsskaAvailabilityRow {
+    id: string;
+    profile_id: string;
+    datum: string;
+    status: EsskaAvailability;
+    notiz: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface EsskaShiftWeek {
+    id: string;
+    center_id: string;
+    woche_start: string;
+    veroeffentlicht: boolean;
+    veroeffentlicht_am: string | null;
+    veroeffentlicht_von: string | null;
+    notiz: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface EsskaShift {
+    id: string;
+    shift_week_id: string;
+    center_id: string;
+    profile_id: string;
+    datum: string;
+    start_zeit: string;
+    end_zeit: string;
+    pause_min: number;
+    rolle: string | null;
+    notiz: string | null;
+    created_at: string;
+    updated_at: string;
+}
+
+export function isoDatum(d: Date): string {
+    return d.toISOString().slice(0, 10);
+}
+
+export function montagDerWoche(d: Date): Date {
+    const x = new Date(d);
+    const day = (x.getDay() + 6) % 7;
+    x.setDate(x.getDate() - day);
+    x.setHours(0, 0, 0, 0);
+    return x;
+}
+
+export function addTage(d: Date, tage: number): Date {
+    const x = new Date(d);
+    x.setDate(x.getDate() + tage);
+    return x;
+}
+
+export function tagKurz(d: Date): string {
+    return d.toLocaleDateString("de-DE", { weekday: "short" });
+}
+
 // Hilfsfunktionen fuer Geld in Cent <-> Euro
 export function centToEuro(cent: number | null | undefined): string {
     if (cent === null || cent === undefined) return "";

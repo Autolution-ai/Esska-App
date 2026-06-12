@@ -36,6 +36,7 @@ const adminNavigation: NavItem[] = [
 const mitarbeiterNavigation: NavItem[] = [
     { name: 'Übersicht', href: '/app', icon: Home },
     { name: 'Meine Center', href: '/app/my-centers', icon: Store },
+    { name: 'Verfügbarkeit', href: '/app/availability', icon: CalendarDays },
     { name: 'Meine Schichten', href: '/app/my-shifts', icon: CalendarDays },
     { name: 'Stammdaten', href: '/app/user-settings', icon: User },
 ];
@@ -74,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-secondary-50">
             {isSidebarOpen && (
                 <div
                     className="fixed inset-0 bg-gray-600 bg-opacity-75 z-20 lg:hidden"
