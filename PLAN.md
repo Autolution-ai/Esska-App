@@ -103,7 +103,7 @@ daily_sales (täglicher Umsatz je Center)
 
 Die App wird in **vier Etappen** gebaut. Jede Etappe ist für sich lauffähig und nutzbar. Wir gehen erst zur nächsten, wenn die aktuelle steht.
 
-### Etappe 0 – Fundament steht (1–2 Tage)
+### Etappe 0 – Fundament steht (1–2 Tage) ✅ ABGESCHLOSSEN (12.06.2026)
 **Ziel:** Lokal lauffähige App auf eigenem Rechner, Login funktioniert.
 
 - Supabase-Projekt in **Frankfurt-Region** anlegen
@@ -146,6 +146,13 @@ Die App wird in **vier Etappen** gebaut. Jede Etappe ist für sich lauffähig un
 - Export als CSV für externe Buchhaltung
 
 **Definition of Done:** Mitarbeiter trägt abends seinen Center-Umsatz ein, Jannis sieht am Desktop alle Center im Vergleich.
+
+### Vor dem Live-Gang (nach Etappe 3, vor Saisonstart)
+**Account-Übergabe an Esska:** Entwicklung läuft auf den privaten Accounts des Praktikanten (Supabase „esska-dev", Vercel). Vor dem Produktivbetrieb mit echten Daten:
+- Esska-eigene Accounts anlegen (E-Mail des Inhabers) für Supabase, Vercel und Domain
+- Produktions-Supabase-Projekt (Frankfurt) im Esska-Account aufsetzen, AVV/DPA dort abschließen
+- Vercel-Projekt in den Esska-Account übertragen bzw. dort neu mit dem GitHub-Repo verbinden
+- Zugangsdaten dokumentiert an den Inhaber übergeben (Passwort-Manager)
 
 ### Spätere Erweiterungen (nicht MVP)
 - Push-Benachrichtigungen bei neuem Schichtplan (PWA-Feature)
