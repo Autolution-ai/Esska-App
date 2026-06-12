@@ -291,6 +291,22 @@ export function tagKurz(d: Date): string {
     return d.toLocaleDateString("de-DE", { weekday: "short" });
 }
 
+// ---------------------------------------------------------------------------
+// Tagesumsaetze
+// ---------------------------------------------------------------------------
+
+export interface EsskaDailySale {
+    id: string;
+    center_id: string;
+    datum: string;
+    betrag_cent: number;
+    anzahl_belege: number | null;
+    notiz: string | null;
+    erfasst_von: string;
+    erfasst_am: string;
+    aktualisiert_am: string;
+}
+
 // Hilfsfunktionen fuer Geld in Cent <-> Euro
 export function centToEuro(cent: number | null | undefined): string {
     if (cent === null || cent === undefined) return "";

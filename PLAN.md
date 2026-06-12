@@ -127,7 +127,7 @@ Die App wird in **vier Etappen** gebaut. Jede Etappe ist für sich lauffähig un
 
 **Definition of Done:** Jannis legt Center "Altmarkt-Galerie 2026" an, ordnet 3 Mitarbeiter zu, jeder Mitarbeiter sieht nur die für ihn relevanten Daten.
 
-### Etappe 2 – Verfügbarkeit & Schichtplan (3–5 Tage)
+### Etappe 2 – Verfügbarkeit & Schichtplan (3–5 Tage) ✅ ABGESCHLOSSEN (12.06.2026)
 **Ziel:** WhatsApp-Verfügbarkeitsabfrage ist abgelöst.
 
 - Mitarbeiter-Ansicht: Kalender, Verfügbarkeit pro Tag/Zeitfenster eintragen
@@ -137,7 +137,7 @@ Die App wird in **vier Etappen** gebaut. Jede Etappe ist für sich lauffähig un
 
 **Definition of Done:** Mitarbeiter pflegt Verfügbarkeit, Jannis erstellt Plan, veröffentlicht ihn, Mitarbeiter sieht seine Schichten.
 
-### Etappe 3 – Tägliches Umsatzreporting (2–4 Tage)
+### Etappe 3 – Tägliches Umsatzreporting (2–4 Tage) ✅ ABGESCHLOSSEN (12.06.2026)
 **Ziel:** Papier-Notiz und WhatsApp-Foto sind abgelöst.
 
 - Eingabemaske: Tagesumsatz je Center erfassen (durch Mitarbeiter mit Center-Zuordnung **oder** Admin)
