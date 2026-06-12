@@ -3,6 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { createSPASassClientAuthenticated as createSPASassClient } from '@/lib/supabase/client';
+import type { EsskaRole } from '@/lib/esska/types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 
 type User = {
@@ -13,33 +15,43 @@ type User = {
 
 interface GlobalContextType {
     loading: boolean;
-    user: User | null;  // Add this
+    user: User | null;
+    role: EsskaRole | null;
 }
 
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<User | null>(null);  // Add this
+    const [user, setUser] = useState<User | null>(null);
+    const [role, setRole] = useState<EsskaRole | null>(null);
 
     useEffect(() => {
         async function loadData() {
             try {
                 const supabase = await createSPASassClient();
-                const client = supabase.getSupabaseClient();
+                const client = supabase.getSupabaseClient() as unknown as SupabaseClient;
 
-                // Get user data
                 const { data: { user } } = await client.auth.getUser();
-                if (user) {
-                    setUser({
-                        email: user.email!,
-                        id: user.id,
-                        registered_at: new Date(user.created_at)
-                    });
-                } else {
+                if (!user) {
                     throw new Error('User not found');
                 }
 
+                setUser({
+                    email: user.email!,
+                    id: user.id,
+                    registered_at: new Date(user.created_at)
+                });
+
+                const { data: profile } = await client
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profile?.role) {
+                    setRole(profile.role as EsskaRole);
+                }
             } catch (error) {
                 console.error('Error loading data:', error);
             } finally {
@@ -51,7 +63,7 @@ export function GlobalProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     return (
-        <GlobalContext.Provider value={{ loading, user }}>
+        <GlobalContext.Provider value={{ loading, user, role }}>
             {children}
         </GlobalContext.Provider>
     );

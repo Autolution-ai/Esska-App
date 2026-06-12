@@ -1,19 +1,25 @@
 "use client";
 import React from 'react';
 import { useGlobal } from '@/lib/context/GlobalContext';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { CalendarDays, Settings, ExternalLink } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Store, Users, CalendarDays, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 
-export default function DashboardContent() {
-    const { loading, user } = useGlobal();
+const adminKacheln = [
+    { href: '/app/centers', icon: Store, title: 'Center', text: 'Standorte anlegen und verwalten' },
+    { href: '/app/employees', icon: Users, title: 'Mitarbeiter', text: 'Personal einladen und zuordnen' },
+    { href: '/app/shifts', icon: CalendarDays, title: 'Schichtplan', text: 'Wochenpläne erstellen und veröffentlichen' },
+    { href: '/app/sales', icon: TrendingUp, title: 'Umsätze', text: 'Tagesumsätze und Auswertungen' },
+];
 
-    const getDaysSinceRegistration = () => {
-        if (!user?.registered_at) return 0;
-        const today = new Date();
-        const diffTime = Math.abs(today.getTime() - user.registered_at.getTime());
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    };
+const mitarbeiterKacheln = [
+    { href: '/app/my-centers', icon: Store, title: 'Meine Center', text: 'Standorte, denen ich zugeordnet bin' },
+    { href: '/app/my-shifts', icon: CalendarDays, title: 'Meine Schichten', text: 'Veröffentlichte Wochenpläne' },
+    { href: '/app/user-settings', icon: Users, title: 'Stammdaten', text: 'Persönliche Daten pflegen' },
+];
+
+export default function DashboardContent() {
+    const { loading, user, role } = useGlobal();
 
     if (loading) {
         return (
@@ -23,56 +29,37 @@ export default function DashboardContent() {
         );
     }
 
-    const daysSinceRegistration = getDaysSinceRegistration();
+    const kacheln = role === 'admin' ? adminKacheln : mitarbeiterKacheln;
+    const begruessung = role === 'admin' ? 'Admin-Übersicht' : 'Willkommen';
 
     return (
         <div className="space-y-6 p-6">
             <Card>
                 <CardHeader>
-                    <CardTitle>Welcome, {user?.email?.split('@')[0]}! 👋</CardTitle>
-                    <CardDescription className="flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4" />
-                        Member for {daysSinceRegistration} days
+                    <CardTitle>{begruessung}</CardTitle>
+                    <CardDescription>
+                        Angemeldet als {user?.email}
                     </CardDescription>
                 </CardHeader>
             </Card>
 
-            {/* Quick Actions */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Quick Actions</CardTitle>
-                    <CardDescription>Frequently used features</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <Link
-                            href="/app/user-settings"
-                            className="flex items-center gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="p-2 bg-primary-50 rounded-full">
-                                <Settings className="h-4 w-4 text-primary-600" />
-                            </div>
-                            <div>
-                                <h3 className="font-medium">User Settings</h3>
-                                <p className="text-sm text-gray-500">Manage your account preferences</p>
-                            </div>
-                        </Link>
-
-                        <Link
-                            href="/app/table"
-                            className="flex items-center gap-3 p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                            <div className="p-2 bg-primary-50 rounded-full">
-                                <ExternalLink className="h-4 w-4 text-primary-600" />
-                            </div>
-                            <div>
-                                <h3 className="font-medium">Example Page</h3>
-                                <p className="text-sm text-gray-500">Check out example features</p>
-                            </div>
-                        </Link>
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="grid gap-4 md:grid-cols-2">
+                {kacheln.map((kachel) => (
+                    <Link
+                        key={kachel.href}
+                        href={kachel.href}
+                        className="flex items-center gap-4 p-4 bg-white border rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                        <div className="p-3 bg-primary-50 rounded-full">
+                            <kachel.icon className="h-5 w-5 text-primary-600" />
+                        </div>
+                        <div>
+                            <h3 className="font-medium">{kachel.title}</h3>
+                            <p className="text-sm text-gray-500">{kachel.text}</p>
+                        </div>
+                    </Link>
+                ))}
+            </div>
         </div>
     );
 }

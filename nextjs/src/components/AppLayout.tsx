@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
-import {usePathname, useRouter} from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     Home,
     User,
@@ -9,10 +9,36 @@ import {
     X,
     ChevronDown,
     LogOut,
-    Key, Files, LucideListTodo,
+    Key,
+    Store,
+    Users,
+    CalendarDays,
+    TrendingUp,
 } from 'lucide-react';
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { createSPASassClient } from "@/lib/supabase/client";
+
+type NavItem = {
+    name: string;
+    href: string;
+    icon: typeof Home;
+};
+
+const adminNavigation: NavItem[] = [
+    { name: 'Übersicht', href: '/app', icon: Home },
+    { name: 'Center', href: '/app/centers', icon: Store },
+    { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
+    { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
+    { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
+    { name: 'Einstellungen', href: '/app/user-settings', icon: User },
+];
+
+const mitarbeiterNavigation: NavItem[] = [
+    { name: 'Übersicht', href: '/app', icon: Home },
+    { name: 'Meine Center', href: '/app/my-centers', icon: Store },
+    { name: 'Meine Schichten', href: '/app/my-shifts', icon: CalendarDays },
+    { name: 'Stammdaten', href: '/app/user-settings', icon: User },
+];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -20,8 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
 
-
-    const { user } = useGlobal();
+    const { user, role } = useGlobal();
 
     const handleLogout = async () => {
         try {
@@ -31,8 +56,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             console.error('Error logging out:', error);
         }
     };
+
     const handleChangePassword = async () => {
-        router.push('/app/user-settings')
+        router.push('/app/user-settings');
     };
 
     const getInitials = (email: string) => {
@@ -43,13 +69,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
 
     const productName = process.env.NEXT_PUBLIC_PRODUCTNAME;
-
-    const navigation = [
-        { name: 'Homepage', href: '/app', icon: Home },
-        { name: 'Example Storage', href: '/app/storage', icon: Files },
-        { name: 'Example Table', href: '/app/table', icon: LucideListTodo },
-        { name: 'User Settings', href: '/app/user-settings', icon: User },
-    ];
+    const navigation = role === 'admin' ? adminNavigation : mitarbeiterNavigation;
 
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
 
@@ -62,12 +82,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 />
             )}
 
-            {/* Sidebar */}
-            <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform transition-transform duration-200 ease-in-out z-30 
+            <div className={`fixed inset-y-0 left-0 w-64 bg-white shadow-lg transform transition-transform duration-200 ease-in-out z-30
                 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
 
                 <div className="h-16 flex items-center justify-between px-4 border-b">
-                    <span className="text-xl font-semibold text-primary-600">{productName}</span>
+                    <div className="flex flex-col">
+                        <span className="text-xl font-semibold text-primary-600">{productName}</span>
+                        {role && (
+                            <span className="text-xs text-gray-500">
+                                {role === 'admin' ? 'Admin' : 'Mitarbeiter'}
+                            </span>
+                        )}
+                    </div>
                     <button
                         onClick={toggleSidebar}
                         className="lg:hidden text-gray-500 hover:text-gray-700"
@@ -76,7 +102,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </button>
                 </div>
 
-                {/* Navigation */}
                 <nav className="mt-4 px-2 space-y-1">
                     {navigation.map((item) => {
                         const isActive = pathname === item.href;
@@ -100,7 +125,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         );
                     })}
                 </nav>
-
             </div>
 
             <div className="lg:pl-64">
@@ -109,7 +133,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         onClick={toggleSidebar}
                         className="lg:hidden text-gray-500 hover:text-gray-700"
                     >
-                        <Menu className="h-6 w-6"/>
+                        <Menu className="h-6 w-6" />
                     </button>
 
                     <div className="relative ml-auto">
@@ -122,14 +146,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                     {user ? getInitials(user.email) : '??'}
                                 </span>
                             </div>
-                            <span>{user?.email || 'Loading...'}</span>
-                            <ChevronDown className="h-4 w-4"/>
+                            <span>{user?.email || 'Lade...'}</span>
+                            <ChevronDown className="h-4 w-4" />
                         </button>
 
                         {isUserDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-lg border">
                                 <div className="p-2 border-b border-gray-100">
-                                    <p className="text-xs text-gray-500">Signed in as</p>
+                                    <p className="text-xs text-gray-500">Angemeldet als</p>
                                     <p className="text-sm font-medium text-gray-900 truncate">
                                         {user?.email}
                                     </p>
@@ -138,12 +162,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                     <button
                                         onClick={() => {
                                             setUserDropdownOpen(false);
-                                            handleChangePassword()
+                                            handleChangePassword();
                                         }}
                                         className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                     >
-                                        <Key className="mr-3 h-4 w-4 text-gray-400"/>
-                                        Change Password
+                                        <Key className="mr-3 h-4 w-4 text-gray-400" />
+                                        Passwort ändern
                                     </button>
                                     <button
                                         onClick={() => {
@@ -152,8 +176,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                         }}
                                         className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                                     >
-                                        <LogOut className="mr-3 h-4 w-4 text-red-400"/>
-                                        Sign Out
+                                        <LogOut className="mr-3 h-4 w-4 text-red-400" />
+                                        Abmelden
                                     </button>
                                 </div>
                             </div>
