@@ -67,9 +67,13 @@ type Props = {
     onboardingMode?: boolean;
 };
 
-type Form = Omit<EsskaProfile, "verdienst_monat_eur_cent" | "stunden_pro_woche" | "kinderfreibetrag"> & {
+type Form = Omit<
+    EsskaProfile,
+    "verdienst_monat_eur_cent" | "stunden_pro_woche" | "kinderfreibetrag" | "max_schichten_pro_woche"
+> & {
     verdienst_euro: string;
     stunden_pro_woche_str: string;
+    max_schichten_pro_woche_str: string;
     kinderfreibetrag_str: string;
     bestaetigt: boolean;
 };
@@ -79,6 +83,7 @@ function profileToForm(p: EsskaProfile): Form {
         ...p,
         verdienst_euro: p.verdienst_monat_eur_cent ? centToEuro(p.verdienst_monat_eur_cent) : "",
         stunden_pro_woche_str: p.stunden_pro_woche?.toString() ?? "",
+        max_schichten_pro_woche_str: p.max_schichten_pro_woche?.toString() ?? "",
         kinderfreibetrag_str: p.kinderfreibetrag?.toString() ?? "",
         bestaetigt: false,
     };
@@ -130,6 +135,9 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                 arbeitszeit_modell: form.arbeitszeit_modell,
                 stunden_pro_woche: form.stunden_pro_woche_str
                     ? parseFloat(form.stunden_pro_woche_str.replace(",", "."))
+                    : null,
+                max_schichten_pro_woche: form.max_schichten_pro_woche_str
+                    ? parseInt(form.max_schichten_pro_woche_str, 10) || null
                     : null,
                 verdienst_monat_eur_cent: form.verdienst_euro ? euroToCent(form.verdienst_euro) : null,
                 weitere_beschaeftigungen: form.weitere_beschaeftigungen || null,
@@ -242,6 +250,18 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                             value={form.stunden_pro_woche_str}
                             onChange={(e) => update("stunden_pro_woche_str", e.target.value)}
                             inputMode="decimal"
+                            className={inputCls}
+                        />
+                    </Field>
+                    <Field
+                        label="Max. Schichten / Woche"
+                        hint="Soft-Hinweis bei der Schichtplanung. Leer = kein Limit. Beispiel: Minijob mit 2 Schichten/Woche."
+                    >
+                        <input
+                            value={form.max_schichten_pro_woche_str}
+                            onChange={(e) => update("max_schichten_pro_woche_str", e.target.value)}
+                            inputMode="numeric"
+                            placeholder="z. B. 2"
                             className={inputCls}
                         />
                     </Field>

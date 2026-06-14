@@ -38,6 +38,7 @@ export interface EsskaProfile {
     eintrittsdatum: string | null;
     arbeitszeit_modell: EsskaArbeitszeitModell | null;
     stunden_pro_woche: number | null;
+    max_schichten_pro_woche: number | null;
     verdienst_monat_eur_cent: number | null;
     weitere_beschaeftigungen: string | null;
     rentenversicherungsnummer: string | null;
@@ -216,27 +217,44 @@ export interface EsskaEmployeeDocument {
 }
 
 // ---------------------------------------------------------------------------
-// Verfuegbarkeit & Schichtplan
+// Verfuegbarkeit & Schichtplan (Slot-basiert)
 // ---------------------------------------------------------------------------
 
-export type EsskaAvailability =
-    | "verfuegbar"
-    | "nicht_verfuegbar"
-    | "nur_vormittag"
-    | "nur_nachmittag";
+export type EsskaShiftSlot = "vormittag" | "nachmittag";
 
-export const AVAILABILITY_LABELS: Record<EsskaAvailability, string> = {
-    verfuegbar: "Verfügbar",
-    nicht_verfuegbar: "Nicht verfügbar",
-    nur_vormittag: "Nur Vormittag",
-    nur_nachmittag: "Nur Nachmittag",
+export const SLOT_LABELS: Record<EsskaShiftSlot, string> = {
+    vormittag: "Vormittag",
+    nachmittag: "Nachmittag",
+};
+
+// Esska-Standardzeiten je Slot (Mall-typisch). Werden beim Neuanlegen
+// einer Schicht als Default eingetragen und sind je Schicht ueberschreibbar.
+export const SLOT_DEFAULT_ZEITEN: Record<EsskaShiftSlot, { start: string; ende: string }> = {
+    vormittag: { start: "09:00", ende: "15:00" },
+    nachmittag: { start: "15:00", ende: "20:30" },
+};
+
+// Dreistufige Wunsch-Aussage des Mitarbeiters pro Tag/Slot
+export type EsskaWunsch = "kann_nicht" | "koennte" | "wuensche";
+
+export const WUNSCH_LABELS: Record<EsskaWunsch, string> = {
+    kann_nicht: "Kann nicht",
+    koennte: "Könnte",
+    wuensche: "Wünsche",
+};
+
+export const WUNSCH_ICON: Record<EsskaWunsch, string> = {
+    kann_nicht: "✕",
+    koennte: "·",
+    wuensche: "★",
 };
 
 export interface EsskaAvailabilityRow {
     id: string;
     profile_id: string;
     datum: string;
-    status: EsskaAvailability;
+    slot: EsskaShiftSlot;
+    wunsch: EsskaWunsch;
     notiz: string | null;
     created_at: string;
     updated_at: string;
@@ -260,6 +278,7 @@ export interface EsskaShift {
     center_id: string;
     profile_id: string;
     datum: string;
+    slot: EsskaShiftSlot;
     start_zeit: string;
     end_zeit: string;
     pause_min: number;
@@ -267,6 +286,23 @@ export interface EsskaShift {
     notiz: string | null;
     created_at: string;
     updated_at: string;
+}
+
+// Berechnet Brutto-Stunden einer Schicht (vor Pause)
+export function bruttoStunden(start: string, ende: string): number {
+    const [sh, sm] = start.split(":").map(Number);
+    const [eh, em] = ende.split(":").map(Number);
+    return Math.max(0, (eh * 60 + em - (sh * 60 + sm)) / 60);
+}
+
+// Netto-Stunden (mit Pausenabzug)
+export function nettoStunden(start: string, ende: string, pauseMin: number): number {
+    return Math.max(0, bruttoStunden(start, ende) - pauseMin / 60);
+}
+
+// HH:MM aus PG-time-Strings (kann auch "HH:MM:SS" sein)
+export function zeitKurz(t: string): string {
+    return t.slice(0, 5);
 }
 
 export function isoDatum(d: Date): string {

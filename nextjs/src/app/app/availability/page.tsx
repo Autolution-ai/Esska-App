@@ -4,31 +4,33 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import type { EsskaAvailability, EsskaAvailabilityRow } from "@/lib/esska/types";
+import type { EsskaAvailabilityRow, EsskaShiftSlot, EsskaWunsch } from "@/lib/esska/types";
 import {
-    AVAILABILITY_LABELS,
+    SLOT_DEFAULT_ZEITEN,
+    SLOT_LABELS,
+    WUNSCH_ICON,
+    WUNSCH_LABELS,
     addTage,
     isoDatum,
     montagDerWoche,
     tagKurz,
+    zeitKurz,
 } from "@/lib/esska/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
-const STATUS_REIHENFOLGE: EsskaAvailability[] = [
-    "verfuegbar",
-    "nur_vormittag",
-    "nur_nachmittag",
-    "nicht_verfuegbar",
-];
+const SLOTS: EsskaShiftSlot[] = ["vormittag", "nachmittag"];
+const WUENSCHE: EsskaWunsch[] = ["wuensche", "koennte", "kann_nicht"];
 
-const STATUS_FARBE: Record<EsskaAvailability, string> = {
-    verfuegbar: "bg-green-100 text-green-800 border-green-300",
-    nur_vormittag: "bg-amber-100 text-amber-800 border-amber-300",
-    nur_nachmittag: "bg-amber-100 text-amber-800 border-amber-300",
-    nicht_verfuegbar: "bg-red-100 text-red-800 border-red-300",
+const FARBE: Record<EsskaWunsch, string> = {
+    wuensche: "bg-green-100 text-green-800 border-green-400",
+    koennte: "bg-secondary-100 text-secondary-800 border-secondary-300",
+    kann_nicht: "bg-red-100 text-red-800 border-red-400",
 };
 
-type WocheState = Record<string, { status: EsskaAvailability; notiz: string }>;
+// Schluessel: "YYYY-MM-DD::slot"
+type WocheState = Record<string, { wunsch: EsskaWunsch; notiz: string }>;
+
+const key = (datum: string, slot: EsskaShiftSlot) => `${datum}::${slot}`;
 
 export default function AvailabilityPage() {
     const [profileId, setProfileId] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function AvailabilityPage() {
                 if (!user) throw new Error("Nicht angemeldet");
                 setProfileId(user.id);
             } catch (err) {
-                setError(friendlyError(err, { aktion: "Fehler" }));
+                setError(friendlyError(err, { aktion: "Anmeldung pruefen" }));
             }
         };
         init();
@@ -74,18 +76,23 @@ export default function AvailabilityPage() {
                     .gte("datum", von)
                     .lte("datum", bis);
                 if (e) throw e;
+
                 const next: WocheState = {};
                 for (const t of tage) {
-                    const key = isoDatum(t);
-                    const vorhanden = (data as EsskaAvailabilityRow[] | null)?.find((a) => a.datum === key);
-                    next[key] = {
-                        status: vorhanden?.status ?? "verfuegbar",
-                        notiz: vorhanden?.notiz ?? "",
-                    };
+                    for (const slot of SLOTS) {
+                        const k = key(isoDatum(t), slot);
+                        const vorhanden = (data as EsskaAvailabilityRow[] | null)?.find(
+                            (a) => a.datum === isoDatum(t) && a.slot === slot
+                        );
+                        next[k] = {
+                            wunsch: vorhanden?.wunsch ?? "koennte",
+                            notiz: vorhanden?.notiz ?? "",
+                        };
+                    }
                 }
                 setState(next);
             } catch (err) {
-                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
+                setError(friendlyError(err, { aktion: "Verfuegbarkeit laden" }));
             } finally {
                 setLoading(false);
             }
@@ -93,12 +100,9 @@ export default function AvailabilityPage() {
         load();
     }, [profileId, wochenStart.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const setzeStatus = (datum: string, status: EsskaAvailability) => {
-        setState((prev) => ({ ...prev, [datum]: { ...(prev[datum] ?? { notiz: "" }), status } }));
-    };
-
-    const setzeNotiz = (datum: string, notiz: string) => {
-        setState((prev) => ({ ...prev, [datum]: { ...(prev[datum] ?? { status: "verfuegbar" }), notiz } }));
+    const setzeWunsch = (datum: string, slot: EsskaShiftSlot, w: EsskaWunsch) => {
+        const k = key(datum, slot);
+        setState((prev) => ({ ...prev, [k]: { ...(prev[k] ?? { notiz: "" }), wunsch: w } }));
     };
 
     const speichern = async () => {
@@ -108,19 +112,23 @@ export default function AvailabilityPage() {
         setError(null);
         try {
             const client = await getEsskaClient();
-            const payload = Object.entries(state).map(([datum, v]) => ({
-                profile_id: profileId,
-                datum,
-                status: v.status,
-                notiz: v.notiz?.trim() ? v.notiz.trim() : null,
-            }));
+            const payload = Object.entries(state).map(([k, v]) => {
+                const [datum, slot] = k.split("::");
+                return {
+                    profile_id: profileId,
+                    datum,
+                    slot: slot as EsskaShiftSlot,
+                    wunsch: v.wunsch,
+                    notiz: v.notiz?.trim() ? v.notiz.trim() : null,
+                };
+            });
             const { error: e } = await client
                 .from("availabilities")
-                .upsert(payload, { onConflict: "profile_id,datum" });
+                .upsert(payload, { onConflict: "profile_id,datum,slot" });
             if (e) throw e;
-            setInfo("Verfügbarkeit für diese Woche gespeichert.");
+            setInfo("Wochenwünsche gespeichert.");
         } catch (err) {
-            setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen" }));
+            setError(friendlyError(err, { aktion: "Speichern" }));
         } finally {
             setSaving(false);
         }
@@ -130,9 +138,10 @@ export default function AvailabilityPage() {
         <div className="space-y-6 p-2 md:p-6">
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold">Verfügbarkeit</h1>
-                    <p className="text-gray-500">
-                        Wann kannst du arbeiten? Standardeinstellung pro Tag ist &bdquo;Verf&uuml;gbar&ldquo;.
+                    <h1 className="text-2xl font-bold">Wochenwünsche</h1>
+                    <p className="text-gray-500 text-sm">
+                        Trage pro Vormittag/Nachmittag ein, ob du an dem Slot arbeiten möchtest. Der Admin sieht
+                        das beim Planen und kann nur Mitarbeiter einplanen, die das nicht ausgeschlossen haben.
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -144,7 +153,7 @@ export default function AvailabilityPage() {
                         <ChevronLeft className="h-4 w-4" />
                     </button>
                     <span className="text-sm font-medium px-2">
-                        Woche {wochenStart.toLocaleDateString("de-DE")} – {addTage(wochenStart, 6).toLocaleDateString("de-DE")}
+                        {wochenStart.toLocaleDateString("de-DE")} – {addTage(wochenStart, 6).toLocaleDateString("de-DE")}
                     </span>
                     <button
                         onClick={() => setWochenStart(addTage(wochenStart, 7))}
@@ -167,47 +176,69 @@ export default function AvailabilityPage() {
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Wochenkalender</CardTitle>
-                    <CardDescription>Pro Tag den passenden Status wählen, optional eine Notiz.</CardDescription>
+                    <CardTitle>Wochenplan</CardTitle>
+                    <CardDescription>
+                        ✕ = Kann nicht · · = Könnte · ★ = Wünsche zu arbeiten
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     {loading ? (
                         <p className="text-gray-500">Lädt…</p>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
-                            {tage.map((t) => {
-                                const key = isoDatum(t);
-                                const s = state[key];
-                                return (
-                                    <div key={key} className="border rounded-lg p-3 bg-white">
-                                        <div className="text-center mb-2">
-                                            <div className="text-xs uppercase text-gray-500">{tagKurz(t)}</div>
-                                            <div className="text-lg font-semibold">{t.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}</div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            {STATUS_REIHENFOLGE.map((status) => (
-                                                <button
-                                                    key={status}
-                                                    onClick={() => setzeStatus(key, status)}
-                                                    className={`w-full text-xs py-1 px-2 rounded border ${
-                                                        s?.status === status
-                                                            ? STATUS_FARBE[status]
-                                                            : "bg-white text-gray-600 border-gray-200 hover:bg-secondary-50"
-                                                    }`}
-                                                >
-                                                    {AVAILABILITY_LABELS[status]}
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <input
-                                            value={s?.notiz ?? ""}
-                                            onChange={(e) => setzeNotiz(key, e.target.value)}
-                                            placeholder="Notiz (optional)"
-                                            className="mt-2 w-full text-xs border rounded px-2 py-1"
-                                        />
-                                    </div>
-                                );
-                            })}
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm border-collapse">
+                                <thead>
+                                    <tr className="bg-secondary-50">
+                                        <th className="px-3 py-2 text-left border">Datum</th>
+                                        <th className="px-3 py-2 text-left border">Wochentag</th>
+                                        {SLOTS.map((s) => (
+                                            <th key={s} className="px-3 py-2 text-center border">
+                                                {SLOT_LABELS[s]}
+                                                <div className="text-xs font-normal text-gray-500">
+                                                    {zeitKurz(SLOT_DEFAULT_ZEITEN[s].start)}–{zeitKurz(SLOT_DEFAULT_ZEITEN[s].ende)}
+                                                </div>
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {tage.map((t) => {
+                                        const datum = isoDatum(t);
+                                        return (
+                                            <tr key={datum} className="border-t">
+                                                <td className="px-3 py-2 border font-medium">
+                                                    {t.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}
+                                                </td>
+                                                <td className="px-3 py-2 border">{tagKurz(t)}</td>
+                                                {SLOTS.map((s) => {
+                                                    const k = key(datum, s);
+                                                    const aktuell = state[k]?.wunsch ?? "koennte";
+                                                    return (
+                                                        <td key={s} className="px-2 py-2 border">
+                                                            <div className="flex gap-1 justify-center">
+                                                                {WUENSCHE.map((w) => (
+                                                                    <button
+                                                                        key={w}
+                                                                        onClick={() => setzeWunsch(datum, s, w)}
+                                                                        className={`px-2 py-1 text-xs rounded border ${
+                                                                            aktuell === w
+                                                                                ? FARBE[w]
+                                                                                : "bg-white text-gray-500 border-gray-200 hover:bg-secondary-50"
+                                                                        }`}
+                                                                        title={WUNSCH_LABELS[w]}
+                                                                    >
+                                                                        {WUNSCH_ICON[w]} {WUNSCH_LABELS[w]}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
 

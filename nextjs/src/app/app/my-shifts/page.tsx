@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaShift } from "@/lib/esska/types";
-import { addTage, isoDatum, montagDerWoche, tagKurz } from "@/lib/esska/types";
+import { SLOT_LABELS, addTage, isoDatum, montagDerWoche, nettoStunden, tagKurz, zeitKurz } from "@/lib/esska/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 type ShiftMitCenter = EsskaShift & { center?: EsskaCenter | null };
@@ -53,12 +53,10 @@ export default function MyShiftsPage() {
         load();
     }, [wochenStart.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const stundenTotal = shifts.reduce((sum, s) => {
-        const [sh, sm] = s.start_zeit.split(":").map(Number);
-        const [eh, em] = s.end_zeit.split(":").map(Number);
-        const minuten = eh * 60 + em - (sh * 60 + sm) - (s.pause_min ?? 0);
-        return sum + Math.max(0, minuten);
-    }, 0) / 60;
+    const stundenTotal = shifts.reduce(
+        (sum, s) => sum + nettoStunden(zeitKurz(s.start_zeit), zeitKurz(s.end_zeit), s.pause_min ?? 0),
+        0
+    );
 
     return (
         <div className="space-y-6 p-2 md:p-6">
@@ -113,10 +111,11 @@ export default function MyShiftsPage() {
                                         <ul className="space-y-1 text-sm">
                                             {tageschichten.map((s) => (
                                                 <li key={s.id}>
+                                                    <span className="inline-block w-20 text-xs uppercase text-gray-500">{SLOT_LABELS[s.slot]}</span>
                                                     <strong>{s.center?.name ?? "Center"}</strong>{" "}
                                                     <span className="font-mono text-xs text-gray-500">({s.center?.kuerzel ?? "—"})</span>
                                                     {" · "}
-                                                    {s.start_zeit.slice(0, 5)} – {s.end_zeit.slice(0, 5)}
+                                                    {zeitKurz(s.start_zeit)} – {zeitKurz(s.end_zeit)}
                                                     {s.pause_min > 0 && ` · ${s.pause_min} Min Pause`}
                                                     {s.rolle && ` · ${s.rolle}`}
                                                 </li>
