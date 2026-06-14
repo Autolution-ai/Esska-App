@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/esska/errors";
 import { useRouter } from "next/navigation";
 import { CheckCircle, Lock } from "lucide-react";
 import { createSPASassClient } from "@/lib/supabase/client";
@@ -56,7 +57,7 @@ export default function AcceptInvitePage() {
                 setEmail(user.email ?? "");
                 setPhase("passwort");
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Unbekannter Fehler");
+                setError(friendlyError(err, { aktion: "Unbekannter Fehler" }));
                 setPhase("fehler");
             }
         };
@@ -83,7 +84,7 @@ export default function AcceptInvitePage() {
             setPhase("fertig");
             setTimeout(() => router.push("/app/onboarding"), 1200);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Passwort konnte nicht gespeichert werden.");
+            setError(friendlyError(err, { aktion: "Passwort konnte nicht gespeichert werden." }));
             setPhase("passwort");
         }
     };

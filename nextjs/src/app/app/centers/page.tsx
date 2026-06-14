@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter } from "@/lib/esska/types";
 import { formatDate, formatMoney } from "@/lib/esska/types";
 import {
@@ -38,7 +39,7 @@ export default function CentersPage() {
                 if (e) throw e;
                 setCenters((data as EsskaCenter[]) ?? []);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler beim Laden");
+                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
                 setLoading(false);
             }

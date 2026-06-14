@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaAvailabilityRow,
     EsskaCenter,
@@ -95,7 +96,7 @@ export default function WocheEditorPage() {
                 setAvailability((aData as EsskaAvailabilityRow[]) ?? []);
             }
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Fehler beim Laden");
+            setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
         } finally {
             setLoading(false);
         }
@@ -118,7 +119,7 @@ export default function WocheEditorPage() {
             if (e) throw e;
             setWeek(data as EsskaShiftWeek);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Anlegen fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Anlegen fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }
@@ -142,7 +143,7 @@ export default function WocheEditorPage() {
             if (e) throw e;
             setWeek(data as EsskaShiftWeek);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Veröffentlichen fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Veröffentlichen fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }
@@ -173,7 +174,7 @@ export default function WocheEditorPage() {
             setShifts((prev) => [...prev, data as EsskaShift]);
             setNeueZeile((prev) => ({ ...prev, [datum]: { profile_id: "", start: "", ende: "", pause: "", rolle: "" } }));
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Schicht anlegen fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Schicht anlegen fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }
@@ -188,7 +189,7 @@ export default function WocheEditorPage() {
             if (e) throw e;
             setShifts((prev) => prev.filter((s) => s.id !== id));
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Löschen fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Löschen fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }

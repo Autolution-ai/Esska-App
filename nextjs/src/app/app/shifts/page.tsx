@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Eye, Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaShiftWeek } from "@/lib/esska/types";
 import { addTage, isoDatum, montagDerWoche } from "@/lib/esska/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -31,7 +32,7 @@ export default function ShiftsOverviewPage() {
                 setWeeks((wRes.data as EsskaShiftWeek[]) ?? []);
                 if (cs.length > 0 && !centerId) setCenterId(cs[0].id);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler beim Laden");
+                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
                 setLoading(false);
             }

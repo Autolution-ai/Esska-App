@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaEmployeeDocument, EsskaKubeDeclaration, EsskaProfile } from "@/lib/esska/types";
 import StammdatenForm from "@/components/esska/StammdatenForm";
 import KubeForm from "@/components/esska/KubeForm";
@@ -47,7 +48,7 @@ export default function OnboardingPage() {
                     .maybeSingle();
                 if (k) setKube(k as EsskaKubeDeclaration);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler beim Laden");
+                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
                 setLoading(false);
             }
@@ -79,7 +80,7 @@ export default function OnboardingPage() {
             await client.from("profiles").update({ onboarding_abgeschlossen: true }).eq("id", profile.id);
             router.push("/app");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Abschluss fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Abschluss fehlgeschlagen" }));
         }
     };
 

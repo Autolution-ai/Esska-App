@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { createSPASassClientAuthenticated as createSPASassClient } from "@/lib/supabase/client";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import { Key, CheckCircle } from "lucide-react";
 import { MFASetup } from "@/components/MFASetup";
 import StammdatenForm from "@/components/esska/StammdatenForm";
@@ -63,7 +64,7 @@ export default function UserSettingsPage() {
             setNewPassword("");
             setConfirmPassword("");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Passwort konnte nicht geändert werden.");
+            setError(friendlyError(err, { aktion: "Passwort konnte nicht geändert werden." }));
         } finally {
             setLoading(false);
         }

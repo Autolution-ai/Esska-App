@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter } from "@/lib/esska/types";
 import CenterForm from "../../CenterForm";
 
@@ -25,7 +26,7 @@ export default function EditCenterPage() {
                 if (e) throw e;
                 setCenter(data as EsskaCenter);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler beim Laden");
+                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
                 setLoading(false);
             }

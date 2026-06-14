@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaCenterKategorie, EsskaCenterStatus } from "@/lib/esska/types";
 import { centToEuro, euroToCent } from "@/lib/esska/types";
 
@@ -139,7 +140,7 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
             }
             router.refresh();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+            setError(friendlyError(err, { aktion: center ? "Center aktualisieren" : "Center anlegen", entitaet: "Center" }));
         } finally {
             setSaving(false);
         }

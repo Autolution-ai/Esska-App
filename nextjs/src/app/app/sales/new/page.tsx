@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter } from "@/lib/esska/types";
 import { euroToCent, isoDatum } from "@/lib/esska/types";
 
@@ -51,7 +52,7 @@ export default function SalesEntryPage() {
                     if (cs[0]) setCenterId(cs[0].id);
                 }
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler beim Laden");
+                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             }
         };
         load();
@@ -87,7 +88,7 @@ export default function SalesEntryPage() {
             setBelege("");
             setNotiz("");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen" }));
         } finally {
             setSaving(false);
         }

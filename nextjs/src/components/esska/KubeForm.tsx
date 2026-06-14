@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaKubeAlgLeistung,
     EsskaKubeBegrenzung,
@@ -141,7 +142,7 @@ export default function KubeForm({ profileId, saison, existing, onSaved }: Props
             if (e) throw e;
             onSaved(data as EsskaKubeDeclaration);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
+            setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen." }));
         } finally {
             setSaving(false);
         }

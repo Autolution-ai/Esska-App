@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaArbeitszeitModell,
     EsskaFamilienstand,
@@ -99,7 +100,7 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
             onSaved(data as EsskaProfile);
             setForm((prev) => ({ ...prev, bestaetigt: false }));
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen.");
+            setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen." }));
         } finally {
             setSaving(false);
         }

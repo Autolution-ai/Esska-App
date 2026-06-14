@@ -16,6 +16,7 @@ import {
     CartesianGrid,
 } from "recharts";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaDailySale } from "@/lib/esska/types";
 import { centToEuro, formatDate, formatMoney, isoDatum } from "@/lib/esska/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -43,7 +44,7 @@ export default function SalesAdminPage() {
                 setCenters((cRes.data as EsskaCenter[]) ?? []);
                 setSales((sRes.data as EsskaDailySale[]) ?? []);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler beim Laden");
+                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
                 setLoading(false);
             }

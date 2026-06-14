@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FileDown, Plus, Trash2 } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaKubeDeclaration, EsskaProfile, EsskaRole } from "@/lib/esska/types";
 import { centToEuro, formatDate, formatMoney } from "@/lib/esska/types";
 import { generiereKubePdf, generiereStammdatenPdf, pdfHerunterladen } from "@/lib/esska/pdf";
@@ -53,7 +54,7 @@ export default function EmployeeDetailPage() {
             setAssignments(rows);
             setCenters((cRes.data as EsskaCenter[]) ?? []);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Fehler beim Laden");
+            setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
         } finally {
             setLoading(false);
         }
@@ -79,7 +80,7 @@ export default function EmployeeDetailPage() {
             setRolleImCenter("");
             await reload();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Zuordnung fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Zuordnung fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }
@@ -94,7 +95,7 @@ export default function EmployeeDetailPage() {
             if (e) throw e;
             await reload();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Entfernen fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Entfernen fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }
@@ -115,7 +116,7 @@ export default function EmployeeDetailPage() {
             if (e) throw e;
             setProfile(data as EsskaProfile);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Rolle konnte nicht geändert werden");
+            setError(friendlyError(err, { aktion: "Rolle konnte nicht geändert werden" }));
         } finally {
             setBusy(false);
         }
@@ -135,7 +136,7 @@ export default function EmployeeDetailPage() {
             if (e) throw e;
             setProfile(data as EsskaProfile);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Status konnte nicht geändert werden");
+            setError(friendlyError(err, { aktion: "Status konnte nicht geändert werden" }));
         } finally {
             setBusy(false);
         }

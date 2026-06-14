@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Trash2, Upload, FileCheck, Download } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaDokumentTyp, EsskaEmployeeDocument } from "@/lib/esska/types";
 import { DOKUMENT_TYP_LABELS } from "@/lib/esska/types";
 
@@ -37,7 +38,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
             setDocs(list);
             onChanged?.(list);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Dokumente konnten nicht geladen werden");
+            setError(friendlyError(err, { aktion: "Dokumente konnten nicht geladen werden" }));
         } finally {
             setLoading(false);
         }
@@ -80,7 +81,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
 
             await reload();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Upload fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Upload fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }
@@ -96,7 +97,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
             if (e) throw e;
             await reload();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Löschen fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Löschen fehlgeschlagen" }));
         } finally {
             setBusy(false);
         }
@@ -109,7 +110,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
             if (e) throw e;
             window.open(data.signedUrl, "_blank");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Download fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Download fehlgeschlagen" }));
         }
     };
 

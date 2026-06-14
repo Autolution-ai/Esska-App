@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaAvailability, EsskaAvailabilityRow } from "@/lib/esska/types";
 import {
     AVAILABILITY_LABELS,
@@ -51,7 +52,7 @@ export default function AvailabilityPage() {
                 if (!user) throw new Error("Nicht angemeldet");
                 setProfileId(user.id);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler");
+                setError(friendlyError(err, { aktion: "Fehler" }));
             }
         };
         init();
@@ -84,7 +85,7 @@ export default function AvailabilityPage() {
                 }
                 setState(next);
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Fehler beim Laden");
+                setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
                 setLoading(false);
             }
@@ -119,7 +120,7 @@ export default function AvailabilityPage() {
             if (e) throw e;
             setInfo("Verfügbarkeit für diese Woche gespeichert.");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
+            setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen" }));
         } finally {
             setSaving(false);
         }
