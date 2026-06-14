@@ -13,6 +13,54 @@ import type {
 } from "@/lib/esska/types";
 import { centToEuro, euroToCent } from "@/lib/esska/types";
 
+// Bekannteste deutsche Krankenkassen, alphabetisch sortiert.
+// "Andere…" ermoeglicht Freitext fuer alle nicht gelisteten Kassen.
+const KRANKENKASSEN_GESETZLICH = [
+    "AOK",
+    "Audi BKK",
+    "Barmer",
+    "BIG direkt gesund",
+    "BKK firmus",
+    "BKK Mobil Oil",
+    "BKK VBU",
+    "DAK-Gesundheit",
+    "Debeka BKK",
+    "HEK",
+    "hkk Krankenkasse",
+    "IKK classic",
+    "Knappschaft",
+    "KKH",
+    "mhplus BKK",
+    "Pronova BKK",
+    "R+V BKK",
+    "Salus BKK",
+    "SBK",
+    "Techniker Krankenkasse",
+    "Viactiv",
+] as const;
+
+const KRANKENKASSEN_PRIVAT = [
+    "Allianz Private Krankenversicherung",
+    "ARAG",
+    "AXA",
+    "Barmenia",
+    "Continentale",
+    "Debeka",
+    "DKV Deutsche Krankenversicherung",
+    "Gothaer",
+    "Hallesche",
+    "HanseMerkur",
+    "HUK-Coburg",
+    "INTER",
+    "LVM",
+    "Mecklenburgische",
+    "Münchener Verein",
+    "R+V",
+    "Signal Iduna",
+    "uniVersa",
+    "Württembergische",
+] as const;
+
 type Props = {
     profile: EsskaProfile;
     onSaved: (p: EsskaProfile) => void;
@@ -45,7 +93,22 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
         setForm((prev) => ({ ...prev, [key]: value }));
     };
 
-    const isPflichtSternchen = form.arbeitszeit_modell !== "minijob" && form.arbeitszeit_modell !== "kurzfristig";
+    // Laut Esska-Original-Personalfragebogen sind nur fuer Minijob die mit *
+    // gekennzeichneten Felder (Steuerklasse/Kinderfreibetrag/Konfession +
+    // Notfallkontakt) optional. Kurzfristig Beschaeftigte muessen sie
+    // ausfuellen (Lohnsteuer wird abgefuehrt). Steuer-ID ist immer Pflicht.
+    const istMinijob = form.arbeitszeit_modell === "minijob";
+    const isPflichtSternchen = !istMinijob;
+
+    // Krankenkassen-Auswahl: Dropdown vs. Freitext "Andere…"
+    const liste = form.krankenversicherung_status === "privat"
+        ? KRANKENKASSEN_PRIVAT
+        : KRANKENKASSEN_GESETZLICH;
+    const istInListe = (name: string | null) =>
+        !!name && (liste as readonly string[]).includes(name);
+    const [kvAndereOffen, setKvAndereOffen] = useState<boolean>(
+        !!form.krankenversicherung_name && !istInListe(form.krankenversicherung_name)
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -202,26 +265,29 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
 
             <Section titel="Sozialversicherung">
                 <Grid>
-                    <Field label="Rentenversicherungsnummer (12-stellig)" required>
+                    <Field
+                        label="Rentenversicherungsnummer (12-stellig)"
+                        required
+                        hint="Steht auf dem Sozialversicherungsausweis oder im Renteninformationsschreiben. Format: 11 Ziffern + 1 Buchstabe (z. B. 65 170839 W 001)."
+                    >
                         <input
                             value={form.rentenversicherungsnummer ?? ""}
                             onChange={(e) => update("rentenversicherungsnummer", e.target.value)}
                             required
+                            placeholder="65170839W001"
                             className={`${inputCls} font-mono`}
-                        />
-                    </Field>
-                    <Field label="Krankenversicherung (genau)" required>
-                        <input
-                            value={form.krankenversicherung_name ?? ""}
-                            onChange={(e) => update("krankenversicherung_name", e.target.value)}
-                            required
-                            className={inputCls}
                         />
                     </Field>
                     <Field label="Mitgliedsstatus" required>
                         <select
                             value={form.krankenversicherung_status ?? ""}
-                            onChange={(e) => update("krankenversicherung_status", (e.target.value || null) as EsskaKvStatus | null)}
+                            onChange={(e) => {
+                                const v = (e.target.value || null) as EsskaKvStatus | null;
+                                update("krankenversicherung_status", v);
+                                // Wenn Status wechselt, KV-Name zuruecksetzen
+                                update("krankenversicherung_name", null);
+                                setKvAndereOffen(false);
+                            }}
                             required
                             className={inputCls}
                         >
@@ -229,6 +295,59 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                             <option value="gesetzlich">gesetzlich</option>
                             <option value="privat">privat</option>
                         </select>
+                    </Field>
+                    <Field
+                        label="Krankenversicherung"
+                        required
+                        hint="Falls deine Kasse nicht in der Liste ist, wähle ‚Andere…' und gib sie selbst ein."
+                    >
+                        {!form.krankenversicherung_status ? (
+                            <input disabled placeholder="Erst Mitgliedsstatus wählen" className={`${inputCls} bg-gray-50`} />
+                        ) : kvAndereOffen ? (
+                            <div className="space-y-2">
+                                <input
+                                    value={form.krankenversicherung_name ?? ""}
+                                    onChange={(e) => update("krankenversicherung_name", e.target.value)}
+                                    required
+                                    placeholder="Name der Krankenversicherung"
+                                    className={inputCls}
+                                    autoFocus
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setKvAndereOffen(false);
+                                        update("krankenversicherung_name", null);
+                                    }}
+                                    className="text-xs text-primary-600 hover:underline"
+                                >
+                                    Doch aus Liste wählen
+                                </button>
+                            </div>
+                        ) : (
+                            <select
+                                value={istInListe(form.krankenversicherung_name) ? form.krankenversicherung_name ?? "" : ""}
+                                onChange={(e) => {
+                                    const v = e.target.value;
+                                    if (v === "__andere__") {
+                                        setKvAndereOffen(true);
+                                        update("krankenversicherung_name", "");
+                                    } else {
+                                        update("krankenversicherung_name", v || null);
+                                    }
+                                }}
+                                required
+                                className={inputCls}
+                            >
+                                <option value="">– wählen –</option>
+                                {liste.map((k) => (
+                                    <option key={k} value={k}>
+                                        {k}
+                                    </option>
+                                ))}
+                                <option value="__andere__">Andere…</option>
+                            </select>
+                        )}
                     </Field>
                     {form.arbeitszeit_modell === "minijob" && (
                         <Field label="Rentenversicherungs-Befreiung beantragt?">
@@ -245,17 +364,26 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                 </Grid>
             </Section>
 
-            <Section titel={`Steuerdaten ${isPflichtSternchen ? "" : "(bei Minijob/Kurzfristig optional)"}`}>
+            <Section titel={`Steuerdaten ${isPflichtSternchen ? "" : "(bei Minijob optional)"}`}>
                 <Grid>
-                    <Field label="Steuer-ID (11-stellig)" required={isPflichtSternchen}>
+                    <Field
+                        label="Steuer-ID (11-stellig)"
+                        required
+                        hint="Steht auf der Lohnsteuerbescheinigung des Arbeitgebers oder kann beim Bundeszentralamt für Steuern (bzst.de) angefragt werden. Format: 11 Ziffern."
+                    >
                         <input
                             value={form.steuer_id ?? ""}
                             onChange={(e) => update("steuer_id", e.target.value)}
-                            required={isPflichtSternchen}
+                            required
+                            placeholder="12345678901"
                             className={`${inputCls} font-mono`}
                         />
                     </Field>
-                    <Field label="Steuerklasse" required={isPflichtSternchen}>
+                    <Field
+                        label="Steuerklasse"
+                        required={isPflichtSternchen}
+                        hint="Wird vom Finanzamt vergeben (I–VI). Bei Unsicherheit auf der letzten Lohnsteuerbescheinigung nachschauen oder unter ELSTER abrufen."
+                    >
                         <select
                             value={form.steuerklasse ?? ""}
                             onChange={(e) => update("steuerklasse", (e.target.value || null) as EsskaSteuerklasse | null)}
@@ -271,16 +399,25 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                             <option value="VI">VI</option>
                         </select>
                     </Field>
-                    <Field label="Kinderfreibetrag" required={isPflichtSternchen}>
+                    <Field
+                        label="Kinderfreibetrag"
+                        required={isPflichtSternchen}
+                        hint="0 wenn keine Kinder. Sonst steht der Wert (0,5 / 1,0 / 2,0 …) auf der Lohnsteuerbescheinigung."
+                    >
                         <input
                             value={form.kinderfreibetrag_str}
                             onChange={(e) => update("kinderfreibetrag_str", e.target.value)}
                             inputMode="decimal"
+                            placeholder="z. B. 0 oder 1,0"
                             className={inputCls}
                             required={isPflichtSternchen}
                         />
                     </Field>
-                    <Field label="Konfession" required={isPflichtSternchen}>
+                    <Field
+                        label="Konfession"
+                        required={isPflichtSternchen}
+                        hint="Für Kirchensteuer. ‚Keine‘ wählen, wenn nicht kirchensteuerpflichtig."
+                    >
                         <select
                             value={form.konfession ?? ""}
                             onChange={(e) => update("konfession", (e.target.value || null) as EsskaKonfession | null)}
@@ -296,7 +433,7 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                 </Grid>
             </Section>
 
-            <Section titel={`Notfallkontakt ${isPflichtSternchen ? "" : "(bei Minijob/Kurzfristig optional, aber empfohlen)"}`}>
+            <Section titel={`Notfallkontakt ${isPflichtSternchen ? "" : "(bei Minijob optional, aber empfohlen)"}`}>
                 <Grid>
                     <Field label="Name" required={isPflichtSternchen}>
                         <input value={form.notfall_name ?? ""} onChange={(e) => update("notfall_name", e.target.value)} required={isPflichtSternchen} className={inputCls} />
