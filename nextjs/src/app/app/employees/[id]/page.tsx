@@ -2,14 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { FileDown, Plus, Trash2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
+import { Edit, FileDown, Mail, Plus, Trash2, UserX } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaKubeDeclaration, EsskaProfile, EsskaRole } from "@/lib/esska/types";
 import { centToEuro, formatDate, formatMoney } from "@/lib/esska/types";
 import { generiereKubePdf, generiereStammdatenPdf, pdfHerunterladen } from "@/lib/esska/pdf";
 import DokumenteUpload from "@/components/esska/DokumenteUpload";
+import StammdatenForm from "@/components/esska/StammdatenForm";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 
 type AssignmentRow = {
@@ -20,6 +21,7 @@ type AssignmentRow = {
 
 export default function EmployeeDetailPage() {
     const params = useParams<{ id: string }>();
+    const router = useRouter();
     const [profile, setProfile] = useState<EsskaProfile | null>(null);
     const [kubes, setKubes] = useState<EsskaKubeDeclaration[]>([]);
     const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
@@ -29,6 +31,8 @@ export default function EmployeeDetailPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [info, setInfo] = useState<string | null>(null);
+    const [editStammdaten, setEditStammdaten] = useState(false);
 
     const reload = async () => {
         try {
@@ -142,6 +146,52 @@ export default function EmployeeDetailPage() {
         }
     };
 
+    const handleReinvite = async () => {
+        if (!profile) return;
+        setBusy(true);
+        setError(null);
+        setInfo(null);
+        try {
+            const res = await fetch(`/api/employees/${profile.id}/reinvite`, { method: "POST" });
+            const data = await res.json();
+            if (!res.ok) {
+                setError(data.error ?? "Erneutes Einladen fehlgeschlagen");
+            } else {
+                setInfo(`Neue Einladung an ${data.email ?? profile.email} verschickt. Der alte Link ist jetzt ungültig.`);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Netzwerkfehler");
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!profile) return;
+        const name = profile.vorname || profile.nachname
+            ? `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim()
+            : profile.email ?? "diesen Mitarbeiter";
+        const bestaetigt = confirm(
+            `${name} wird unwiderruflich gelöscht – inklusive aller Stammdaten, Schichten, Verfügbarkeiten und Dokumente.\n\nWirklich löschen?`
+        );
+        if (!bestaetigt) return;
+        setBusy(true);
+        setError(null);
+        try {
+            const res = await fetch(`/api/employees/${profile.id}`, { method: "DELETE" });
+            const data = await res.json();
+            if (!res.ok) {
+                setError(data.error ?? "Löschen fehlgeschlagen");
+                setBusy(false);
+                return;
+            }
+            router.push("/app/employees");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Netzwerkfehler");
+            setBusy(false);
+        }
+    };
+
     if (loading) return <div className="p-6 text-gray-500">Lädt…</div>;
     if (!profile) {
         return (
@@ -160,19 +210,73 @@ export default function EmployeeDetailPage() {
 
     return (
         <div className="space-y-6 p-2 md:p-6">
-            <div>
-                <Link href="/app/employees" className="text-sm text-primary-600 hover:underline">
-                    ← Zurück zur Mitarbeiterliste
-                </Link>
-                <h1 className="text-2xl font-bold mt-2">
-                    {profile.vorname || profile.nachname
-                        ? `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim()
-                        : profile.email ?? "Unbenannt"}
-                </h1>
-                <p className="text-gray-500">{profile.email}</p>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                    <Link href="/app/employees" className="text-sm text-primary-600 hover:underline">
+                        ← Zurück zur Mitarbeiterliste
+                    </Link>
+                    <h1 className="text-2xl font-bold mt-2">
+                        {profile.vorname || profile.nachname
+                            ? `${profile.vorname ?? ""} ${profile.nachname ?? ""}`.trim()
+                            : profile.email ?? "Unbenannt"}
+                    </h1>
+                    <p className="text-gray-500">{profile.email}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => setEditStammdaten((v) => !v)}
+                        disabled={busy}
+                        className="inline-flex items-center px-3 py-2 border rounded-md text-sm hover:bg-secondary-100 disabled:opacity-50"
+                    >
+                        <Edit className="h-4 w-4 mr-2" />
+                        {editStammdaten ? "Bearbeitung schließen" : "Stammdaten bearbeiten"}
+                    </button>
+                    {!profile.onboarding_abgeschlossen && (
+                        <button
+                            onClick={handleReinvite}
+                            disabled={busy}
+                            className="inline-flex items-center px-3 py-2 border rounded-md text-sm hover:bg-secondary-100 disabled:opacity-50"
+                            title="Frische Einladungsmail verschicken, alter Link wird ungültig"
+                        >
+                            <Mail className="h-4 w-4 mr-2" />
+                            Erneut einladen
+                        </button>
+                    )}
+                    <button
+                        onClick={handleDelete}
+                        disabled={busy}
+                        className="inline-flex items-center px-3 py-2 border border-red-300 text-red-700 rounded-md text-sm hover:bg-red-50 disabled:opacity-50"
+                        title="Mitarbeiter komplett löschen"
+                    >
+                        <UserX className="h-4 w-4 mr-2" />
+                        Löschen
+                    </button>
+                </div>
             </div>
 
             {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
+            {info && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{info}</div>}
+
+            {editStammdaten && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Stammdaten bearbeiten</CardTitle>
+                        <CardDescription>
+                            Änderungen werden direkt gespeichert. Der Mitarbeiter sieht die neuen Werte sofort
+                            unter &bdquo;Einstellungen &amp; Stammdaten&ldquo;.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <StammdatenForm
+                            profile={profile}
+                            onSaved={(p) => {
+                                setProfile(p);
+                                setInfo("Stammdaten gespeichert.");
+                            }}
+                        />
+                    </CardContent>
+                </Card>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
                 <Card>
