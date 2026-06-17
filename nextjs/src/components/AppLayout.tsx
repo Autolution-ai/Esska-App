@@ -36,7 +36,6 @@ const adminNavigation: NavItem[] = [
 
 const mitarbeiterNavigation: NavItem[] = [
     { name: 'Übersicht', href: '/app', icon: Home },
-    { name: 'Meine Center', href: '/app/my-centers', icon: Store },
     { name: 'Verfügbarkeit', href: '/app/availability', icon: CalendarDays },
     { name: 'Meine Schichten', href: '/app/my-shifts', icon: CalendarDays },
     { name: 'Umsatz melden', href: '/app/sales/new', icon: TrendingUp },

@@ -264,16 +264,21 @@ export const SLOT_DEFAULT_ZEITEN: Record<EsskaShiftSlot, { start: string; ende: 
 // Dreistufige Wunsch-Aussage des Mitarbeiters pro Tag/Slot
 export type EsskaWunsch = "kann_nicht" | "koennte" | "wuensche";
 
+// Semantik im UI:
+//   koennte    -> "Könnte" (voll verfuegbar)
+//   wuensche   -> "Abweichung" (eingeschraenkt: Vormittag bis HH:MM oder Nachmittag ab HH:MM)
+//   kann_nicht -> "Kann nicht"
+// Wir behalten den DB-Enum-Wert 'wuensche' und nutzen ihn als Speicher fuer 'abweichung'.
 export const WUNSCH_LABELS: Record<EsskaWunsch, string> = {
     kann_nicht: "Kann nicht",
     koennte: "Könnte",
-    wuensche: "Wünsche",
+    wuensche: "Abweichung",
 };
 
 export const WUNSCH_ICON: Record<EsskaWunsch, string> = {
     kann_nicht: "✕",
-    koennte: "·",
-    wuensche: "★",
+    koennte: "✓",
+    wuensche: "",
 };
 
 export interface EsskaAvailabilityRow {
@@ -282,6 +287,8 @@ export interface EsskaAvailabilityRow {
     datum: string;
     slot: EsskaShiftSlot;
     wunsch: EsskaWunsch;
+    abweichung_bis: string | null;
+    abweichung_ab: string | null;
     notiz: string | null;
     created_at: string;
     updated_at: string;
@@ -367,6 +374,8 @@ export interface EsskaDailySale {
     notiz: string | null;
     arbeitszeit_start: string | null;
     arbeitszeit_ende: string | null;
+    umsatz_start: string | null;
+    umsatz_ende: string | null;
     beleg_foto_path: string | null;
     erfasst_von: string;
     erfasst_am: string;

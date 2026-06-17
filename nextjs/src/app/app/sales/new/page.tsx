@@ -8,17 +8,18 @@ import { Camera, Image as ImageIcon, Trash2, Upload } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter } from "@/lib/esska/types";
-import { euroToCent, isoDatum } from "@/lib/esska/types";
+import { isoDatum } from "@/lib/esska/types";
 
 const BUCKET = "sales-receipts";
 const MAX_BYTES = 10 * 1024 * 1024;
 const ERLAUBTE_TYPEN = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 
-// 15-Minuten-Zeitschritte 00:00 bis 23:45
+// 15-Minuten-Schritte von 08:00 bis 21:00
 const ZEIT_OPTIONEN: string[] = (() => {
     const arr: string[] = [];
-    for (let h = 0; h < 24; h++) {
+    for (let h = 8; h <= 21; h++) {
         for (let m = 0; m < 60; m += 15) {
+            if (h === 21 && m > 0) continue;
             arr.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
         }
     }
@@ -31,11 +32,11 @@ export default function SalesEntryPage() {
     const [centerId, setCenterId] = useState("");
     const [datum, setDatum] = useState(isoDatum(new Date()));
     const [istAdmin, setIstAdmin] = useState(false);
-    const [betragEuro, setBetragEuro] = useState("");
-    const [belege, setBelege] = useState("");
     const [notiz, setNotiz] = useState("");
     const [arbeitsStart, setArbeitsStart] = useState("");
     const [arbeitsEnde, setArbeitsEnde] = useState("");
+    const [umsatzStart, setUmsatzStart] = useState("");
+    const [umsatzEnde, setUmsatzEnde] = useState("");
     const [fotoFile, setFotoFile] = useState<File | null>(null);
     const [fotoPreview, setFotoPreview] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -72,7 +73,10 @@ export default function SalesEntryPage() {
                     const cs = ((data as unknown) as Array<{ centers: EsskaCenter | null }> ?? [])
                         .flatMap((r) => (r.centers ? [r.centers] : []));
                     setCenters(cs);
-                    if (cs[0]) setCenterId(cs[0].id);
+                    // Auto-Vorauswahl: wenn nur 1 Center, direkt setzen.
+                    // (Sonderfall Hamburg: 4 Center -> Auswahl-Dropdown bleibt sichtbar)
+                    if (cs.length === 1) setCenterId(cs[0].id);
+                    else if (cs[0]) setCenterId(cs[0].id);
                 }
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
@@ -103,11 +107,15 @@ export default function SalesEntryPage() {
             return;
         }
         if (!fotoFile && !istAdmin) {
-            setError("Bitte ein Foto des physischen Arbeitsblatts hochladen.");
+            setError("Bitte ein Foto der Verkaufsliste hochladen.");
             return;
         }
         if (arbeitsStart && arbeitsEnde && arbeitsEnde <= arbeitsStart) {
-            setError("Die Endzeit muss nach der Startzeit liegen.");
+            setError("Die Arbeitszeit-Endzeit muss nach der Startzeit liegen.");
+            return;
+        }
+        if (umsatzStart && umsatzEnde && umsatzEnde <= umsatzStart) {
+            setError("Die Umsatzzeit-Endzeit muss nach der Startzeit liegen.");
             return;
         }
 
@@ -120,7 +128,6 @@ export default function SalesEntryPage() {
             const { data: { user } } = await client.auth.getUser();
             if (!user) throw new Error("Nicht angemeldet");
 
-            // Foto hochladen, falls vorhanden
             let fotoPath: string | null = null;
             if (fotoFile) {
                 const ext = fotoFile.name.split(".").pop() ?? "jpg";
@@ -136,11 +143,11 @@ export default function SalesEntryPage() {
                 {
                     center_id: centerId,
                     datum,
-                    betrag_cent: betragEuro ? euroToCent(betragEuro) : null,
-                    anzahl_belege: belege ? parseInt(belege, 10) || null : null,
                     notiz: notiz.trim() || null,
                     arbeitszeit_start: arbeitsStart || null,
                     arbeitszeit_ende: arbeitsEnde || null,
+                    umsatz_start: umsatzStart || null,
+                    umsatz_ende: umsatzEnde || null,
                     beleg_foto_path: fotoPath,
                     erfasst_von: user.id,
                 },
@@ -149,11 +156,11 @@ export default function SalesEntryPage() {
             if (e) throw e;
 
             setSuccess("Umsatz-Eintrag gespeichert.");
-            setBetragEuro("");
-            setBelege("");
             setNotiz("");
             setArbeitsStart("");
             setArbeitsEnde("");
+            setUmsatzStart("");
+            setUmsatzEnde("");
             setFotoFile(null);
             if (fotoPreview) URL.revokeObjectURL(fotoPreview);
             setFotoPreview(null);
@@ -164,6 +171,9 @@ export default function SalesEntryPage() {
         }
     };
 
+    const heuteSetzen = () => setDatum(isoDatum(new Date()));
+    const mehrereCenter = centers.length > 1;
+
     return (
         <div className="space-y-6 p-2 md:p-6 max-w-2xl">
             <Link href="/app/sales" className="text-sm text-primary-600 hover:underline">
@@ -172,7 +182,7 @@ export default function SalesEntryPage() {
             <div>
                 <h1 className="text-2xl font-bold">Umsatz melden</h1>
                 <p className="text-gray-600 text-sm mt-1">
-                    Pro Center und Tag genau ein Eintrag. Foto vom Arbeitsblatt + Arbeitszeit reichen aus –
+                    Pro Center und Tag genau ein Eintrag. Foto der Verkaufsliste + Arbeits- und Umsatzzeit reichen aus –
                     der Admin liest die Beträge später aus dem Foto aus.
                 </p>
             </div>
@@ -183,37 +193,54 @@ export default function SalesEntryPage() {
 
                 <div>
                     <label className="block text-sm font-medium mb-1">Center</label>
-                    <select
-                        value={centerId}
-                        onChange={(e) => setCenterId(e.target.value)}
-                        required
-                        className="w-full border rounded-md px-3 py-2 text-sm"
-                    >
-                        <option value="">– wählen –</option>
-                        {centers.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.name} ({c.kuerzel}) · {c.saison}
-                            </option>
-                        ))}
-                    </select>
+                    {mehrereCenter || istAdmin ? (
+                        <select
+                            value={centerId}
+                            onChange={(e) => setCenterId(e.target.value)}
+                            required
+                            className="w-full border rounded-md px-3 py-2 text-sm"
+                        >
+                            <option value="">– wählen –</option>
+                            {centers.map((c) => (
+                                <option key={c.id} value={c.id}>
+                                    {c.name} ({c.kuerzel}) · {c.saison}
+                                </option>
+                            ))}
+                        </select>
+                    ) : (
+                        <div className="w-full border rounded-md px-3 py-2 text-sm bg-secondary-50">
+                            {centers[0]
+                                ? `${centers[0].name} (${centers[0].kuerzel}) · ${centers[0].saison}`
+                                : "Keinem Center zugeordnet"}
+                        </div>
+                    )}
                 </div>
 
                 <div>
                     <label className="block text-sm font-medium mb-1">Datum</label>
-                    <input
-                        type="date"
-                        value={datum}
-                        onChange={(e) => setDatum(e.target.value)}
-                        required
-                        max={isoDatum(new Date())}
-                        className="w-full border rounded-md px-3 py-2 text-sm"
-                    />
+                    <div className="flex gap-2">
+                        <input
+                            type="date"
+                            value={datum}
+                            onChange={(e) => setDatum(e.target.value)}
+                            required
+                            max={isoDatum(new Date())}
+                            className="flex-1 border rounded-md px-3 py-2 text-sm"
+                        />
+                        <button
+                            type="button"
+                            onClick={heuteSetzen}
+                            className="px-3 py-2 border rounded-md text-sm hover:bg-secondary-100"
+                        >
+                            Heute
+                        </button>
+                    </div>
                 </div>
 
                 {/* Foto-Upload */}
                 <div>
                     <label className="block text-sm font-medium mb-2">
-                        Foto vom Arbeitsblatt {!istAdmin && <span className="text-red-500">*</span>}
+                        Foto von Verkaufsliste {!istAdmin && <span className="text-red-500">*</span>}
                     </label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
@@ -231,7 +258,6 @@ export default function SalesEntryPage() {
                             <p className="text-xs text-gray-500 mb-2">Dein Foto:</p>
                             {fotoPreview ? (
                                 <div className="relative">
-                                    {/* Lokales Object-URL – Image-Optimierung aus */}
                                     <Image
                                         src={fotoPreview}
                                         alt="Vorschau"
@@ -291,7 +317,7 @@ export default function SalesEntryPage() {
 
                 {/* Arbeitszeit */}
                 <div>
-                    <label className="block text-sm font-medium mb-1">Arbeitszeit (15-Minuten-Schritte)</label>
+                    <label className="block text-sm font-medium mb-1">Arbeits-Zeit (15-Minuten-Schritte)</label>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
                             <label className="block text-xs text-gray-500 mb-1">Von</label>
@@ -302,9 +328,7 @@ export default function SalesEntryPage() {
                             >
                                 <option value="">– wählen –</option>
                                 {ZEIT_OPTIONEN.map((z) => (
-                                    <option key={z} value={z}>
-                                        {z}
-                                    </option>
+                                    <option key={z} value={z}>{z}</option>
                                 ))}
                             </select>
                         </div>
@@ -317,56 +341,59 @@ export default function SalesEntryPage() {
                             >
                                 <option value="">– wählen –</option>
                                 {ZEIT_OPTIONEN.map((z) => (
-                                    <option key={z} value={z}>
-                                        {z}
-                                    </option>
+                                    <option key={z} value={z}>{z}</option>
                                 ))}
                             </select>
                         </div>
                     </div>
                 </div>
 
-                {/* Optionale Felder fuer Admin / wenn Mitarbeiter Beträge schon weiß */}
-                <details className="border rounded-md p-3">
-                    <summary className="cursor-pointer text-sm text-gray-700 select-none">
-                        Optionale Angaben (Betrag, Belege, Notiz)
-                    </summary>
-                    <div className="grid grid-cols-2 gap-3 mt-3">
+                {/* Umsatzzeit */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">Umsatz-Zeit (15-Minuten-Schritte)</label>
+                    <p className="text-xs text-gray-500 mb-1">
+                        Zeitraum, in dem die Umsätze tatsächlich erzielt wurden (steht so auf der Verkaufsliste).
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Betrag (€)</label>
-                            <input
-                                value={betragEuro}
-                                onChange={(e) => setBetragEuro(e.target.value)}
-                                inputMode="decimal"
-                                placeholder="z. B. 1.245,80"
+                            <label className="block text-xs text-gray-500 mb-1">Von</label>
+                            <select
+                                value={umsatzStart}
+                                onChange={(e) => setUmsatzStart(e.target.value)}
                                 className="w-full border rounded-md px-3 py-2 text-sm"
-                            />
-                            <p className="text-xs text-gray-500 mt-1">
-                                {istAdmin
-                                    ? "Nach Foto-Ansicht eintragen."
-                                    : "Optional – Admin pflegt es aus dem Foto."}
-                            </p>
+                            >
+                                <option value="">– wählen –</option>
+                                {ZEIT_OPTIONEN.map((z) => (
+                                    <option key={z} value={z}>{z}</option>
+                                ))}
+                            </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Anzahl Belege</label>
-                            <input
-                                value={belege}
-                                onChange={(e) => setBelege(e.target.value)}
-                                inputMode="numeric"
+                            <label className="block text-xs text-gray-500 mb-1">Bis</label>
+                            <select
+                                value={umsatzEnde}
+                                onChange={(e) => setUmsatzEnde(e.target.value)}
                                 className="w-full border rounded-md px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div className="col-span-2">
-                            <label className="block text-sm font-medium mb-1">Notiz</label>
-                            <textarea
-                                value={notiz}
-                                onChange={(e) => setNotiz(e.target.value)}
-                                rows={2}
-                                className="w-full border rounded-md px-3 py-2 text-sm"
-                            />
+                            >
+                                <option value="">– wählen –</option>
+                                {ZEIT_OPTIONEN.map((z) => (
+                                    <option key={z} value={z}>{z}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
-                </details>
+                </div>
+
+                {/* Notiz */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">Notiz (optional)</label>
+                    <textarea
+                        value={notiz}
+                        onChange={(e) => setNotiz(e.target.value)}
+                        rows={2}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                    />
+                </div>
 
                 <div className="flex gap-3">
                     <button
