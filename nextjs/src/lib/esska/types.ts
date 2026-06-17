@@ -222,9 +222,6 @@ export type EsskaDokumentTyp =
     | "ausweis_rueckseite"
     | "aufenthaltsgenehmigung"
     | "immatrikulation"
-    | "schulbescheinigung"
-    | "rentenbescheid"
-    | "gewerbeanmeldung"
     | "sonstiges";
 
 export const DOKUMENT_TYP_LABELS: Record<EsskaDokumentTyp, string> = {
@@ -232,9 +229,6 @@ export const DOKUMENT_TYP_LABELS: Record<EsskaDokumentTyp, string> = {
     ausweis_rueckseite: "Ausweis – Rückseite",
     aufenthaltsgenehmigung: "Aufenthaltsgenehmigung",
     immatrikulation: "Immatrikulationsbescheinigung",
-    schulbescheinigung: "Schulbescheinigung",
-    rentenbescheid: "Rentenbescheid",
-    gewerbeanmeldung: "Gewerbeanmeldung",
     sonstiges: "Sonstiges Dokument",
 };
 

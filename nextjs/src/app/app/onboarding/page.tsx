@@ -86,11 +86,9 @@ export default function OnboardingPage() {
         docs.some((d) => d.dokument_typ === "ausweis_vorderseite") &&
         docs.some((d) => d.dokument_typ === "ausweis_rueckseite");
 
-    // Schueler / Student: Schul- bzw. Immatrikulationsbescheinigung Pflicht
+    // Student: Immatrikulationsbescheinigung Pflicht
     let zusaetzlichePflicht: { typ: EsskaDokumentTyp; label: string } | null = null;
-    if (profile.aktueller_status === "schueler") {
-        zusaetzlichePflicht = { typ: "schulbescheinigung", label: "Schulbescheinigung" };
-    } else if (profile.aktueller_status === "student") {
+    if (profile.aktueller_status === "student") {
         zusaetzlichePflicht = { typ: "immatrikulation", label: "Immatrikulationsbescheinigung" };
     }
     const zusatzDa = !zusaetzlichePflicht || docs.some((d) => d.dokument_typ === zusaetzlichePflicht!.typ);
