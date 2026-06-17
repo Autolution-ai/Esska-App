@@ -14,6 +14,7 @@ import {
     Users,
     CalendarDays,
     TrendingUp,
+    ClipboardList,
 } from 'lucide-react';
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { createSPASassClient } from "@/lib/supabase/client";
@@ -48,7 +49,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const router = useRouter();
 
-    const { user, role } = useGlobal();
+    const { user, role, onboardingAbgeschlossen } = useGlobal();
+    const onboardingOffen = role === 'mitarbeiter' && onboardingAbgeschlossen === false;
 
     const handleLogout = async () => {
         try {
@@ -71,7 +73,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
 
     const productName = process.env.NEXT_PUBLIC_PRODUCTNAME;
-    const navigation = role === 'admin' ? adminNavigation : mitarbeiterNavigation;
+    // Bei offenem Onboarding wird die Navigation auf den Onboarding-Schritt
+    // reduziert – der Mitarbeiter MUSS das Onboarding zuerst abschliessen.
+    const onboardingNavigation: NavItem[] = [
+        { name: 'Onboarding', href: '/app/onboarding', icon: ClipboardList },
+    ];
+    const navigation = onboardingOffen
+        ? onboardingNavigation
+        : role === 'admin'
+            ? adminNavigation
+            : mitarbeiterNavigation;
 
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
 

@@ -42,6 +42,43 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(url)
     }
 
+    // Onboarding-Gate: Mitarbeiter mit offenem Onboarding werden auf
+    // /app/onboarding umgeleitet – unabhaengig davon, welche /app-Seite sie
+    // aufrufen oder ueber welchen Link sie kommen.
+    if (user?.user && request.nextUrl.pathname.startsWith('/app')) {
+        const path = request.nextUrl.pathname
+        const istOnboardingSeite = path === '/app/onboarding'
+        // API-Routen unter /api ignorieren (kommen ohnehin nicht durch dieses matcher),
+        // Logout-/Settings-Route fuer Passwort/Abmelden zulassen
+        if (!istOnboardingSeite) {
+            const { data: profile } = await (supabase as unknown as {
+                from: (t: string) => {
+                    select: (c: string) => {
+                        eq: (k: string, v: string) => {
+                            maybeSingle: () => Promise<{
+                                data: { role: string; onboarding_abgeschlossen: boolean } | null
+                            }>
+                        }
+                    }
+                }
+            })
+                .from('profiles')
+                .select('role, onboarding_abgeschlossen')
+                .eq('id', user.user.id)
+                .maybeSingle()
+
+            if (
+                profile
+                && profile.role === 'mitarbeiter'
+                && !profile.onboarding_abgeschlossen
+            ) {
+                const url = request.nextUrl.clone()
+                url.pathname = '/app/onboarding'
+                return NextResponse.redirect(url)
+            }
+        }
+    }
+
     // IMPORTANT: You *must* return the supabaseResponse object as it is.
     // If you're creating a new response object with NextResponse.next() make sure to:
     // 1. Pass the request in it, like so:

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Trash2, Upload, FileCheck, Download } from "lucide-react";
+import { Trash2, Upload, FileCheck, Download, Camera } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaDokumentTyp, EsskaEmployeeDocument } from "@/lib/esska/types";
@@ -143,22 +143,41 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
                         ))}
                     </select>
                 </div>
-                <label className={`inline-flex items-center justify-center px-4 py-2 rounded-md cursor-pointer text-sm
-                    ${busy ? "bg-gray-200 text-gray-500" : "bg-primary-600 text-white hover:bg-primary-700"}`}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    {busy ? "Lädt hoch…" : "Datei wählen & hochladen"}
-                    <input
-                        type="file"
-                        accept={ERLAUBTE_TYPEN.join(",")}
-                        className="hidden"
-                        disabled={busy}
-                        onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleFile(f);
-                            e.target.value = "";
-                        }}
-                    />
-                </label>
+                <div className="flex gap-2">
+                    <label className={`inline-flex items-center justify-center px-3 py-2 rounded-md cursor-pointer text-sm
+                        ${busy ? "bg-gray-200 text-gray-500" : "bg-primary-600 text-white hover:bg-primary-700"}`}>
+                        <Camera className="h-4 w-4 mr-2" />
+                        {busy ? "…" : "Foto aufnehmen"}
+                        <input
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            disabled={busy}
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleFile(f);
+                                e.target.value = "";
+                            }}
+                        />
+                    </label>
+                    <label className={`inline-flex items-center justify-center px-3 py-2 border rounded-md cursor-pointer text-sm
+                        ${busy ? "bg-gray-100 text-gray-400" : "hover:bg-secondary-50"}`}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Datei wählen
+                        <input
+                            type="file"
+                            accept={ERLAUBTE_TYPEN.join(",")}
+                            className="hidden"
+                            disabled={busy}
+                            onChange={(e) => {
+                                const f = e.target.files?.[0];
+                                if (f) handleFile(f);
+                                e.target.value = "";
+                            }}
+                        />
+                    </label>
+                </div>
             </div>
 
             {loading ? (
