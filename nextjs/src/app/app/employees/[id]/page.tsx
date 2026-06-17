@@ -269,6 +269,7 @@ export default function EmployeeDetailPage() {
                     <CardContent>
                         <StammdatenForm
                             profile={profile}
+                            adminMode
                             onSaved={(p) => {
                                 setProfile(p);
                                 setInfo("Stammdaten gespeichert.");

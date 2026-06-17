@@ -5,10 +5,17 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import type { EsskaEmployeeDocument, EsskaKubeDeclaration, EsskaProfile } from "@/lib/esska/types";
+import type {
+    EsskaDokumentTyp,
+    EsskaEmployeeDocument,
+    EsskaKubeDeclaration,
+    EsskaPensionExemption,
+    EsskaProfile,
+} from "@/lib/esska/types";
 import StammdatenForm from "@/components/esska/StammdatenForm";
 import KubeForm from "@/components/esska/KubeForm";
 import DokumenteUpload from "@/components/esska/DokumenteUpload";
+import PensionExemptionForm from "@/components/esska/PensionExemptionForm";
 
 function aktuelleSaison(): string {
     const now = new Date();
@@ -16,12 +23,13 @@ function aktuelleSaison(): string {
     return `${jahr % 100}/${((jahr + 1) % 100).toString().padStart(2, "0")}`;
 }
 
-type Schritt = "stammdaten" | "kube" | "dokumente" | "fertig";
+type Schritt = "stammdaten" | "rv_befreiung" | "kube" | "dokumente";
 
 export default function OnboardingPage() {
     const router = useRouter();
     const [profile, setProfile] = useState<EsskaProfile | null>(null);
     const [kube, setKube] = useState<EsskaKubeDeclaration | null>(null);
+    const [pension, setPension] = useState<EsskaPensionExemption | null>(null);
     const [docs, setDocs] = useState<EsskaEmployeeDocument[]>([]);
     const [schritt, setSchritt] = useState<Schritt>("stammdaten");
     const [loading, setLoading] = useState(true);
@@ -36,17 +44,26 @@ export default function OnboardingPage() {
                 const { data: { user } } = await client.auth.getUser();
                 if (!user) throw new Error("Nicht angemeldet");
 
-                const { data: p, error: pe } = await client.from("profiles").select("*").eq("id", user.id).single();
-                if (pe) throw pe;
-                setProfile(p as EsskaProfile);
-
-                const { data: k } = await client
-                    .from("kube_declarations")
-                    .select("*")
-                    .eq("profile_id", user.id)
-                    .eq("saison", saison)
-                    .maybeSingle();
-                if (k) setKube(k as EsskaKubeDeclaration);
+                const [pRes, kRes, eRes] = await Promise.all([
+                    client.from("profiles").select("*").eq("id", user.id).single(),
+                    client
+                        .from("kube_declarations")
+                        .select("*")
+                        .eq("profile_id", user.id)
+                        .eq("saison", saison)
+                        .maybeSingle(),
+                    client
+                        .from("pension_exemptions")
+                        .select("*")
+                        .eq("profile_id", user.id)
+                        .order("created_at", { ascending: false })
+                        .limit(1)
+                        .maybeSingle(),
+                ]);
+                if (pRes.error) throw pRes.error;
+                setProfile(pRes.data as EsskaProfile);
+                if (kRes.data) setKube(kRes.data as EsskaKubeDeclaration);
+                if (eRes.data) setPension(eRes.data as EsskaPensionExemption);
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -61,18 +78,36 @@ export default function OnboardingPage() {
         return <div className="p-6 text-red-600 text-sm">{error ?? "Profil nicht gefunden."}</div>;
     }
 
+    // KuBe-Schritt: nur wenn Admin den User als 'kurzfristig' eingestuft hat
     const brauchtKube = profile.arbeitszeit_modell === "kurzfristig";
+
+    // Ausweis Vorder- und Rueckseite: Pflicht bei allen
     const ausweisDa =
         docs.some((d) => d.dokument_typ === "ausweis_vorderseite") &&
         docs.some((d) => d.dokument_typ === "ausweis_rueckseite");
 
+    // Schueler / Student: Schul- bzw. Immatrikulationsbescheinigung Pflicht
+    let zusaetzlichePflicht: { typ: EsskaDokumentTyp; label: string } | null = null;
+    if (profile.aktueller_status === "schueler") {
+        zusaetzlichePflicht = { typ: "schulbescheinigung", label: "Schulbescheinigung" };
+    } else if (profile.aktueller_status === "student") {
+        zusaetzlichePflicht = { typ: "immatrikulation", label: "Immatrikulationsbescheinigung" };
+    }
+    const zusatzDa = !zusaetzlichePflicht || docs.some((d) => d.dokument_typ === zusaetzlichePflicht!.typ);
+    const dokumentePflichtErfuellt = ausweisDa && zusatzDa;
+
+    const rvBefreiungErledigt = !!pension?.unterzeichnet_am;
+
     const schritte: { key: Schritt; titel: string; erledigt: boolean }[] = [
         { key: "stammdaten", titel: "Stammdaten", erledigt: !!profile.stammdaten_bestaetigt_am },
+        { key: "rv_befreiung", titel: "Rentenversicherungs-Befreiung", erledigt: rvBefreiungErledigt },
         ...(brauchtKube
             ? [{ key: "kube" as Schritt, titel: "KuBe-Statuserklärung", erledigt: !!kube?.unterzeichnet_am }]
             : []),
-        { key: "dokumente", titel: "Ausweis & Nachweise", erledigt: ausweisDa },
+        { key: "dokumente", titel: "Ausweis & Nachweise", erledigt: dokumentePflichtErfuellt },
     ];
+
+    const alleErledigt = schritte.every((s) => s.erledigt);
 
     const handleFertig = async () => {
         try {
@@ -84,15 +119,18 @@ export default function OnboardingPage() {
         }
     };
 
-    const alleErledigt = schritte.every((s) => s.erledigt);
+    const naechsterSchritt = () => {
+        const idx = schritte.findIndex((s) => s.key === schritt);
+        if (idx >= 0 && idx < schritte.length - 1) setSchritt(schritte[idx + 1].key);
+    };
 
     return (
         <div className="space-y-6 p-2 md:p-6 max-w-4xl">
             <div>
                 <h1 className="text-2xl font-bold">Willkommen bei Esska 👋</h1>
                 <p className="text-gray-600">
-                    Bevor es losgeht, brauchen wir ein paar Angaben für die Personalakte. Das dauert etwa 10 Minuten.
-                    Du kannst jederzeit unterbrechen – deine Eingaben bleiben gespeichert.
+                    Bevor es losgeht, brauchen wir ein paar Angaben für die Personalakte. Das dauert
+                    etwa 10–15 Minuten. Du kannst jederzeit unterbrechen – deine Eingaben bleiben gespeichert.
                 </p>
             </div>
 
@@ -118,10 +156,21 @@ export default function OnboardingPage() {
             {schritt === "stammdaten" && (
                 <StammdatenForm
                     profile={profile}
-                    onboardingMode={false}
                     onSaved={(p) => {
                         setProfile(p);
-                        setSchritt(brauchtKube ? "kube" : "dokumente");
+                        naechsterSchritt();
+                    }}
+                />
+            )}
+
+            {schritt === "rv_befreiung" && (
+                <PensionExemptionForm
+                    profileId={profile.id}
+                    rentenversicherungsnummer={profile.rentenversicherungsnummer}
+                    existing={pension}
+                    onSaved={(e) => {
+                        setPension(e);
+                        naechsterSchritt();
                     }}
                 />
             )}
@@ -133,7 +182,7 @@ export default function OnboardingPage() {
                     existing={kube}
                     onSaved={(k) => {
                         setKube(k);
-                        setSchritt("dokumente");
+                        naechsterSchritt();
                     }}
                 />
             )}
@@ -141,8 +190,23 @@ export default function OnboardingPage() {
             {schritt === "dokumente" && (
                 <div className="space-y-4">
                     <div className="bg-white border rounded-lg p-4">
-                        <h3 className="text-base font-semibold mb-3">Ausweis & Nachweise hochladen</h3>
-                        <DokumenteUpload profileId={profile.id} onChanged={setDocs} />
+                        <h3 className="text-base font-semibold mb-1">Ausweis & Nachweise hochladen</h3>
+                        <p className="text-sm text-gray-600 mb-3">
+                            Pflicht: Ausweis Vorder- und Rückseite (gut lesbar).
+                            {zusaetzlichePflicht && (
+                                <> Zusätzlich: <strong>{zusaetzlichePflicht.label}</strong>.</>
+                            )}
+                            {" "}Optional kannst du weitere Bescheinigungen hochladen.
+                        </p>
+                        <DokumenteUpload
+                            profileId={profile.id}
+                            pflicht={
+                                zusaetzlichePflicht
+                                    ? ["ausweis_vorderseite", "ausweis_rueckseite", zusaetzlichePflicht.typ]
+                                    : ["ausweis_vorderseite", "ausweis_rueckseite"]
+                            }
+                            onChanged={setDocs}
+                        />
                     </div>
 
                     <div className="flex items-center justify-between bg-white border rounded-lg p-4">

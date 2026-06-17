@@ -77,7 +77,7 @@ export default function SalesAdminPage() {
         });
     }, [sales, centerFilter, zeitraumStart]);
 
-    const summe = gefiltert.reduce((acc, s) => acc + s.betrag_cent, 0);
+    const summe = gefiltert.reduce((acc, s) => acc + (s.betrag_cent ?? 0), 0);
     const tageMitUmsatz = new Set(gefiltert.map((s) => s.datum)).size;
     const durchschnitt = tageMitUmsatz > 0 ? Math.round(summe / tageMitUmsatz) : 0;
 
@@ -85,7 +85,7 @@ export default function SalesAdminPage() {
     const tagesReihe = useMemo(() => {
         const map = new Map<string, number>();
         gefiltert.forEach((s) => {
-            map.set(s.datum, (map.get(s.datum) ?? 0) + s.betrag_cent);
+            map.set(s.datum, (map.get(s.datum) ?? 0) + (s.betrag_cent ?? 0));
         });
         return Array.from(map.entries())
             .sort(([a], [b]) => a.localeCompare(b))
@@ -98,7 +98,7 @@ export default function SalesAdminPage() {
     // Vergleich je Center (Balken)
     const centerVergleich = useMemo(() => {
         const map = new Map<string, number>();
-        gefiltert.forEach((s) => map.set(s.center_id, (map.get(s.center_id) ?? 0) + s.betrag_cent));
+        gefiltert.forEach((s) => map.set(s.center_id, (map.get(s.center_id) ?? 0) + (s.betrag_cent ?? 0)));
         return Array.from(map.entries())
             .map(([cid, cent]) => {
                 const c = centers.find((x) => x.id === cid);
@@ -120,7 +120,7 @@ export default function SalesAdminPage() {
                 c?.name ?? "",
                 c?.stadt ?? "",
                 c?.saison ?? "",
-                (s.betrag_cent / 100).toFixed(2).replace(".", ","),
+                s.betrag_cent !== null ? (s.betrag_cent / 100).toFixed(2).replace(".", ",") : "",
                 s.anzahl_belege?.toString() ?? "",
                 (s.notiz ?? "").replace(/"/g, '""'),
             ];
@@ -280,7 +280,9 @@ export default function SalesAdminPage() {
                                                     {c?.name ?? "—"}{" "}
                                                     <span className="font-mono text-xs text-gray-500">({c?.kuerzel ?? "—"})</span>
                                                 </td>
-                                                <td className="px-3 py-2 text-right font-medium">{centToEuro(s.betrag_cent)} €</td>
+                                                <td className="px-3 py-2 text-right font-medium">
+                                                    {s.betrag_cent !== null ? `${centToEuro(s.betrag_cent)} €` : <span className="text-amber-600 text-xs">offen</span>}
+                                                </td>
                                                 <td className="px-3 py-2 text-right">{s.anzahl_belege ?? "—"}</td>
                                                 <td className="px-3 py-2 text-gray-600">{s.notiz ?? ""}</td>
                                             </tr>

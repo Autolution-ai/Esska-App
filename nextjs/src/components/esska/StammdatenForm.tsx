@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type {
+    EsskaAktuellerStatus,
     EsskaArbeitszeitModell,
     EsskaFamilienstand,
     EsskaKonfession,
@@ -11,7 +12,7 @@ import type {
     EsskaProfile,
     EsskaSteuerklasse,
 } from "@/lib/esska/types";
-import { centToEuro, euroToCent } from "@/lib/esska/types";
+import { AKTUELLER_STATUS_LABELS, centToEuro, euroToCent } from "@/lib/esska/types";
 
 // Bekannteste deutsche Krankenkassen, alphabetisch sortiert.
 // "Andere…" ermoeglicht Freitext fuer alle nicht gelisteten Kassen.
@@ -64,7 +65,11 @@ const KRANKENKASSEN_PRIVAT = [
 type Props = {
     profile: EsskaProfile;
     onSaved: (p: EsskaProfile) => void;
+    /** Im Onboarding wird die Bestaetigung mit angeboten und onboarding_abgeschlossen gesetzt. */
     onboardingMode?: boolean;
+    /** Wenn der Admin den Mitarbeiter editiert: zusaetzliche Felder freischalten
+     *  (arbeitszeit_modell, eintrittsdatum). */
+    adminMode?: boolean;
 };
 
 type Form = Omit<
@@ -89,7 +94,12 @@ function profileToForm(p: EsskaProfile): Form {
     };
 }
 
-export default function StammdatenForm({ profile, onSaved, onboardingMode = false }: Props) {
+export default function StammdatenForm({
+    profile,
+    onSaved,
+    onboardingMode = false,
+    adminMode = false,
+}: Props) {
     const [form, setForm] = useState<Form>(profileToForm(profile));
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -102,6 +112,11 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
     // gekennzeichneten Felder (Steuerklasse/Kinderfreibetrag/Konfession +
     // Notfallkontakt) optional. Kurzfristig Beschaeftigte muessen sie
     // ausfuellen (Lohnsteuer wird abgefuehrt). Steuer-ID ist immer Pflicht.
+    // Pflichtfeld-Logik haengt vom arbeitszeit_modell ab, das nur der Admin
+    // pflegt. Wenn das Modell schon gesetzt ist: 'minijob' macht *-Felder
+    // optional. Wenn das Modell noch nicht gesetzt ist (frisches Mitarbeiter-
+    // Onboarding): wir verlangen die Felder zur Sicherheit; falls der MA
+    // tatsaechlich nur Minijobber wird, kann der Admin sie ohne Fehler leeren.
     const istMinijob = form.arbeitszeit_modell === "minijob";
     const isPflichtSternchen = !istMinijob;
 
@@ -133,6 +148,11 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                 anschrift_ort: form.anschrift_ort || null,
                 telefon_mobil: form.telefon_mobil || null,
                 arbeitszeit_modell: form.arbeitszeit_modell,
+                aktueller_status: form.aktueller_status,
+                aktueller_status_sonstiges:
+                    form.aktueller_status === "sonstiges"
+                        ? form.aktueller_status_sonstiges?.trim() || null
+                        : null,
                 stunden_pro_woche: form.stunden_pro_woche_str
                     ? parseFloat(form.stunden_pro_woche_str.replace(",", "."))
                     : null,
@@ -229,50 +249,39 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                 </Grid>
             </Section>
 
-            <Section titel="Beschäftigung">
+            <Section titel="Aktueller Status">
                 <Grid>
-                    <Field label="Arbeitszeit-Modell" required>
+                    <Field
+                        label="Was machst du aktuell?"
+                        required
+                        hint="Hilft uns, die passenden Nachweise (z. B. Immatrikulationsbescheinigung) anzufragen."
+                    >
                         <select
-                            value={form.arbeitszeit_modell ?? ""}
-                            onChange={(e) => update("arbeitszeit_modell", (e.target.value || null) as EsskaArbeitszeitModell | null)}
+                            value={form.aktueller_status ?? ""}
+                            onChange={(e) =>
+                                update("aktueller_status", (e.target.value || null) as EsskaAktuellerStatus | null)
+                            }
                             required
                             className={inputCls}
                         >
                             <option value="">– wählen –</option>
-                            <option value="vollzeit">Vollzeit</option>
-                            <option value="teilzeit">Teilzeit</option>
-                            <option value="minijob">Minijob</option>
-                            <option value="kurzfristig">Kurzfristig beschäftigt</option>
+                            {(Object.keys(AKTUELLER_STATUS_LABELS) as EsskaAktuellerStatus[]).map((s) => (
+                                <option key={s} value={s}>
+                                    {AKTUELLER_STATUS_LABELS[s]}
+                                </option>
+                            ))}
                         </select>
                     </Field>
-                    <Field label="Stunden / Woche" hint={form.arbeitszeit_modell === "teilzeit" ? "Pflicht bei Teilzeit" : ""}>
-                        <input
-                            value={form.stunden_pro_woche_str}
-                            onChange={(e) => update("stunden_pro_woche_str", e.target.value)}
-                            inputMode="decimal"
-                            className={inputCls}
-                        />
-                    </Field>
-                    <Field
-                        label="Max. Schichten / Woche"
-                        hint="Soft-Hinweis bei der Schichtplanung. Leer = kein Limit. Beispiel: Minijob mit 2 Schichten/Woche."
-                    >
-                        <input
-                            value={form.max_schichten_pro_woche_str}
-                            onChange={(e) => update("max_schichten_pro_woche_str", e.target.value)}
-                            inputMode="numeric"
-                            placeholder="z. B. 2"
-                            className={inputCls}
-                        />
-                    </Field>
-                    <Field label="Verdienst pro Monat (€)" hint="bei Minijob bis 556 €">
-                        <input
-                            value={form.verdienst_euro}
-                            onChange={(e) => update("verdienst_euro", e.target.value)}
-                            inputMode="decimal"
-                            className={inputCls}
-                        />
-                    </Field>
+                    {form.aktueller_status === "sonstiges" && (
+                        <Field label="Bitte angeben" required>
+                            <input
+                                value={form.aktueller_status_sonstiges ?? ""}
+                                onChange={(e) => update("aktueller_status_sonstiges", e.target.value)}
+                                required
+                                className={inputCls}
+                            />
+                        </Field>
+                    )}
                     <Field label="Weitere Beschäftigungen (falls vorhanden)" full>
                         <input
                             value={form.weitere_beschaeftigungen ?? ""}
@@ -282,6 +291,59 @@ export default function StammdatenForm({ profile, onSaved, onboardingMode = fals
                     </Field>
                 </Grid>
             </Section>
+
+            {adminMode && (
+                <Section titel="Beschäftigung (nur durch Admin pflegbar)">
+                    <Grid>
+                        <Field label="Arbeitszeit-Modell">
+                            <select
+                                value={form.arbeitszeit_modell ?? ""}
+                                onChange={(e) =>
+                                    update(
+                                        "arbeitszeit_modell",
+                                        (e.target.value || null) as EsskaArbeitszeitModell | null
+                                    )
+                                }
+                                className={inputCls}
+                            >
+                                <option value="">– wählen –</option>
+                                <option value="vollzeit">Vollzeit</option>
+                                <option value="teilzeit">Teilzeit</option>
+                                <option value="minijob">Minijob</option>
+                                <option value="kurzfristig">Kurzfristig beschäftigt</option>
+                            </select>
+                        </Field>
+                        <Field label="Stunden / Woche">
+                            <input
+                                value={form.stunden_pro_woche_str}
+                                onChange={(e) => update("stunden_pro_woche_str", e.target.value)}
+                                inputMode="decimal"
+                                className={inputCls}
+                            />
+                        </Field>
+                        <Field
+                            label="Max. Schichten / Woche"
+                            hint="Soft-Hinweis bei der Schichtplanung. Leer = kein Limit."
+                        >
+                            <input
+                                value={form.max_schichten_pro_woche_str}
+                                onChange={(e) => update("max_schichten_pro_woche_str", e.target.value)}
+                                inputMode="numeric"
+                                placeholder="z. B. 2"
+                                className={inputCls}
+                            />
+                        </Field>
+                        <Field label="Verdienst pro Monat (€)" hint="bei Minijob bis 556 €">
+                            <input
+                                value={form.verdienst_euro}
+                                onChange={(e) => update("verdienst_euro", e.target.value)}
+                                inputMode="decimal"
+                                className={inputCls}
+                            />
+                        </Field>
+                    </Grid>
+                </Section>
+            )}
 
             <Section titel="Sozialversicherung">
                 <Grid>

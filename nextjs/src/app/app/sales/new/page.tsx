@@ -2,20 +2,42 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Camera, Image as ImageIcon, Trash2, Upload } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter } from "@/lib/esska/types";
 import { euroToCent, isoDatum } from "@/lib/esska/types";
+
+const BUCKET = "sales-receipts";
+const MAX_BYTES = 10 * 1024 * 1024;
+const ERLAUBTE_TYPEN = ["image/jpeg", "image/png", "image/webp", "image/heic"];
+
+// 15-Minuten-Zeitschritte 00:00 bis 23:45
+const ZEIT_OPTIONEN: string[] = (() => {
+    const arr: string[] = [];
+    for (let h = 0; h < 24; h++) {
+        for (let m = 0; m < 60; m += 15) {
+            arr.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
+        }
+    }
+    return arr;
+})();
 
 export default function SalesEntryPage() {
     const router = useRouter();
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
     const [centerId, setCenterId] = useState("");
     const [datum, setDatum] = useState(isoDatum(new Date()));
+    const [istAdmin, setIstAdmin] = useState(false);
     const [betragEuro, setBetragEuro] = useState("");
     const [belege, setBelege] = useState("");
     const [notiz, setNotiz] = useState("");
+    const [arbeitsStart, setArbeitsStart] = useState("");
+    const [arbeitsEnde, setArbeitsEnde] = useState("");
+    const [fotoFile, setFotoFile] = useState<File | null>(null);
+    const [fotoPreview, setFotoPreview] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -28,9 +50,10 @@ export default function SalesEntryPage() {
                 if (!user) throw new Error("Nicht angemeldet");
 
                 const { data: profile } = await client.from("profiles").select("role").eq("id", user.id).single();
-                const istAdmin = (profile as { role?: string } | null)?.role === "admin";
+                const admin = (profile as { role?: string } | null)?.role === "admin";
+                setIstAdmin(admin);
 
-                if (istAdmin) {
+                if (admin) {
                     const { data, error: e } = await client
                         .from("centers")
                         .select("*")
@@ -58,35 +81,82 @@ export default function SalesEntryPage() {
         load();
     }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!centerId || !datum || !betragEuro) {
-            setError("Center, Datum und Betrag sind Pflicht.");
+    const handleFile = (file: File) => {
+        setError(null);
+        if (file.size > MAX_BYTES) {
+            setError("Datei zu groß (max. 10 MB).");
             return;
         }
+        if (!ERLAUBTE_TYPEN.includes(file.type)) {
+            setError("Bitte ein Foto im JPG-, PNG-, WebP- oder HEIC-Format wählen.");
+            return;
+        }
+        setFotoFile(file);
+        if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+        setFotoPreview(URL.createObjectURL(file));
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!centerId || !datum) {
+            setError("Center und Datum sind Pflicht.");
+            return;
+        }
+        if (!fotoFile && !istAdmin) {
+            setError("Bitte ein Foto des physischen Arbeitsblatts hochladen.");
+            return;
+        }
+        if (arbeitsStart && arbeitsEnde && arbeitsEnde <= arbeitsStart) {
+            setError("Die Endzeit muss nach der Startzeit liegen.");
+            return;
+        }
+
         setSaving(true);
         setError(null);
         setSuccess(null);
+
         try {
             const client = await getEsskaClient();
             const { data: { user } } = await client.auth.getUser();
             if (!user) throw new Error("Nicht angemeldet");
+
+            // Foto hochladen, falls vorhanden
+            let fotoPath: string | null = null;
+            if (fotoFile) {
+                const ext = fotoFile.name.split(".").pop() ?? "jpg";
+                fotoPath = `${centerId}/${datum}/${Date.now()}.${ext}`;
+                const { error: upErr } = await client.storage.from(BUCKET).upload(fotoPath, fotoFile, {
+                    cacheControl: "3600",
+                    upsert: true,
+                });
+                if (upErr) throw upErr;
+            }
+
             const { error: e } = await client.from("daily_sales").upsert(
                 {
                     center_id: centerId,
                     datum,
-                    betrag_cent: euroToCent(betragEuro),
+                    betrag_cent: betragEuro ? euroToCent(betragEuro) : null,
                     anzahl_belege: belege ? parseInt(belege, 10) || null : null,
                     notiz: notiz.trim() || null,
+                    arbeitszeit_start: arbeitsStart || null,
+                    arbeitszeit_ende: arbeitsEnde || null,
+                    beleg_foto_path: fotoPath,
                     erfasst_von: user.id,
                 },
                 { onConflict: "center_id,datum" }
             );
             if (e) throw e;
-            setSuccess("Umsatz gespeichert.");
+
+            setSuccess("Umsatz-Eintrag gespeichert.");
             setBetragEuro("");
             setBelege("");
             setNotiz("");
+            setArbeitsStart("");
+            setArbeitsEnde("");
+            setFotoFile(null);
+            if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+            setFotoPreview(null);
         } catch (err) {
             setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen" }));
         } finally {
@@ -95,16 +165,19 @@ export default function SalesEntryPage() {
     };
 
     return (
-        <div className="space-y-6 p-2 md:p-6 max-w-xl">
+        <div className="space-y-6 p-2 md:p-6 max-w-2xl">
             <Link href="/app/sales" className="text-sm text-primary-600 hover:underline">
                 ← Zurück zur Übersicht
             </Link>
-            <h1 className="text-2xl font-bold">Tagesumsatz erfassen</h1>
-            <p className="text-gray-600 text-sm">
-                Pro Center und Tag genau ein Eintrag. Ein erneuter Eintrag für denselben Tag überschreibt den vorherigen.
-            </p>
+            <div>
+                <h1 className="text-2xl font-bold">Umsatz melden</h1>
+                <p className="text-gray-600 text-sm mt-1">
+                    Pro Center und Tag genau ein Eintrag. Foto vom Arbeitsblatt + Arbeitszeit reichen aus –
+                    der Admin liest die Beträge später aus dem Foto aus.
+                </p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 bg-white border rounded-lg p-4">
+            <form onSubmit={handleSubmit} className="space-y-5 bg-white border rounded-lg p-4">
                 {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
                 {success && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{success}</div>}
 
@@ -125,50 +198,175 @@ export default function SalesEntryPage() {
                     </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Datum</label>
-                        <input
-                            type="date"
-                            value={datum}
-                            onChange={(e) => setDatum(e.target.value)}
-                            required
-                            max={isoDatum(new Date())}
-                            className="w-full border rounded-md px-3 py-2 text-sm"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Betrag (€)</label>
-                        <input
-                            value={betragEuro}
-                            onChange={(e) => setBetragEuro(e.target.value)}
-                            inputMode="decimal"
-                            required
-                            placeholder="z. B. 1.245,80"
-                            className="w-full border rounded-md px-3 py-2 text-sm"
-                        />
-                    </div>
-                </div>
-
                 <div>
-                    <label className="block text-sm font-medium mb-1">Anzahl Belege (optional)</label>
+                    <label className="block text-sm font-medium mb-1">Datum</label>
                     <input
-                        value={belege}
-                        onChange={(e) => setBelege(e.target.value)}
-                        inputMode="numeric"
+                        type="date"
+                        value={datum}
+                        onChange={(e) => setDatum(e.target.value)}
+                        required
+                        max={isoDatum(new Date())}
                         className="w-full border rounded-md px-3 py-2 text-sm"
                     />
                 </div>
 
+                {/* Foto-Upload */}
                 <div>
-                    <label className="block text-sm font-medium mb-1">Notiz (optional)</label>
-                    <textarea
-                        value={notiz}
-                        onChange={(e) => setNotiz(e.target.value)}
-                        rows={3}
-                        className="w-full border rounded-md px-3 py-2 text-sm"
-                    />
+                    <label className="block text-sm font-medium mb-2">
+                        Foto vom Arbeitsblatt {!istAdmin && <span className="text-red-500">*</span>}
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <p className="text-xs text-gray-500 mb-2">So sollte dein Foto aussehen:</p>
+                            <div className="border-2 border-dashed border-secondary-300 rounded-md p-6 text-center bg-secondary-50">
+                                <ImageIcon className="h-10 w-10 mx-auto text-secondary-400" />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Vorlage-Platzhalter
+                                    <br />
+                                    (Beispielbild folgt)
+                                </p>
+                            </div>
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500 mb-2">Dein Foto:</p>
+                            {fotoPreview ? (
+                                <div className="relative">
+                                    {/* Lokales Object-URL – Image-Optimierung aus */}
+                                    <Image
+                                        src={fotoPreview}
+                                        alt="Vorschau"
+                                        width={400}
+                                        height={300}
+                                        unoptimized
+                                        className="w-full rounded-md border object-cover max-h-64"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (fotoPreview) URL.revokeObjectURL(fotoPreview);
+                                            setFotoFile(null);
+                                            setFotoPreview(null);
+                                        }}
+                                        className="absolute top-2 right-2 bg-white border rounded-full p-1 hover:bg-red-50"
+                                    >
+                                        <Trash2 className="h-4 w-4 text-red-600" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col gap-2">
+                                    <label className="inline-flex items-center justify-center px-3 py-3 bg-primary-600 text-white rounded-md cursor-pointer text-sm hover:bg-primary-700">
+                                        <Camera className="h-4 w-4 mr-2" />
+                                        Foto aufnehmen
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) handleFile(f);
+                                                e.target.value = "";
+                                            }}
+                                        />
+                                    </label>
+                                    <label className="inline-flex items-center justify-center px-3 py-2 border rounded-md cursor-pointer text-sm hover:bg-secondary-50">
+                                        <Upload className="h-4 w-4 mr-2" />
+                                        Aus Galerie wählen
+                                        <input
+                                            type="file"
+                                            accept={ERLAUBTE_TYPEN.join(",")}
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const f = e.target.files?.[0];
+                                                if (f) handleFile(f);
+                                                e.target.value = "";
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
+
+                {/* Arbeitszeit */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">Arbeitszeit (15-Minuten-Schritte)</label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Von</label>
+                            <select
+                                value={arbeitsStart}
+                                onChange={(e) => setArbeitsStart(e.target.value)}
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            >
+                                <option value="">– wählen –</option>
+                                {ZEIT_OPTIONEN.map((z) => (
+                                    <option key={z} value={z}>
+                                        {z}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Bis</label>
+                            <select
+                                value={arbeitsEnde}
+                                onChange={(e) => setArbeitsEnde(e.target.value)}
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            >
+                                <option value="">– wählen –</option>
+                                {ZEIT_OPTIONEN.map((z) => (
+                                    <option key={z} value={z}>
+                                        {z}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Optionale Felder fuer Admin / wenn Mitarbeiter Beträge schon weiß */}
+                <details className="border rounded-md p-3">
+                    <summary className="cursor-pointer text-sm text-gray-700 select-none">
+                        Optionale Angaben (Betrag, Belege, Notiz)
+                    </summary>
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Betrag (€)</label>
+                            <input
+                                value={betragEuro}
+                                onChange={(e) => setBetragEuro(e.target.value)}
+                                inputMode="decimal"
+                                placeholder="z. B. 1.245,80"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                {istAdmin
+                                    ? "Nach Foto-Ansicht eintragen."
+                                    : "Optional – Admin pflegt es aus dem Foto."}
+                            </p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Anzahl Belege</label>
+                            <input
+                                value={belege}
+                                onChange={(e) => setBelege(e.target.value)}
+                                inputMode="numeric"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <label className="block text-sm font-medium mb-1">Notiz</label>
+                            <textarea
+                                value={notiz}
+                                onChange={(e) => setNotiz(e.target.value)}
+                                rows={2}
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
+                        </div>
+                    </div>
+                </details>
 
                 <div className="flex gap-3">
                     <button

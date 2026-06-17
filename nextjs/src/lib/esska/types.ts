@@ -11,6 +11,24 @@ export type EsskaArbeitszeitModell =
     | "minijob"
     | "kurzfristig";
 
+// Aktueller Lebens-/Erwerbsstatus des Mitarbeiters – wird vom Mitarbeiter
+// im Onboarding angegeben (unabhaengig vom arbeitszeit_modell, das der
+// Admin pflegt).
+export type EsskaAktuellerStatus =
+    | "schueler"
+    | "student"
+    | "berufstaetig"
+    | "rentner"
+    | "sonstiges";
+
+export const AKTUELLER_STATUS_LABELS: Record<EsskaAktuellerStatus, string> = {
+    schueler: "Schüler/in",
+    student: "Student/in",
+    berufstaetig: "Berufstätig (Arbeitnehmer/in oder Selbstständig)",
+    rentner: "Rentner/in",
+    sonstiges: "Sonstiges",
+};
+
 export type EsskaKvStatus = "gesetzlich" | "privat";
 
 export type EsskaSteuerklasse = "I" | "II" | "III" | "IV" | "V" | "VI";
@@ -37,6 +55,8 @@ export interface EsskaProfile {
     email: string | null;
     eintrittsdatum: string | null;
     arbeitszeit_modell: EsskaArbeitszeitModell | null;
+    aktueller_status: EsskaAktuellerStatus | null;
+    aktueller_status_sonstiges: string | null;
     stunden_pro_woche: number | null;
     max_schichten_pro_woche: number | null;
     verdienst_monat_eur_cent: number | null;
@@ -183,6 +203,19 @@ export const KUBE_LEBENSUNTERHALT_LABELS: Record<EsskaKubeLebensunterhalt, strin
     unterhalt_familie: "Unterhalt durch Familie",
     sonstiges: "Sonstiges",
 };
+
+export interface EsskaPensionExemption {
+    id: string;
+    profile_id: string;
+    rentenversicherungsnummer: string;
+    merkblatt_zur_kenntnis_genommen: boolean;
+    unterzeichnet_am: string | null;
+    unterzeichnet_ip: string | null;
+    unterzeichnet_ort: string | null;
+    pdf_path: string | null;
+    created_at: string;
+    updated_at: string;
+}
 
 export type EsskaDokumentTyp =
     | "ausweis_vorderseite"
@@ -335,9 +368,12 @@ export interface EsskaDailySale {
     id: string;
     center_id: string;
     datum: string;
-    betrag_cent: number;
+    betrag_cent: number | null;
     anzahl_belege: number | null;
     notiz: string | null;
+    arbeitszeit_start: string | null;
+    arbeitszeit_ende: string | null;
+    beleg_foto_path: string | null;
     erfasst_von: string;
     erfasst_am: string;
     aktualisiert_am: string;
