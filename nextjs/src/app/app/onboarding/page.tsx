@@ -34,6 +34,14 @@ export default function OnboardingPage() {
     const [schritt, setSchritt] = useState<Schritt>("stammdaten");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [abschluss, setAbschluss] = useState<"idle" | "saving" | "done">("idle");
+
+    // Wenn das Profil bereits abgeschlossen ist, direkt ins App-Dashboard
+    useEffect(() => {
+        if (profile?.onboarding_abgeschlossen) {
+            router.replace("/app");
+        }
+    }, [profile?.onboarding_abgeschlossen, router]);
 
     const saison = useMemo(aktuelleSaison, []);
 
@@ -44,7 +52,7 @@ export default function OnboardingPage() {
                 const { data: { user } } = await client.auth.getUser();
                 if (!user) throw new Error("Nicht angemeldet");
 
-                const [pRes, kRes, eRes] = await Promise.all([
+                const [pRes, kRes, eRes, dRes] = await Promise.all([
                     client.from("profiles").select("*").eq("id", user.id).single(),
                     client
                         .from("kube_declarations")
@@ -59,11 +67,16 @@ export default function OnboardingPage() {
                         .order("created_at", { ascending: false })
                         .limit(1)
                         .maybeSingle(),
+                    client
+                        .from("employee_documents")
+                        .select("*")
+                        .eq("profile_id", user.id),
                 ]);
                 if (pRes.error) throw pRes.error;
                 setProfile(pRes.data as EsskaProfile);
                 if (kRes.data) setKube(kRes.data as EsskaKubeDeclaration);
                 if (eRes.data) setPension(eRes.data as EsskaPensionExemption);
+                if (dRes.data) setDocs(dRes.data as EsskaEmployeeDocument[]);
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -108,11 +121,34 @@ export default function OnboardingPage() {
     const alleErledigt = schritte.every((s) => s.erledigt);
 
     const handleFertig = async () => {
+        if (!alleErledigt) {
+            setError("Es fehlen noch Angaben. Bitte alle Schritte oben abschließen.");
+            return;
+        }
+        setError(null);
+        setAbschluss("saving");
         try {
             const client = await getEsskaClient();
-            await client.from("profiles").update({ onboarding_abgeschlossen: true }).eq("id", profile.id);
-            router.push("/app");
+            const { data, error: updErr } = await client
+                .from("profiles")
+                .update({ onboarding_abgeschlossen: true })
+                .eq("id", profile.id)
+                .select("id, onboarding_abgeschlossen")
+                .single();
+            if (updErr) throw updErr;
+            const ok = (data as { onboarding_abgeschlossen?: boolean } | null)?.onboarding_abgeschlossen === true;
+            if (!ok) {
+                throw new Error(
+                    "Der Status konnte nicht gespeichert werden (keine Berechtigung). Bitte den Admin kontaktieren."
+                );
+            }
+            setAbschluss("done");
+            // Full Reload statt Client-Navigation: damit der GlobalContext den
+            // neuen onboarding_abgeschlossen-Wert frisch laedt und die
+            // Middleware nicht wieder nach /app/onboarding zurueckschickt.
+            window.location.assign("/app");
         } catch (err) {
+            setAbschluss("idle");
             setError(friendlyError(err, { aktion: "Abschluss fehlgeschlagen" }));
         }
     };
@@ -207,18 +243,46 @@ export default function OnboardingPage() {
                         />
                     </div>
 
-                    <div className="flex items-center justify-between bg-white border rounded-lg p-4">
+                    {!alleErledigt && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+                            <p className="font-medium mb-1">Noch zu erledigen:</p>
+                            <ul className="list-disc pl-5 space-y-0.5">
+                                {schritte
+                                    .filter((s) => !s.erledigt)
+                                    .map((s) => (
+                                        <li key={s.key}>
+                                            <button
+                                                onClick={() => setSchritt(s.key)}
+                                                className="underline hover:text-amber-700"
+                                            >
+                                                {s.titel}
+                                            </button>
+                                        </li>
+                                    ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>
+                    )}
+
+                    <div className="flex items-center justify-between bg-white border rounded-lg p-4 flex-wrap gap-3">
                         <p className="text-sm text-gray-600">
                             {alleErledigt
                                 ? "Alles vollständig – du kannst das Onboarding abschließen."
-                                : "Es fehlen noch Angaben (siehe Schritte oben)."}
+                                : "Es fehlen noch Angaben (siehe Schritte oben – noch nicht erledigte Schritte haben einen leeren Kreis)."}
                         </p>
                         <button
                             onClick={handleFertig}
-                            disabled={!alleErledigt}
+                            disabled={!alleErledigt || abschluss !== "idle"}
                             className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
                         >
-                            Onboarding abschließen
+                            {abschluss === "saving"
+                                ? "Schließe ab…"
+                                : abschluss === "done"
+                                    ? "Weiterleitung…"
+                                    : "Onboarding abschließen"}
                         </button>
                     </div>
                 </div>
