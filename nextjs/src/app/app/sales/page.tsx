@@ -2,22 +2,17 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { AlertCircle, CheckCircle2, Download, Image as ImageIcon, Plus, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaDailySale } from "@/lib/esska/types";
 import { isoDatum } from "@/lib/esska/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
-const BUCKET = "sales-receipts";
-
 type CenterStatus = {
     center: EsskaCenter;
     sale: EsskaDailySale | null;
-    fotoDa: boolean;
-    umsatzzeitDa: boolean;
-    arbeitszeitDa: boolean;
+    /** Start- und Endbestand liegen vor – der Eintrag gilt damit als erledigt. */
     komplett: boolean;
 };
 
@@ -26,9 +21,7 @@ function plusTage(d: Date, t: number): Date {
     x.setDate(x.getDate() + t);
     return x;
 }
-function zeitKurz(t: string | null): string {
-    return t ? t.slice(0, 5) : "—";
-}
+
 /** Bargeld-Betrag als deutsch formatierter Euro-Wert, oder Strich wenn nicht erfasst. */
 function bargeld(cent: number | null | undefined): string {
     if (cent === null || cent === undefined) return "—";
@@ -44,8 +37,6 @@ export default function SalesAdminPage() {
     const [datum, setDatum] = useState<string>(isoDatum(new Date()));
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [previewSignedUrl, setPreviewSignedUrl] = useState<string | null>(null);
-    const [previewLabel, setPreviewLabel] = useState<string>("");
 
     useEffect(() => {
         const load = async () => {
@@ -71,11 +62,12 @@ export default function SalesAdminPage() {
     const status: CenterStatus[] = useMemo(() => {
         const list = centers.map((c) => {
             const sale = sales.find((s) => s.center_id === c.id) ?? null;
-            const fotoDa = !!sale?.beleg_foto_path;
-            const umsatzzeitDa = !!(sale?.umsatz_start && sale?.umsatz_ende);
-            const arbeitszeitDa = !!(sale?.arbeitszeit_start && sale?.arbeitszeit_ende);
-            const komplett = fotoDa && umsatzzeitDa;
-            return { center: c, sale, fotoDa, umsatzzeitDa, arbeitszeitDa, komplett };
+            const komplett =
+                sale?.startbestand_cent !== null &&
+                sale?.startbestand_cent !== undefined &&
+                sale?.endbestand_cent !== null &&
+                sale?.endbestand_cent !== undefined;
+            return { center: c, sale, komplett };
         });
         // Sortierung: unvollstaendig zuerst, dann nach Center-Name
         return list.sort((a, b) => {
@@ -91,40 +83,20 @@ export default function SalesAdminPage() {
         setDatum(isoDatum(plusTage(new Date(), offset)));
     };
 
-    const showPreview = async (path: string, label: string) => {
-        try {
-            const client = await getEsskaClient();
-            const { data, error: e } = await client.storage
-                .from(BUCKET)
-                .createSignedUrl(path, 60);
-            if (e) throw e;
-            setPreviewSignedUrl(data.signedUrl);
-            setPreviewLabel(label);
-        } catch (err) {
-            setError(friendlyError(err, { aktion: "Foto laden" }));
-        }
-    };
-
     const csvExport = () => {
         const header = [
             "Datum", "Center", "Stadt", "Saison",
-            "Arbeitszeit_Start", "Arbeitszeit_Ende", "Umsatz_Start", "Umsatz_Ende",
             "Bargeld_Startbestand", "Bargeld_Ausgaben", "Bargeld_Endbestand",
-            "Foto_vorhanden", "Notiz",
+            "Notiz",
         ];
         const rows = status.map((s) => [
             datum,
             s.center.name,
             s.center.stadt,
             s.center.saison,
-            zeitKurz(s.sale?.arbeitszeit_start ?? null),
-            zeitKurz(s.sale?.arbeitszeit_ende ?? null),
-            zeitKurz(s.sale?.umsatz_start ?? null),
-            zeitKurz(s.sale?.umsatz_ende ?? null),
             bargeld(s.sale?.startbestand_cent),
             bargeld(s.sale?.ausgaben_cent),
             bargeld(s.sale?.endbestand_cent),
-            s.fotoDa ? "ja" : "nein",
             (s.sale?.notiz ?? "").replace(/"/g, '""'),
         ]);
         const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(";")).join("\n");
@@ -151,7 +123,7 @@ export default function SalesAdminPage() {
                 <div>
                     <h1 className="text-2xl font-bold">Umsätze</h1>
                     <p className="text-gray-500 text-sm">
-                        Übersicht aller Center-Verkaufslisten je Tag. Mitarbeiter laden Fotos und Zeiten hoch.
+                        Übersicht des Bargeldbestands aller Center je Tag.
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -178,7 +150,9 @@ export default function SalesAdminPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>{datumAlsText}</CardTitle>
-                    <CardDescription>{new Date(datum).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}</CardDescription>
+                    <CardDescription>
+                        {new Date(datum).toLocaleDateString("de-DE", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+                    </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap gap-2">
@@ -196,11 +170,11 @@ export default function SalesAdminPage() {
                 </CardContent>
             </Card>
 
-            {/* Center-Liste */}
+            {/* Kennzahlen */}
             <div className="grid gap-4 md:grid-cols-3">
                 <Kennzahl titel="Gesamt" wert={status.length.toString()} />
                 <Kennzahl titel="Offen" wert={offen.length.toString()} farbe="text-amber-700" />
-                <Kennzahl titel="Vollständig" wert={erledigt.length.toString()} farbe="text-green-700" />
+                <Kennzahl titel="Erfasst" wert={erledigt.length.toString()} farbe="text-green-700" />
             </div>
 
             {loading ? (
@@ -221,10 +195,10 @@ export default function SalesAdminPage() {
                                     <AlertCircle className="h-5 w-5 text-amber-600" />
                                     Noch offen ({offen.length})
                                 </CardTitle>
-                                <CardDescription>Hier fehlt Foto oder Umsatzzeit.</CardDescription>
+                                <CardDescription>Hier fehlt der Bargeldbestand.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <CenterTable rows={offen} onShowFoto={showPreview} />
+                                <CenterTable rows={offen} />
                             </CardContent>
                         </Card>
                     )}
@@ -233,42 +207,16 @@ export default function SalesAdminPage() {
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                    Vollständig ({erledigt.length})
+                                    Erfasst ({erledigt.length})
                                 </CardTitle>
-                                <CardDescription>Foto und Umsatzzeit liegen vor.</CardDescription>
+                                <CardDescription>Start- und Endbestand liegen vor.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <CenterTable rows={erledigt} onShowFoto={showPreview} />
+                                <CenterTable rows={erledigt} />
                             </CardContent>
                         </Card>
                     )}
                 </>
-            )}
-
-            {/* Foto-Vorschau-Modal */}
-            {previewSignedUrl && (
-                <div
-                    onClick={() => setPreviewSignedUrl(null)}
-                    className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
-                >
-                    <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-lg max-w-4xl w-full p-3 relative">
-                        <button
-                            onClick={() => setPreviewSignedUrl(null)}
-                            className="absolute top-2 right-2 p-1 bg-white rounded-full border hover:bg-secondary-100"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                        <p className="text-sm font-medium mb-2">{previewLabel}</p>
-                        <Image
-                            src={previewSignedUrl}
-                            alt={previewLabel}
-                            width={1200}
-                            height={900}
-                            unoptimized
-                            className="w-full rounded-md object-contain max-h-[80vh]"
-                        />
-                    </div>
-                </div>
             )}
         </div>
     );
@@ -289,13 +237,7 @@ function Kennzahl({ titel, wert, farbe = "text-primary-700" }: { titel: string; 
     );
 }
 
-function CenterTable({
-    rows,
-    onShowFoto,
-}: {
-    rows: CenterStatus[];
-    onShowFoto: (path: string, label: string) => void;
-}) {
+function CenterTable({ rows }: { rows: CenterStatus[] }) {
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -303,12 +245,9 @@ function CenterTable({
                     <tr>
                         <th className="px-3 py-2 font-medium">Center</th>
                         <th className="px-3 py-2 font-medium">Stadt</th>
-                        <th className="px-3 py-2 font-medium">Arbeitszeit</th>
-                        <th className="px-3 py-2 font-medium">Umsatzzeit</th>
-                        <th className="px-3 py-2 font-medium text-right">Bargeld Start</th>
+                        <th className="px-3 py-2 font-medium text-right">Startbestand</th>
                         <th className="px-3 py-2 font-medium text-right">Ausgaben</th>
-                        <th className="px-3 py-2 font-medium text-right">Bargeld Ende</th>
-                        <th className="px-3 py-2 font-medium">Foto</th>
+                        <th className="px-3 py-2 font-medium text-right">Endbestand</th>
                         <th className="px-3 py-2 font-medium">Notiz</th>
                     </tr>
                 </thead>
@@ -320,40 +259,9 @@ function CenterTable({
                                 <span className="font-mono text-xs text-gray-500">({r.center.kuerzel})</span>
                             </td>
                             <td className="px-3 py-2">{r.center.stadt}</td>
-                            <td className="px-3 py-2">
-                                {r.arbeitszeitDa ? (
-                                    <span>
-                                        {zeitKurz(r.sale!.arbeitszeit_start)}–{zeitKurz(r.sale!.arbeitszeit_ende)}
-                                    </span>
-                                ) : (
-                                    <span className="text-amber-600 text-xs">fehlt</span>
-                                )}
-                            </td>
-                            <td className="px-3 py-2">
-                                {r.umsatzzeitDa ? (
-                                    <span>
-                                        {zeitKurz(r.sale!.umsatz_start)}–{zeitKurz(r.sale!.umsatz_ende)}
-                                    </span>
-                                ) : (
-                                    <span className="text-amber-600 text-xs">fehlt</span>
-                                )}
-                            </td>
                             <td className="px-3 py-2 text-right">{bargeld(r.sale?.startbestand_cent)}</td>
                             <td className="px-3 py-2 text-right">{bargeld(r.sale?.ausgaben_cent)}</td>
                             <td className="px-3 py-2 text-right font-medium">{bargeld(r.sale?.endbestand_cent)}</td>
-                            <td className="px-3 py-2">
-                                {r.fotoDa ? (
-                                    <button
-                                        onClick={() => onShowFoto(r.sale!.beleg_foto_path!, `${r.center.name} (${r.center.kuerzel})`)}
-                                        className="inline-flex items-center text-primary-600 hover:underline"
-                                    >
-                                        <ImageIcon className="h-4 w-4 mr-1" />
-                                        ansehen
-                                    </button>
-                                ) : (
-                                    <span className="text-amber-600 text-xs">fehlt</span>
-                                )}
-                            </td>
                             <td className="px-3 py-2 text-gray-600">{r.sale?.notiz ?? ""}</td>
                         </tr>
                     ))}
