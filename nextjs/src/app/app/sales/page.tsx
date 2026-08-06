@@ -29,6 +29,14 @@ function plusTage(d: Date, t: number): Date {
 function zeitKurz(t: string | null): string {
     return t ? t.slice(0, 5) : "—";
 }
+/** Bargeld-Betrag als deutsch formatierter Euro-Wert, oder Strich wenn nicht erfasst. */
+function bargeld(cent: number | null | undefined): string {
+    if (cent === null || cent === undefined) return "—";
+    return (cent / 100).toLocaleString("de-DE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+}
 
 export default function SalesAdminPage() {
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
@@ -98,7 +106,12 @@ export default function SalesAdminPage() {
     };
 
     const csvExport = () => {
-        const header = ["Datum", "Center", "Stadt", "Saison", "Arbeitszeit_Start", "Arbeitszeit_Ende", "Umsatz_Start", "Umsatz_Ende", "Foto_vorhanden", "Notiz"];
+        const header = [
+            "Datum", "Center", "Stadt", "Saison",
+            "Arbeitszeit_Start", "Arbeitszeit_Ende", "Umsatz_Start", "Umsatz_Ende",
+            "Bargeld_Startbestand", "Bargeld_Ausgaben", "Bargeld_Endbestand",
+            "Foto_vorhanden", "Notiz",
+        ];
         const rows = status.map((s) => [
             datum,
             s.center.name,
@@ -108,6 +121,9 @@ export default function SalesAdminPage() {
             zeitKurz(s.sale?.arbeitszeit_ende ?? null),
             zeitKurz(s.sale?.umsatz_start ?? null),
             zeitKurz(s.sale?.umsatz_ende ?? null),
+            bargeld(s.sale?.startbestand_cent),
+            bargeld(s.sale?.ausgaben_cent),
+            bargeld(s.sale?.endbestand_cent),
             s.fotoDa ? "ja" : "nein",
             (s.sale?.notiz ?? "").replace(/"/g, '""'),
         ]);
@@ -289,6 +305,9 @@ function CenterTable({
                         <th className="px-3 py-2 font-medium">Stadt</th>
                         <th className="px-3 py-2 font-medium">Arbeitszeit</th>
                         <th className="px-3 py-2 font-medium">Umsatzzeit</th>
+                        <th className="px-3 py-2 font-medium text-right">Bargeld Start</th>
+                        <th className="px-3 py-2 font-medium text-right">Ausgaben</th>
+                        <th className="px-3 py-2 font-medium text-right">Bargeld Ende</th>
                         <th className="px-3 py-2 font-medium">Foto</th>
                         <th className="px-3 py-2 font-medium">Notiz</th>
                     </tr>
@@ -319,6 +338,9 @@ function CenterTable({
                                     <span className="text-amber-600 text-xs">fehlt</span>
                                 )}
                             </td>
+                            <td className="px-3 py-2 text-right">{bargeld(r.sale?.startbestand_cent)}</td>
+                            <td className="px-3 py-2 text-right">{bargeld(r.sale?.ausgaben_cent)}</td>
+                            <td className="px-3 py-2 text-right font-medium">{bargeld(r.sale?.endbestand_cent)}</td>
                             <td className="px-3 py-2">
                                 {r.fotoDa ? (
                                     <button

@@ -8,7 +8,7 @@ import { Camera, Image as ImageIcon, Trash2, Upload } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter } from "@/lib/esska/types";
-import { isoDatum } from "@/lib/esska/types";
+import { euroToCent, isoDatum } from "@/lib/esska/types";
 
 const BUCKET = "sales-receipts";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -37,6 +37,9 @@ export default function SalesEntryPage() {
     const [arbeitsEnde, setArbeitsEnde] = useState("");
     const [umsatzStart, setUmsatzStart] = useState("");
     const [umsatzEnde, setUmsatzEnde] = useState("");
+    const [startbestand, setStartbestand] = useState("");
+    const [ausgaben, setAusgaben] = useState("");
+    const [endbestand, setEndbestand] = useState("");
     const [fotoFile, setFotoFile] = useState<File | null>(null);
     const [fotoPreview, setFotoPreview] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -148,6 +151,9 @@ export default function SalesEntryPage() {
                     arbeitszeit_ende: arbeitsEnde || null,
                     umsatz_start: umsatzStart || null,
                     umsatz_ende: umsatzEnde || null,
+                    startbestand_cent: startbestand ? euroToCent(startbestand) : null,
+                    ausgaben_cent: ausgaben ? euroToCent(ausgaben) : null,
+                    endbestand_cent: endbestand ? euroToCent(endbestand) : null,
                     beleg_foto_path: fotoPath,
                     erfasst_von: user.id,
                 },
@@ -157,6 +163,9 @@ export default function SalesEntryPage() {
 
             setSuccess("Umsatz-Eintrag gespeichert.");
             setNotiz("");
+            setStartbestand("");
+            setAusgaben("");
+            setEndbestand("");
             setArbeitsStart("");
             setArbeitsEnde("");
             setUmsatzStart("");
@@ -380,6 +389,80 @@ export default function SalesEntryPage() {
                                     <option key={z} value={z}>{z}</option>
                                 ))}
                             </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bargeld-Kassenbestand */}
+                <div className="border-t pt-5">
+                    <h2 className="text-base font-semibold">Bargeld / Cash</h2>
+                    <p className="text-xs text-gray-600 mt-1 mb-4">
+                        Hier geht es <strong>ausschließlich um Bargeld</strong>. Kartenzahlungen werden
+                        separat abgerechnet und hier nicht eingetragen.
+                        <br />
+                        <span className="italic">
+                            This section is about <strong>cash only</strong>. Card payments are handled
+                            separately and are not entered here.
+                        </span>
+                    </p>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Startbestand (€)</label>
+                            <p className="text-xs text-gray-500 mb-1.5">
+                                Wie viel Bargeld befindet sich zu Beginn deiner Schicht in der Kasse?
+                                <br />
+                                <span className="italic">
+                                    How much cash is in the register at the start of your shift?
+                                </span>
+                            </p>
+                            <input
+                                value={startbestand}
+                                onChange={(e) => setStartbestand(e.target.value)}
+                                inputMode="decimal"
+                                placeholder="z. B. 150,00"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Eventuelle Ausgaben (€)</label>
+                            <p className="text-xs text-gray-500 mb-1.5">
+                                Wurde während der Schicht Bargeld aus der Kasse ausgegeben (z. B. für
+                                Utensilien)? Sonst leer lassen.
+                                <br />
+                                <span className="italic">
+                                    Was any cash taken from the register during the shift (e.g. for
+                                    supplies)? Otherwise leave empty.
+                                </span>
+                            </p>
+                            <input
+                                value={ausgaben}
+                                onChange={(e) => setAusgaben(e.target.value)}
+                                inputMode="decimal"
+                                placeholder="z. B. 12,50"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Endbestand (€)</label>
+                            <p className="text-xs text-gray-500 mb-1.5">
+                                Wie viel Bargeld ist am Ende deiner Schicht insgesamt in der Kasse?
+                                Einfach den gesamten Bargeldbetrag zählen – nichts abziehen.
+                                <br />
+                                <span className="italic">
+                                    How much cash is in the register in total at the end of your shift?
+                                    Just count the full cash amount – do not subtract anything.
+                                </span>
+                            </p>
+                            <input
+                                value={endbestand}
+                                onChange={(e) => setEndbestand(e.target.value)}
+                                inputMode="decimal"
+                                placeholder="z. B. 890,40"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
                         </div>
                     </div>
                 </div>
