@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import type { EsskaCenter } from "@/lib/esska/types";
+import type { EsskaCenter, EsskaDailySale } from "@/lib/esska/types";
 import { euroToCent, isoDatum } from "@/lib/esska/types";
 
 export default function SalesEntryPage() {
@@ -16,8 +17,13 @@ export default function SalesEntryPage() {
     const [istAdmin, setIstAdmin] = useState(false);
     const [notiz, setNotiz] = useState("");
     const [startbestand, setStartbestand] = useState("");
+    const [einnahmen, setEinnahmen] = useState("");
     const [ausgaben, setAusgaben] = useState("");
     const [endbestand, setEndbestand] = useState("");
+    const [abschoepfung, setAbschoepfung] = useState("");
+    // Bestehender Eintrag fuer Center+Datum – dann ist es eine Korrektur
+    const [bestehend, setBestehend] = useState<EsskaDailySale | null>(null);
+    const [korrekturGrund, setKorrekturGrund] = useState("");
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
@@ -52,8 +58,6 @@ export default function SalesEntryPage() {
                     const cs = ((data as unknown) as Array<{ centers: EsskaCenter | null }> ?? [])
                         .flatMap((r) => (r.centers ? [r.centers] : []));
                     setCenters(cs);
-                    // Auto-Vorauswahl: wenn nur 1 Center, direkt setzen.
-                    // (Sonderfall Hamburg: mehrere Center -> Auswahl-Dropdown bleibt sichtbar)
                     if (cs[0]) setCenterId(cs[0].id);
                 }
             } catch (err) {
@@ -63,10 +67,40 @@ export default function SalesEntryPage() {
         load();
     }, []);
 
+    // Pruefen, ob fuer Center + Datum bereits ein Eintrag existiert.
+    // Falls ja, ist die neue Eingabe eine Korrektur des letzten Eintrags.
+    useEffect(() => {
+        if (!centerId || !datum) {
+            setBestehend(null);
+            return;
+        }
+        const pruefe = async () => {
+            try {
+                const client = await getEsskaClient();
+                const { data } = await client
+                    .from("daily_sales")
+                    .select("*")
+                    .eq("center_id", centerId)
+                    .eq("datum", datum)
+                    .order("erfasst_am", { ascending: false })
+                    .limit(1);
+                const liste = (data as EsskaDailySale[]) ?? [];
+                setBestehend(liste[0] ?? null);
+            } catch {
+                setBestehend(null);
+            }
+        };
+        pruefe();
+    }, [centerId, datum]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!centerId || !datum) {
             setError("Center und Datum sind Pflicht.");
+            return;
+        }
+        if (bestehend && !korrekturGrund.trim()) {
+            setError("Für diesen Tag existiert bereits ein Eintrag. Bitte den Grund der Korrektur angeben.");
             return;
         }
 
@@ -79,25 +113,36 @@ export default function SalesEntryPage() {
             const { data: { user } } = await client.auth.getUser();
             if (!user) throw new Error("Nicht angemeldet");
 
-            const { error: e } = await client.from("daily_sales").upsert(
-                {
-                    center_id: centerId,
-                    datum,
-                    notiz: notiz.trim() || null,
-                    startbestand_cent: startbestand ? euroToCent(startbestand) : null,
-                    ausgaben_cent: ausgaben ? euroToCent(ausgaben) : null,
-                    endbestand_cent: endbestand ? euroToCent(endbestand) : null,
-                    erfasst_von: user.id,
-                },
-                { onConflict: "center_id,datum" }
-            );
+            // Immer INSERT, nie UPDATE: Eintraege sind unveraenderbar.
+            // Eine Korrektur verweist auf den Eintrag, den sie ersetzt.
+            const { error: e } = await client.from("daily_sales").insert({
+                center_id: centerId,
+                datum,
+                notiz: notiz.trim() || null,
+                startbestand_cent: startbestand ? euroToCent(startbestand) : null,
+                einnahmen_cent: einnahmen ? euroToCent(einnahmen) : null,
+                ausgaben_cent: ausgaben ? euroToCent(ausgaben) : null,
+                endbestand_cent: endbestand ? euroToCent(endbestand) : null,
+                abschoepfung_cent: abschoepfung ? euroToCent(abschoepfung) : null,
+                korrigiert_eintrag_id: bestehend?.id ?? null,
+                korrektur_grund: bestehend ? korrekturGrund.trim() : null,
+                erfasst_von: user.id,
+            });
             if (e) throw e;
 
-            setSuccess("Eintrag gespeichert.");
+            setSuccess(
+                bestehend
+                    ? "Korrektur gespeichert. Der ursprüngliche Eintrag bleibt zur Nachvollziehbarkeit erhalten."
+                    : "Eintrag gespeichert. Er kann nicht mehr verändert werden."
+            );
             setNotiz("");
             setStartbestand("");
+            setEinnahmen("");
             setAusgaben("");
             setEndbestand("");
+            setAbschoepfung("");
+            setKorrekturGrund("");
+            setBestehend(null);
         } catch (err) {
             setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen" }));
         } finally {
@@ -116,8 +161,22 @@ export default function SalesEntryPage() {
             <div>
                 <h1 className="text-2xl font-bold">Umsatz melden</h1>
                 <p className="text-gray-600 text-sm mt-1">
-                    Pro Center und Tag genau ein Eintrag. Trage den Bargeldbestand deiner Schicht ein.
+                    Pro Center und Tag ein Eintrag. Trage den Bargeldbestand deiner Schicht ein.
                 </p>
+            </div>
+
+            <div className="flex items-start gap-2 p-3 bg-secondary-50 border border-secondary-200 rounded-md text-xs text-gray-700">
+                <Lock className="h-4 w-4 mt-0.5 shrink-0 text-secondary-600" />
+                <div>
+                    Gespeicherte Einträge sind aus steuerlichen Gründen <strong>unveränderbar</strong>.
+                    Bitte vor dem Speichern prüfen. Eine Korrektur ist möglich, wird aber als
+                    zusätzlicher Eintrag mit Begründung festgehalten.
+                    <br />
+                    <span className="italic">
+                        Saved entries are <strong>final</strong> for tax reasons. Please check before
+                        saving. Corrections are possible but recorded as an additional entry with a reason.
+                    </span>
+                </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5 bg-white border rounded-lg p-4">
@@ -170,6 +229,28 @@ export default function SalesEntryPage() {
                     </div>
                 </div>
 
+                {/* Hinweis, wenn fuer diesen Tag schon etwas erfasst wurde */}
+                {bestehend && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm">
+                        <p className="font-medium text-amber-900 mb-1">
+                            Für diesen Tag wurde bereits ein Eintrag erfasst.
+                        </p>
+                        <p className="text-amber-800 text-xs mb-3">
+                            Der bestehende Eintrag bleibt unverändert erhalten. Deine Eingabe wird als
+                            Korrektur gespeichert und ersetzt ihn in der Übersicht.
+                        </p>
+                        <label className="block text-xs font-medium text-amber-900 mb-1">
+                            Grund der Korrektur <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                            value={korrekturGrund}
+                            onChange={(e) => setKorrekturGrund(e.target.value)}
+                            placeholder="z. B. Zahlendreher beim Endbestand"
+                            className="w-full border border-amber-300 rounded-md px-3 py-2 text-sm"
+                        />
+                    </div>
+                )}
+
                 {/* Bargeld-Kassenbestand */}
                 <div className="border-t pt-5">
                     <h2 className="text-base font-semibold">Bargeld / Cash</h2>
@@ -198,6 +279,24 @@ export default function SalesEntryPage() {
                                 onChange={(e) => setStartbestand(e.target.value)}
                                 inputMode="decimal"
                                 placeholder="z. B. 150,00"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Einnahmen (€)</label>
+                            <p className="text-xs text-gray-500 mb-1.5">
+                                Wie viel Bargeld ist während deiner Schicht durch Verkäufe eingenommen worden?
+                                <br />
+                                <span className="italic">
+                                    How much cash was taken in through sales during your shift?
+                                </span>
+                            </p>
+                            <input
+                                value={einnahmen}
+                                onChange={(e) => setEinnahmen(e.target.value)}
+                                inputMode="decimal"
+                                placeholder="z. B. 750,00"
                                 className="w-full border rounded-md px-3 py-2 text-sm"
                             />
                         </div>
@@ -241,6 +340,24 @@ export default function SalesEntryPage() {
                                 className="w-full border rounded-md px-3 py-2 text-sm"
                             />
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Abschöpfung (€)</label>
+                            <p className="text-xs text-gray-500 mb-1.5">
+                                Wurde Bargeld aus der Kasse entnommen und abgeführt? Sonst leer lassen.
+                                <br />
+                                <span className="italic">
+                                    Was cash removed from the register and handed over? Otherwise leave empty.
+                                </span>
+                            </p>
+                            <input
+                                value={abschoepfung}
+                                onChange={(e) => setAbschoepfung(e.target.value)}
+                                inputMode="decimal"
+                                placeholder="z. B. 500,00"
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            />
+                        </div>
                     </div>
                 </div>
 
@@ -261,7 +378,7 @@ export default function SalesEntryPage() {
                         disabled={saving}
                         className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
                     >
-                        {saving ? "Speichern…" : "Speichern"}
+                        {saving ? "Speichern…" : bestehend ? "Korrektur speichern" : "Verbindlich speichern"}
                     </button>
                     <button type="button" onClick={() => router.push("/app/sales")} className="px-4 py-2 border rounded-md hover:bg-secondary-100">
                         Abbrechen

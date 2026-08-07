@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, Download, Plus } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, History, Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaDailySale } from "@/lib/esska/types";
@@ -11,7 +11,10 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 
 type CenterStatus = {
     center: EsskaCenter;
+    /** Der aktuell gueltige (neueste) Eintrag fuer diesen Tag. */
     sale: EsskaDailySale | null;
+    /** Aeltere, durch Korrektur ersetzte Eintraege – bleiben dauerhaft erhalten. */
+    historie: EsskaDailySale[];
     /** Start- und Endbestand liegen vor – der Eintrag gilt damit als erledigt. */
     komplett: boolean;
 };
@@ -37,6 +40,7 @@ export default function SalesAdminPage() {
     const [datum, setDatum] = useState<string>(isoDatum(new Date()));
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [historieOffen, setHistorieOffen] = useState<string | null>(null);
 
     useEffect(() => {
         const load = async () => {
@@ -44,7 +48,11 @@ export default function SalesAdminPage() {
                 const client = await getEsskaClient();
                 const [cRes, sRes] = await Promise.all([
                     client.from("centers").select("*").in("status", ["aktiv", "geplant"]).order("name"),
-                    client.from("daily_sales").select("*").eq("datum", datum),
+                    client
+                        .from("daily_sales")
+                        .select("*")
+                        .eq("datum", datum)
+                        .order("erfasst_am", { ascending: false }),
                 ]);
                 if (cRes.error) throw cRes.error;
                 if (sRes.error) throw sRes.error;
@@ -61,15 +69,18 @@ export default function SalesAdminPage() {
 
     const status: CenterStatus[] = useMemo(() => {
         const list = centers.map((c) => {
-            const sale = sales.find((s) => s.center_id === c.id) ?? null;
+            // sales ist bereits nach erfasst_am absteigend sortiert:
+            // der erste Treffer ist der aktuell gueltige Eintrag.
+            const alle = sales.filter((s) => s.center_id === c.id);
+            const sale = alle[0] ?? null;
+            const historie = alle.slice(1);
             const komplett =
                 sale?.startbestand_cent !== null &&
                 sale?.startbestand_cent !== undefined &&
                 sale?.endbestand_cent !== null &&
                 sale?.endbestand_cent !== undefined;
-            return { center: c, sale, komplett };
+            return { center: c, sale, historie, komplett };
         });
-        // Sortierung: unvollstaendig zuerst, dann nach Center-Name
         return list.sort((a, b) => {
             if (a.komplett !== b.komplett) return a.komplett ? 1 : -1;
             return a.center.name.localeCompare(b.center.name, "de");
@@ -86,25 +97,34 @@ export default function SalesAdminPage() {
     const csvExport = () => {
         const header = [
             "Datum", "Center", "Stadt", "Saison",
-            "Bargeld_Startbestand", "Bargeld_Ausgaben", "Bargeld_Endbestand",
-            "Notiz",
+            "Startbestand", "Einnahmen", "Ausgaben", "Endbestand", "Abschoepfung",
+            "Erfasst_am", "Korrektur", "Korrektur_Grund", "Notiz",
         ];
-        const rows = status.map((s) => [
-            datum,
-            s.center.name,
-            s.center.stadt,
-            s.center.saison,
-            bargeld(s.sale?.startbestand_cent),
-            bargeld(s.sale?.ausgaben_cent),
-            bargeld(s.sale?.endbestand_cent),
-            (s.sale?.notiz ?? "").replace(/"/g, '""'),
-        ]);
+        // Export enthaelt bewusst ALLE Eintraege inkl. Korrekturhistorie,
+        // damit die Aufzeichnung fuer die Buchhaltung vollstaendig ist.
+        const rows = status.flatMap((s) =>
+            [s.sale, ...s.historie].filter(Boolean).map((e) => [
+                datum,
+                s.center.name,
+                s.center.stadt,
+                s.center.saison,
+                bargeld(e!.startbestand_cent),
+                bargeld(e!.einnahmen_cent),
+                bargeld(e!.ausgaben_cent),
+                bargeld(e!.endbestand_cent),
+                bargeld(e!.abschoepfung_cent),
+                new Date(e!.erfasst_am).toLocaleString("de-DE"),
+                e!.korrigiert_eintrag_id ? "ja" : "nein",
+                (e!.korrektur_grund ?? "").replace(/"/g, '""'),
+                (e!.notiz ?? "").replace(/"/g, '""'),
+            ])
+        );
         const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(";")).join("\n");
         const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Esska_Umsaetze_${datum}.csv`;
+        a.download = `Esska_Kassenbericht_${datum}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -198,7 +218,11 @@ export default function SalesAdminPage() {
                                 <CardDescription>Hier fehlt der Bargeldbestand.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <CenterTable rows={offen} />
+                                <CenterTable
+                                    rows={offen}
+                                    historieOffen={historieOffen}
+                                    setHistorieOffen={setHistorieOffen}
+                                />
                             </CardContent>
                         </Card>
                     )}
@@ -212,7 +236,11 @@ export default function SalesAdminPage() {
                                 <CardDescription>Start- und Endbestand liegen vor.</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <CenterTable rows={erledigt} />
+                                <CenterTable
+                                    rows={erledigt}
+                                    historieOffen={historieOffen}
+                                    setHistorieOffen={setHistorieOffen}
+                                />
                             </CardContent>
                         </Card>
                     )}
@@ -237,33 +265,75 @@ function Kennzahl({ titel, wert, farbe = "text-primary-700" }: { titel: string; 
     );
 }
 
-function CenterTable({ rows }: { rows: CenterStatus[] }) {
+function CenterTable({
+    rows,
+    historieOffen,
+    setHistorieOffen,
+}: {
+    rows: CenterStatus[];
+    historieOffen: string | null;
+    setHistorieOffen: (id: string | null) => void;
+}) {
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
                 <thead className="bg-secondary-50 text-left">
                     <tr>
                         <th className="px-3 py-2 font-medium">Center</th>
-                        <th className="px-3 py-2 font-medium">Stadt</th>
                         <th className="px-3 py-2 font-medium text-right">Startbestand</th>
+                        <th className="px-3 py-2 font-medium text-right">Einnahmen</th>
                         <th className="px-3 py-2 font-medium text-right">Ausgaben</th>
                         <th className="px-3 py-2 font-medium text-right">Endbestand</th>
+                        <th className="px-3 py-2 font-medium text-right">Abschöpfung</th>
                         <th className="px-3 py-2 font-medium">Notiz</th>
                     </tr>
                 </thead>
                 <tbody>
                     {rows.map((r) => (
-                        <tr key={r.center.id} className="border-t">
-                            <td className="px-3 py-2">
-                                <strong>{r.center.name}</strong>{" "}
-                                <span className="font-mono text-xs text-gray-500">({r.center.kuerzel})</span>
-                            </td>
-                            <td className="px-3 py-2">{r.center.stadt}</td>
-                            <td className="px-3 py-2 text-right">{bargeld(r.sale?.startbestand_cent)}</td>
-                            <td className="px-3 py-2 text-right">{bargeld(r.sale?.ausgaben_cent)}</td>
-                            <td className="px-3 py-2 text-right font-medium">{bargeld(r.sale?.endbestand_cent)}</td>
-                            <td className="px-3 py-2 text-gray-600">{r.sale?.notiz ?? ""}</td>
-                        </tr>
+                        <React.Fragment key={r.center.id}>
+                            <tr className="border-t">
+                                <td className="px-3 py-2">
+                                    <strong>{r.center.name}</strong>{" "}
+                                    <span className="font-mono text-xs text-gray-500">({r.center.kuerzel})</span>
+                                    <div className="text-xs text-gray-500">{r.center.stadt}</div>
+                                    {r.historie.length > 0 && (
+                                        <button
+                                            onClick={() =>
+                                                setHistorieOffen(historieOffen === r.center.id ? null : r.center.id)
+                                            }
+                                            className="mt-1 inline-flex items-center text-xs text-amber-700 hover:underline"
+                                        >
+                                            <History className="h-3 w-3 mr-1" />
+                                            {r.historie.length} frühere Fassung
+                                            {r.historie.length === 1 ? "" : "en"}
+                                        </button>
+                                    )}
+                                </td>
+                                <td className="px-3 py-2 text-right">{bargeld(r.sale?.startbestand_cent)}</td>
+                                <td className="px-3 py-2 text-right">{bargeld(r.sale?.einnahmen_cent)}</td>
+                                <td className="px-3 py-2 text-right">{bargeld(r.sale?.ausgaben_cent)}</td>
+                                <td className="px-3 py-2 text-right font-medium">{bargeld(r.sale?.endbestand_cent)}</td>
+                                <td className="px-3 py-2 text-right">{bargeld(r.sale?.abschoepfung_cent)}</td>
+                                <td className="px-3 py-2 text-gray-600">{r.sale?.notiz ?? ""}</td>
+                            </tr>
+                            {historieOffen === r.center.id &&
+                                r.historie.map((h) => (
+                                    <tr key={h.id} className="bg-amber-50/40 text-xs text-gray-600">
+                                        <td className="px-3 py-1.5 pl-6">
+                                            ersetzt · erfasst {new Date(h.erfasst_am).toLocaleString("de-DE")}
+                                            {r.sale?.korrektur_grund && (
+                                                <div className="italic">Grund: {r.sale.korrektur_grund}</div>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-1.5 text-right">{bargeld(h.startbestand_cent)}</td>
+                                        <td className="px-3 py-1.5 text-right">{bargeld(h.einnahmen_cent)}</td>
+                                        <td className="px-3 py-1.5 text-right">{bargeld(h.ausgaben_cent)}</td>
+                                        <td className="px-3 py-1.5 text-right">{bargeld(h.endbestand_cent)}</td>
+                                        <td className="px-3 py-1.5 text-right">{bargeld(h.abschoepfung_cent)}</td>
+                                        <td className="px-3 py-1.5">{h.notiz ?? ""}</td>
+                                    </tr>
+                                ))}
+                        </React.Fragment>
                     ))}
                 </tbody>
             </table>

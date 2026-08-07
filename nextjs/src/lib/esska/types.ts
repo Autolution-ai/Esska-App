@@ -379,8 +379,13 @@ export interface EsskaDailySale {
     beleg_foto_path: string | null;
     // Bargeld-Kassenbestand (nur Bargeld, Kartenzahlungen laufen separat)
     startbestand_cent: number | null;
+    einnahmen_cent: number | null;
     ausgaben_cent: number | null;
     endbestand_cent: number | null;
+    abschoepfung_cent: number | null;
+    // Korrektur-Kette: verweist auf den Eintrag, der hiermit ersetzt wird
+    korrigiert_eintrag_id: string | null;
+    korrektur_grund: string | null;
     erfasst_von: string;
     erfasst_am: string;
     aktualisiert_am: string;
