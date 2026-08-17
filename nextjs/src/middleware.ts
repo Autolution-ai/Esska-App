@@ -6,7 +6,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: [
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-    ],
+    // Die Middleware laeuft NUR auf den geschuetzten App-Seiten.
+    //
+    // Frueher lief sie auf jedem Pfad (auch auf der oeffentlichen Startseite,
+    // den Auth- und Legal-Seiten). Dort ist keine Auth-Pruefung noetig, es
+    // entstand aber trotzdem bei jedem Aufruf ein Netzwerk-Call zu Supabase.
+    // War Supabase langsam (z. B. weil das Free-Tier-Projekt aus dem
+    // Ruhezustand aufwachen musste), lief die Middleware in Vercels Timeout
+    // und die Seite antwortete mit 504 MIDDLEWARE_INVOCATION_TIMEOUT.
+    matcher: ['/app/:path*'],
 }

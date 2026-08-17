@@ -1,6 +1,35 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+/**
+ * Bricht eine Promise nach `ms` Millisekunden mit `fallback` ab.
+ *
+ * Die Middleware laeuft in Vercels Edge-Runtime mit hartem Zeitlimit. Haengt
+ * ein Supabase-Call (langsame Verbindung, Projekt im Ruhezustand, Ausfall),
+ * antwortet die ganze Seite mit 504 MIDDLEWARE_INVOCATION_TIMEOUT – der
+ * Nutzer sieht eine Vercel-Fehlerseite statt der App.
+ *
+ * Deshalb: lieber nach kurzer Zeit aufgeben und durchlassen. Das ist kein
+ * Sicherheitsrisiko, weil die eigentliche Absicherung in der Datenbank sitzt
+ * (Row Level Security). Ohne gueltige Session liefert jede Abfrage schlicht
+ * keine Daten – die Middleware sorgt nur fuer die bequeme Weiterleitung.
+ */
+async function mitZeitlimit<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((resolve) => {
+                timer = setTimeout(() => resolve(fallback), ms)
+            }),
+        ])
+    } catch {
+        return fallback
+    } finally {
+        if (timer) clearTimeout(timer)
+    }
+}
+
 export async function updateSession(request: NextRequest) {
     let supabaseResponse = NextResponse.next({
         request,
@@ -33,25 +62,40 @@ export async function updateSession(request: NextRequest) {
 
     // IMPORTANT: DO NOT REMOVE auth.getUser()
 
-    const {data: user} = await supabase.auth.getUser()
-    if (
-        (!user || !user.user) && request.nextUrl.pathname.startsWith('/app')
-    ) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/auth/login'
-        return NextResponse.redirect(url)
+    // Ohne Session-Cookie gar nicht erst bei Supabase nachfragen – spart auf
+    // dem haeufigsten Pfad (nicht eingeloggter Besucher) einen Netzwerk-Call.
+    const hatSessionCookie = request.cookies
+        .getAll()
+        .some((c) => c.name.startsWith('sb-') && c.name.includes('auth-token'))
+
+    const authErgebnis = hatSessionCookie
+        ? await mitZeitlimit(
+              supabase.auth.getUser(),
+              3000,
+              { data: { user: null } } as Awaited<ReturnType<typeof supabase.auth.getUser>>
+          )
+        : ({ data: { user: null } } as Awaited<ReturnType<typeof supabase.auth.getUser>>)
+
+    const user = authErgebnis.data.user
+
+    if (!user) {
+        // Kein Cookie -> sicher nicht eingeloggt -> zum Login.
+        // Cookie vorhanden, aber Antwort blieb aus -> durchlassen; die Seite
+        // selbst prueft die Session erneut und leitet noetigenfalls weiter.
+        if (!hatSessionCookie) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/auth/login'
+            return NextResponse.redirect(url)
+        }
+        return supabaseResponse
     }
 
     // Onboarding-Gate: Mitarbeiter mit offenem Onboarding werden auf
     // /app/onboarding umgeleitet – unabhaengig davon, welche /app-Seite sie
     // aufrufen oder ueber welchen Link sie kommen.
-    if (user?.user && request.nextUrl.pathname.startsWith('/app')) {
-        const path = request.nextUrl.pathname
-        const istOnboardingSeite = path === '/app/onboarding'
-        // API-Routen unter /api ignorieren (kommen ohnehin nicht durch dieses matcher),
-        // Logout-/Settings-Route fuer Passwort/Abmelden zulassen
-        if (!istOnboardingSeite) {
-            const { data: profile } = await (supabase as unknown as {
+    if (request.nextUrl.pathname !== '/app/onboarding') {
+        const profilErgebnis = await mitZeitlimit(
+            (supabase as unknown as {
                 from: (t: string) => {
                     select: (c: string) => {
                         eq: (k: string, v: string) => {
@@ -64,18 +108,17 @@ export async function updateSession(request: NextRequest) {
             })
                 .from('profiles')
                 .select('role, onboarding_abgeschlossen')
-                .eq('id', user.user.id)
-                .maybeSingle()
+                .eq('id', user.id)
+                .maybeSingle(),
+            2500,
+            { data: null }
+        )
 
-            if (
-                profile
-                && profile.role === 'mitarbeiter'
-                && !profile.onboarding_abgeschlossen
-            ) {
-                const url = request.nextUrl.clone()
-                url.pathname = '/app/onboarding'
-                return NextResponse.redirect(url)
-            }
+        const profile = profilErgebnis.data
+        if (profile && profile.role === 'mitarbeiter' && !profile.onboarding_abgeschlossen) {
+            const url = request.nextUrl.clone()
+            url.pathname = '/app/onboarding'
+            return NextResponse.redirect(url)
         }
     }
 
