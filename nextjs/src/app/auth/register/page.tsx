@@ -1,171 +1,43 @@
-'use client';
+import Link from "next/link";
+import { Mail } from "lucide-react";
 
-import {createSPASassClient} from '@/lib/supabase/client';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import SSOButtons from "@/components/SSOButtons";
-
-export default function RegisterPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [error, setError] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [acceptedTerms, setAcceptedTerms] = useState(false);
-    const router = useRouter();
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-
-        if (!acceptedTerms) {
-            setError('You must accept the Terms of Service and Privacy Policy');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            setError("Passwords don't match");
-            return;
-        }
-
-        setLoading(true);
-
-        try {
-            const supabase = await createSPASassClient();
-            const { error } = await supabase.registerEmail(email, password);
-
-            if (error) throw error;
-
-            router.push('/auth/verify-email');
-        } catch (err: Error | unknown) {
-            if(err instanceof Error) {
-                setError(err.message);
-            } else {
-                setError('An unknown error occurred');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
+/**
+ * Selbstregistrierung ist bewusst deaktiviert.
+ *
+ * Die Esska-App ist eine interne Anwendung mit Personal- und Kassendaten.
+ * Zugaenge vergibt ausschliesslich der Admin ueber eine E-Mail-Einladung
+ * (Mitarbeiter -> Mitarbeiter einladen). Ein offenes Registrierungsformular
+ * wuerde es jedem im Internet erlauben, sich ein Konto anzulegen.
+ */
+export default function RegisterDisabledPage() {
     return (
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-            {error && (
-                <div className="mb-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg">
-                    {error}
+        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 space-y-5">
+            <div className="text-center">
+                <div className="mx-auto w-12 h-12 rounded-full bg-secondary-100 flex items-center justify-center">
+                    <Mail className="h-6 w-6 text-secondary-600" />
                 </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email address
-                    </label>
-                    <div className="mt-1">
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            autoComplete="email"
-                            required
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        Password
-                    </label>
-                    <div className="mt-1">
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            autoComplete="new-password"
-                            required
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                        Confirm Password
-                    </label>
-                    <div className="mt-1">
-                        <input
-                            id="confirmPassword"
-                            name="confirmPassword"
-                            type="password"
-                            autoComplete="new-password"
-                            required
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary-500 focus:outline-none focus:ring-primary-500"
-                        />
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="flex items-start">
-                        <div className="flex h-5 items-center">
-                            <input
-                                id="terms"
-                                name="terms"
-                                type="checkbox"
-                                checked={acceptedTerms}
-                                onChange={(e) => setAcceptedTerms(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                        </div>
-                        <div className="ml-3 text-sm">
-                            <label htmlFor="terms" className="text-gray-600">
-                                I agree to the{' '}
-                                <Link
-                                    href="/legal/terms"
-                                    className="font-medium text-primary-600 hover:text-primary-500"
-                                    target="_blank"
-                                >
-                                    Terms of Service
-                                </Link>{' '}
-                                and{' '}
-                                <Link
-                                    href="/legal/privacy"
-                                    className="font-medium text-primary-600 hover:text-primary-500"
-                                    target="_blank"
-                                >
-                                    Privacy Policy
-                                </Link>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                <div>
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="flex w-full justify-center rounded-md border border-transparent bg-primary-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
-                    >
-                        {loading ? 'Creating account...' : 'Create account'}
-                    </button>
-                </div>
-            </form>
-
-            <SSOButtons onError={setError}/>
-
-            <div className="mt-6 text-center text-sm">
-                <span className="text-gray-600">Already have an account?</span>
-                {' '}
-                <Link href="/auth/login" className="font-medium text-primary-600 hover:text-primary-500">
-                    Sign in
-                </Link>
+                <h1 className="mt-4 text-xl font-bold">Zugang nur auf Einladung</h1>
+                <p className="mt-2 text-sm text-gray-600">
+                    Für die Esska-App kann man sich nicht selbst registrieren. Sobald du für
+                    die Saison eingeplant bist, bekommst du eine Einladung per E-Mail und
+                    legst darüber dein Passwort fest.
+                </p>
             </div>
+
+            <div className="bg-secondary-50 border border-secondary-200 rounded-md p-4 text-sm text-gray-700">
+                <p className="font-medium text-gray-900 mb-1">Keine Einladung erhalten?</p>
+                <p>
+                    Schau zuerst im Spam-Ordner nach. Wenn dort nichts ist, melde dich bei
+                    deiner Ansprechperson – sie kann die Einladung erneut verschicken.
+                </p>
+            </div>
+
+            <Link
+                href="/auth/login"
+                className="flex w-full justify-center rounded-md bg-primary-600 py-2 px-4 text-sm font-medium text-white hover:bg-primary-700"
+            >
+                Zur Anmeldung
+            </Link>
         </div>
     );
 }

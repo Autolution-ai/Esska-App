@@ -68,7 +68,7 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                     <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                        Email address
+                        E-Mail-Adresse
                     </label>
                     <div className="mt-1">
                         <input
@@ -86,7 +86,7 @@ export default function LoginPage() {
 
                 <div>
                     <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                        Password
+                        Passwort
                     </label>
                     <div className="mt-1">
                         <input
@@ -105,7 +105,7 @@ export default function LoginPage() {
                 <div className="flex items-center justify-between">
                     <div className="text-sm">
                         <Link href="/auth/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-                            Forgot your password?
+                            Passwort vergessen?
                         </Link>
                     </div>
                 </div>
@@ -116,19 +116,16 @@ export default function LoginPage() {
                         disabled={loading}
                         className="flex w-full justify-center rounded-md border border-transparent bg-primary-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
                     >
-                        {loading ? 'Signing in...' : 'Sign in'}
+                        {loading ? 'Anmelden…' : 'Anmelden'}
                     </button>
                 </div>
             </form>
 
             <SSOButtons onError={setError} />
 
-            <div className="mt-6 text-center text-sm">
-                <span className="text-gray-600">Don&#39;t have an account?</span>
-                {' '}
-                <Link href="/auth/register" className="font-medium text-primary-600 hover:text-primary-500">
-                    Sign up
-                </Link>
+            <div className="mt-6 text-center text-sm text-gray-600">
+                Noch keinen Zugang? Du erhältst eine Einladung per E-Mail von deiner
+                Ansprechperson.
             </div>
         </div>
     );

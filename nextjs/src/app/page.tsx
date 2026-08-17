@@ -1,106 +1,114 @@
 import React from 'react';
 import Link from 'next/link';
-import { CalendarDays, Shield, Store, TrendingUp } from 'lucide-react';
+import { CalendarDays, Mail, Smartphone, Wallet } from 'lucide-react';
 import AuthAwareButtons from '@/components/AuthAwareButtons';
 
 export default function Home() {
-  const productName = process.env.NEXT_PUBLIC_PRODUCTNAME;
+    const productName = process.env.NEXT_PUBLIC_PRODUCTNAME;
 
-  const features = [
-    {
-      icon: Store,
-      title: 'Center-Verwaltung',
-      description: 'Standorte je Saison anlegen, verwalten und Mitarbeiter zuordnen',
-      color: 'text-primary-600'
-    },
-    {
-      icon: CalendarDays,
-      title: 'Verfügbarkeit & Schichtplan',
-      description: 'Verfügbarkeiten pflegen, Wochenpläne erstellen und veröffentlichen',
-      color: 'text-primary-600'
-    },
-    {
-      icon: TrendingUp,
-      title: 'Umsatzreporting',
-      description: 'Tagesumsätze je Center erfassen und über Zeit und Standort auswerten',
-      color: 'text-primary-600'
-    },
-    {
-      icon: Shield,
-      title: 'Sicher & DSGVO-konform',
-      description: 'Verschlüsselte Datenhaltung in der EU mit klarer Rollentrennung',
-      color: 'text-primary-600'
-    }
-  ];
+    // Was Mitarbeiter in der App tatsaechlich tun – zur Orientierung,
+    // nicht als Werbung.
+    const funktionen = [
+        {
+            icon: CalendarDays,
+            titel: 'Wochenplan',
+            text: 'Eintragen, wann du arbeiten kannst – und deine Schichten einsehen.',
+        },
+        {
+            icon: Wallet,
+            titel: 'Kasse melden',
+            text: 'Bargeldbestand deiner Schicht erfassen.',
+        },
+        {
+            icon: Smartphone,
+            titel: 'Stammdaten',
+            text: 'Deine Daten und Dokumente an einem Ort.',
+        },
+    ];
 
-  return (
-      <div className="min-h-screen">
-        <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-sm z-50 border-b border-gray-100">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16 items-center">
-              <div className="flex-shrink-0">
-              <span className="text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-500 bg-clip-text text-transparent">
-                {productName}
-              </span>
-              </div>
-              <div className="flex items-center space-x-8">
-                <AuthAwareButtons variant="nav" />
-              </div>
-            </div>
-          </div>
-        </nav>
+    return (
+        <div className="min-h-screen flex flex-col bg-secondary-50">
+            {/* Kopfzeile */}
+            <nav className="bg-white border-b border-secondary-200">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6">
+                    <div className="flex justify-between h-16 items-center">
+                        <span className="text-2xl font-bold text-primary-700">
+                            {productName}
+                        </span>
+                        <AuthAwareButtons variant="nav" />
+                    </div>
+                </div>
+            </nav>
 
-        <section className="relative pt-32 pb-24 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center">
-              <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
-                {productName} Collection
-                <span className="block text-primary-600">Saison-App</span>
-              </h1>
-              <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto">
-                Personal, Schichtplanung und Umsatzreporting für alle Center an einem Ort.
-              </p>
-              <div className="mt-10 flex gap-4 justify-center">
-                <AuthAwareButtons />
-              </div>
-            </div>
-          </div>
-        </section>
+            {/* Hauptbereich */}
+            <main className="flex-1">
+                <section className="px-4 sm:px-6 pt-12 pb-10 sm:pt-20 sm:pb-16">
+                    <div className="max-w-xl mx-auto text-center">
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                            {productName} Collection
+                        </h1>
+                        <p className="text-2xl sm:text-3xl font-bold text-primary-700 mt-1">
+                            Saison-App
+                        </p>
+                        <p className="mt-5 text-base sm:text-lg text-gray-600">
+                            Wochenplan, Schichten und Kassenmeldung – alles an einem Ort,
+                            direkt auf dem Handy.
+                        </p>
 
-        <section id="features" className="py-24 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid md:grid-cols-2 gap-8">
-              {features.map((feature, index) => (
-                  <div
-                      key={index}
-                      className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <feature.icon className={`h-8 w-8 ${feature.color}`} />
-                    <h3 className="mt-4 text-xl font-semibold">{feature.title}</h3>
-                    <p className="mt-2 text-gray-600">{feature.description}</p>
-                  </div>
-              ))}
-            </div>
-          </div>
-        </section>
+                        <div className="mt-8">
+                            <AuthAwareButtons />
+                        </div>
 
-        <footer className="bg-gray-50 border-t border-gray-200">
-          <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-center gap-8">
-              <Link href="/legal/privacy" className="text-gray-600 hover:text-gray-900">
-                Datenschutz
-              </Link>
-              <Link href="/legal/terms" className="text-gray-600 hover:text-gray-900">
-                Nutzungsbedingungen
-              </Link>
-            </div>
-            <div className="mt-8 pt-8 border-t border-gray-200">
-              <p className="text-center text-gray-600">
-                © {new Date().getFullYear()} {productName} Collection
-              </p>
-            </div>
-          </div>
-        </footer>
-      </div>
-  );
+                        {/* Hinweis fuer alle, die noch keinen Zugang haben */}
+                        <div className="mt-6 flex items-start gap-2.5 text-left bg-white border border-secondary-200 rounded-lg p-4 text-sm text-gray-600">
+                            <Mail className="h-5 w-5 shrink-0 mt-0.5 text-secondary-500" />
+                            <p>
+                                <strong className="text-gray-900">Noch keinen Zugang?</strong>{' '}
+                                Du bekommst eine Einladung per E-Mail, sobald du für die Saison
+                                eingeplant bist. Melde dich bei deiner Ansprechperson, falls die
+                                E-Mail nicht angekommen ist.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Kurze Orientierung, was einen erwartet */}
+                <section className="px-4 sm:px-6 pb-14">
+                    <div className="max-w-xl mx-auto space-y-3">
+                        {funktionen.map((f) => (
+                            <div
+                                key={f.titel}
+                                className="flex items-start gap-4 bg-white border border-secondary-200 rounded-lg p-4"
+                            >
+                                <div className="p-2 bg-primary-50 rounded-lg shrink-0">
+                                    <f.icon className="h-5 w-5 text-primary-600" />
+                                </div>
+                                <div>
+                                    <h2 className="font-semibold">{f.titel}</h2>
+                                    <p className="text-sm text-gray-600 mt-0.5">{f.text}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            </main>
+
+            {/* Fusszeile */}
+            <footer className="bg-white border-t border-secondary-200">
+                <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6">
+                    <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm">
+                        <Link href="/legal/privacy" className="text-gray-600 hover:text-gray-900">
+                            Datenschutz
+                        </Link>
+                        <Link href="/legal/terms" className="text-gray-600 hover:text-gray-900">
+                            Nutzungsbedingungen
+                        </Link>
+                    </div>
+                    <p className="text-center text-sm text-gray-500 mt-6">
+                        © {new Date().getFullYear()} {productName} Collection
+                    </p>
+                </div>
+            </footer>
+        </div>
+    );
 }
