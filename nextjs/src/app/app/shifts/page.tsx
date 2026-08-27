@@ -6,7 +6,7 @@ import { CalendarDays, Eye, Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaShiftWeek } from "@/lib/esska/types";
-import { addTage, isoDatum, montagDerWoche } from "@/lib/esska/types";
+import { addTage, isoDatum, montagDerWoche, parseIsoDatum } from "@/lib/esska/types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 export default function ShiftsOverviewPage() {
@@ -82,11 +82,35 @@ export default function ShiftsOverviewPage() {
                         type="date"
                         value={isoDatum(wochenStart)}
                         onChange={(e) => {
-                            const d = new Date(e.target.value);
+                            if (!e.target.value) return;
+                            const d = parseIsoDatum(e.target.value);
                             if (!Number.isNaN(d.getTime())) setWochenStart(montagDerWoche(d));
                         }}
                         className="border rounded-md px-3 py-2 text-sm"
                     />
+                </div>
+                <div className="flex gap-2">
+                    {[
+                        { label: "Aktuelle Woche", offset: 0 },
+                        { label: "Nächste Woche", offset: 7 },
+                        { label: "Übernächste Woche", offset: 14 },
+                    ].map((b) => {
+                        const ziel = addTage(montagDerWoche(new Date()), b.offset);
+                        const aktiv = isoDatum(ziel) === isoDatum(wochenStart);
+                        return (
+                            <button
+                                key={b.offset}
+                                onClick={() => setWochenStart(ziel)}
+                                className={`px-3 py-2 text-sm border rounded-md ${
+                                    aktiv
+                                        ? "bg-primary-600 text-white border-primary-600"
+                                        : "hover:bg-secondary-100"
+                                }`}
+                            >
+                                {b.label}
+                            </button>
+                        );
+                    })}
                 </div>
                 {centerId && (
                     <Link
@@ -117,8 +141,8 @@ export default function ShiftsOverviewPage() {
                                         href={`/app/shifts/${w.center_id}/${w.woche_start}`}
                                         className="text-primary-600 hover:underline text-sm"
                                     >
-                                        Woche {new Date(w.woche_start).toLocaleDateString("de-DE")} –{" "}
-                                        {addTage(new Date(w.woche_start), 6).toLocaleDateString("de-DE")}
+                                        Woche {parseIsoDatum(w.woche_start).toLocaleDateString("de-DE")} –{" "}
+                                        {addTage(parseIsoDatum(w.woche_start), 6).toLocaleDateString("de-DE")}
                                     </Link>
                                     <span
                                         className={`text-xs px-2 py-0.5 rounded-full ${

@@ -57,6 +57,8 @@ export function feiertagFuer(datum: string): string | null {
 
 /** Ist der gegebene ISO-Tag ein Sonntag? */
 export function istSonntag(datum: string): boolean {
-    const d = new Date(datum);
-    return d.getDay() === 0;
+    // Teile selbst zerlegen: new Date("YYYY-MM-DD") liefert UTC-Mitternacht
+    // und kippt je nach Zeitzone auf den Vortag (zeigte "Sonntag" bei Montagen).
+    const [y, m, t] = datum.split("-").map((x) => parseInt(x, 10));
+    return new Date(y, (m || 1) - 1, t || 1).getDay() === 0;
 }

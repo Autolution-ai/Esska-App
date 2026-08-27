@@ -30,15 +30,14 @@ const FARBE: Record<EsskaWunsch, string> = {
     kann_nicht: "bg-red-100 text-red-800 border-red-400",
 };
 
-// 30-Min-Schritte fuer Abweichungs-Zeit
-// Vormittag: bis HH:MM, sinnvoll 09:30 .. 14:30
-// Nachmittag: ab HH:MM, sinnvoll 15:30 .. 20:00
+// 15-Min-Schritte fuer Abweichungs-Zeit (nur 00, 15, 30, 45)
+// Vormittag: bis HH:MM, sinnvoll 09:15 .. 14:45
+// Nachmittag: ab HH:MM, sinnvoll 15:15 .. 20:15
 const VORMITTAG_BIS_OPTIONEN: string[] = (() => {
     const arr: string[] = [];
     for (let h = 9; h <= 14; h++) {
-        for (const m of [0, 30]) {
+        for (const m of [0, 15, 30, 45]) {
             if (h === 9 && m === 0) continue; // unter Start
-            if (h === 14 && m > 30) continue;
             arr.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
         }
     }
@@ -47,9 +46,9 @@ const VORMITTAG_BIS_OPTIONEN: string[] = (() => {
 const NACHMITTAG_AB_OPTIONEN: string[] = (() => {
     const arr: string[] = [];
     for (let h = 15; h <= 20; h++) {
-        for (const m of [0, 30]) {
-            if (h === 15 && m < 30) continue; // mindestens 15:30
-            if (h === 20 && m > 0) continue; // bis 20:00, danach kaum Slot uebrig
+        for (const m of [0, 15, 30, 45]) {
+            if (h === 15 && m === 0) continue; // mindestens 15:15
+            if (h === 20 && m > 15) continue; // bis 20:15, danach kaum Slot uebrig
             arr.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
         }
     }
@@ -246,7 +245,12 @@ export default function AvailabilityPage() {
                 <CardHeader>
                     <CardTitle>Wochenplan</CardTitle>
                     <CardDescription>
-                        ✓ Könnte · Abweichung (Zeit angeben) · ✕ Kann nicht
+                        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span className="font-medium text-green-700">✓ Könnte</span>
+                            <span className="font-medium text-amber-600">Abweichung</span>
+                            <span className="font-medium text-red-700">✕ Kann nicht</span>
+                            <span className="text-gray-700">bis/ab = Zeit angeben</span>
+                        </span>
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

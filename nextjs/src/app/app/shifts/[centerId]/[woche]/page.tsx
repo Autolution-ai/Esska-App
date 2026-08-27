@@ -23,10 +23,52 @@ import {
     isoDatum,
     montagDerWoche,
     nettoStunden,
+    parseIsoDatum,
     tagKurz,
+    zeitKurz,
 } from "@/lib/esska/types";
 
 const SLOTS: EsskaShiftSlot[] = ["vormittag", "nachmittag"];
+
+// Zeitauswahl in 15-Minuten-Schritten (statt Freitext-Uhrzeit mit allen
+// Minuten). Bereich 07:00–22:00 deckt alle realistischen Center-Zeiten ab.
+const ZEIT_OPTIONEN: string[] = (() => {
+    const arr: string[] = [];
+    for (let h = 7; h <= 22; h++) {
+        for (const m of [0, 15, 30, 45]) {
+            if (h === 22 && m > 0) continue;
+            arr.push(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`);
+        }
+    }
+    return arr;
+})();
+
+function ZeitSelect({
+    value,
+    onChange,
+    disabled,
+}: {
+    value: string;
+    onChange: (v: string) => void;
+    disabled?: boolean;
+}) {
+    // Falls ein alter Wert nicht im 15-Minuten-Raster liegt, trotzdem anzeigen
+    const optionen = ZEIT_OPTIONEN.includes(value)
+        ? ZEIT_OPTIONEN
+        : [value, ...ZEIT_OPTIONEN].sort();
+    return (
+        <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            disabled={disabled}
+            className="border rounded px-1 py-0.5 text-xs"
+        >
+            {optionen.map((z) => (
+                <option key={z} value={z}>{z}</option>
+            ))}
+        </select>
+    );
+}
 
 type AssignedProfile = Pick<
     EsskaProfile,
@@ -35,7 +77,7 @@ type AssignedProfile = Pick<
 
 export default function WocheEditorPage() {
     const params = useParams<{ centerId: string; woche: string }>();
-    const wochenStart = useMemo(() => montagDerWoche(new Date(params.woche)), [params.woche]);
+    const wochenStart = useMemo(() => montagDerWoche(parseIsoDatum(params.woche)), [params.woche]);
     const tage = useMemo(() => Array.from({ length: 7 }, (_, i) => addTage(wochenStart, i)), [wochenStart]);
 
     const [center, setCenter] = useState<EsskaCenter | null>(null);
@@ -172,9 +214,12 @@ export default function WocheEditorPage() {
         }
     };
 
+    const availFor = (profileId: string, datum: string, slot: EsskaShiftSlot): EsskaAvailabilityRow | undefined => {
+        return availability.find((a) => a.profile_id === profileId && a.datum === datum && a.slot === slot);
+    };
+
     const wunschVon = (profileId: string, datum: string, slot: EsskaShiftSlot): EsskaWunsch => {
-        return availability.find((a) => a.profile_id === profileId && a.datum === datum && a.slot === slot)?.wunsch
-            ?? "koennte";
+        return availFor(profileId, datum, slot)?.wunsch ?? "koennte";
     };
 
     // Schichten + lokale (noch nicht gespeicherte) Override mitberechnet
@@ -408,6 +453,7 @@ export default function WocheEditorPage() {
                                                             shift={current}
                                                             people={people}
                                                             wunschVon={wunschVon}
+                                                            availFor={availFor}
                                                             limitInfo={limitInfo}
                                                             busy={busy}
                                                             override={zeitOverride[ckey]}
@@ -441,6 +487,7 @@ function SlotCell({
     shift,
     people,
     wunschVon,
+    availFor,
     limitInfo,
     busy,
     override,
@@ -454,6 +501,7 @@ function SlotCell({
     shift: EsskaShift | undefined;
     people: AssignedProfile[];
     wunschVon: (id: string, datum: string, slot: EsskaShiftSlot) => EsskaWunsch;
+    availFor: (id: string, datum: string, slot: EsskaShiftSlot) => EsskaAvailabilityRow | undefined;
     limitInfo: (p: AssignedProfile, ignoreCellKey?: string) => {
         schichtenIst: number;
         stundenIst: number;
@@ -482,6 +530,26 @@ function SlotCell({
     const aktivePerson = shift ? people.find((p) => p.id === shift.profile_id) : undefined;
     const aktivLimit = aktivePerson ? limitInfo(aktivePerson, cellKey) : null;
 
+    // Abweichungs-Pruefung: Hat die eingeteilte Person angegeben, dass sie an
+    // diesem Slot nur eingeschraenkt kann, entsteht eine Luecke im Plan.
+    const aktivAvail = aktivePerson ? availFor(aktivePerson.id, datum, slot) : undefined;
+    let zeitWarnung: string | null = null;
+    let zeitWarnungRot = false;
+    if (aktivAvail) {
+        if (aktivAvail.wunsch === "kann_nicht") {
+            zeitWarnungRot = true;
+            zeitWarnung = "Hat für diesen Slot „Kann nicht“ angegeben – bitte Besetzung prüfen.";
+        } else if (aktivAvail.wunsch === "wuensche") {
+            const bis = aktivAvail.abweichung_bis ? zeitKurz(aktivAvail.abweichung_bis) : null;
+            const ab = aktivAvail.abweichung_ab ? zeitKurz(aktivAvail.abweichung_ab) : null;
+            if (slot === "vormittag" && bis && bis < aktEnde) {
+                zeitWarnung = `Nur bis ${bis} verfügbar – Lücke ${bis}–${aktEnde}: für diese Zeit wird eine weitere Person gebraucht.`;
+            } else if (slot === "nachmittag" && ab && ab > aktStart) {
+                zeitWarnung = `Erst ab ${ab} verfügbar – Lücke ${aktStart}–${ab}: für diese Zeit wird eine weitere Person gebraucht.`;
+            }
+        }
+    }
+
     return (
         <td className="px-2 py-2 border align-top">
             <div className="flex flex-col gap-1">
@@ -493,7 +561,8 @@ function SlotCell({
                 >
                     <option value="">– leer –</option>
                     {sortiert.map((p) => {
-                        const wunsch = wunschVon(p.id, datum, slot);
+                        const avail = availFor(p.id, datum, slot);
+                        const wunsch = avail?.wunsch ?? "koennte";
                         const nichtWaehlbar = wunsch === "kann_nicht";
                         const info = limitInfo(p, cellKey);
                         const label = `${WUNSCH_ICON[wunsch]} ${p.vorname ?? ""} ${p.nachname ?? ""}`.trim()
@@ -501,10 +570,20 @@ function SlotCell({
                         const limitText = info.schichtenLimit
                             ? ` (${info.schichtenIst}/${info.schichtenLimit})`
                             : "";
+                        // Abweichungszeit direkt im Dropdown sichtbar machen
+                        let abwText = "";
+                        if (wunsch === "wuensche") {
+                            if (slot === "vormittag" && avail?.abweichung_bis) {
+                                abwText = ` — nur bis ${zeitKurz(avail.abweichung_bis)}`;
+                            } else if (slot === "nachmittag" && avail?.abweichung_ab) {
+                                abwText = ` — erst ab ${zeitKurz(avail.abweichung_ab)}`;
+                            }
+                        }
                         return (
                             <option key={p.id} value={p.id} disabled={nichtWaehlbar}>
                                 {label}
                                 {limitText}
+                                {abwText}
                                 {nichtWaehlbar ? " — kann nicht" : ""}
                             </option>
                         );
@@ -514,22 +593,22 @@ function SlotCell({
                 {shift && (
                     <>
                         <div className="flex gap-1 items-center">
-                            <input
-                                type="time"
+                            <ZeitSelect
                                 value={aktStart}
-                                onChange={(e) => setOverride({ start: e.target.value, ende: aktEnde })}
-                                onBlur={() => onUpdateZeit(aktStart, aktEnde)}
+                                onChange={(v) => {
+                                    setOverride({ start: v, ende: aktEnde });
+                                    onUpdateZeit(v, aktEnde);
+                                }}
                                 disabled={busy}
-                                className="w-20 border rounded px-1 py-0.5 text-xs"
                             />
                             <span className="text-xs">–</span>
-                            <input
-                                type="time"
+                            <ZeitSelect
                                 value={aktEnde}
-                                onChange={(e) => setOverride({ start: aktStart, ende: e.target.value })}
-                                onBlur={() => onUpdateZeit(aktStart, aktEnde)}
+                                onChange={(v) => {
+                                    setOverride({ start: aktStart, ende: v });
+                                    onUpdateZeit(aktStart, v);
+                                }}
                                 disabled={busy}
-                                className="w-20 border rounded px-1 py-0.5 text-xs"
                             />
                             <button
                                 onClick={() => onSetPerson(null)}
@@ -540,6 +619,17 @@ function SlotCell({
                                 <Trash2 className="h-3.5 w-3.5" />
                             </button>
                         </div>
+                        {zeitWarnung && (
+                            <div
+                                className={`text-xs rounded px-1.5 py-1 ${
+                                    zeitWarnungRot
+                                        ? "text-red-700 bg-red-50 border border-red-200"
+                                        : "text-amber-800 bg-amber-50 border border-amber-300"
+                                }`}
+                            >
+                                ⚠ {zeitWarnung}
+                            </div>
+                        )}
                         {aktivLimit && aktivLimit.warnungen.length > 0 && (
                             <div className="text-xs text-amber-700 bg-amber-50 rounded px-1 py-0.5">
                                 ⚠ {aktivLimit.warnungen.join(", ")}

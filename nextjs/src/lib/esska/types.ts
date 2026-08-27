@@ -340,7 +340,23 @@ export function zeitKurz(t: string): string {
 }
 
 export function isoDatum(d: Date): string {
-    return d.toISOString().slice(0, 10);
+    // WICHTIG: lokale Datumsteile verwenden, NICHT toISOString().
+    // toISOString() rechnet nach UTC um – fuer deutsche Nutzer (UTC+1/+2)
+    // wird aus "Montag 00:00" dadurch der Sonntag davor. Das fuehrte zu
+    // falschen Wochentagen ("Sonntag" unter "Mo") und um einen Tag
+    // verschobenen Datumsangaben in Verfuegbarkeit und Schichtplan.
+    const y = d.getFullYear();
+    const m = (d.getMonth() + 1).toString().padStart(2, "0");
+    const t = d.getDate().toString().padStart(2, "0");
+    return `${y}-${m}-${t}`;
+}
+
+// ISO-Datum ("YYYY-MM-DD") als LOKALES Datum parsen.
+// new Date("2026-08-24") wuerde UTC-Mitternacht liefern und je nach
+// Zeitzone auf den Vortag kippen – deshalb die Teile selbst zerlegen.
+export function parseIsoDatum(s: string): Date {
+    const [y, m, t] = s.split("-").map((x) => parseInt(x, 10));
+    return new Date(y, (m || 1) - 1, t || 1);
 }
 
 export function montagDerWoche(d: Date): Date {
@@ -417,6 +433,8 @@ export function formatMoney(cent: number | null | undefined): string {
 
 export function formatDate(iso: string | null | undefined): string {
     if (!iso) return "—";
-    const date = new Date(iso);
+    // Reine Datumsstrings lokal parsen (sonst Zeitzonen-Verschiebung),
+    // Timestamps normal ueber Date.
+    const date = iso.length === 10 ? parseIsoDatum(iso) : new Date(iso);
     return date.toLocaleDateString("de-DE");
 }
