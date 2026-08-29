@@ -10,12 +10,12 @@ jeweils mit kurzer englischer Uebersetzung fuer internationales Saisonpersonal.
 1. https://supabase.com/dashboard/project/tbkuqvnjywgjqcgzryww/auth/templates
    oeffnen (Authentication -> Emails -> Templates).
 2. Vorlage **"Invite user"** auswaehlen:
-   - Subject: `Deine Einladung zur Esska-App`
+   - Subject: `Deine Einladung zur Esska-App / Your invitation to the Esska app`
    - Message body: kompletten Inhalt von `invite.html` einfuegen
      (den bisherigen Inhalt vorher loeschen).
    - Save.
 3. Vorlage **"Reset password"** auswaehlen:
-   - Subject: `Esska-App: Passwort zuruecksetzen`
+   - Subject: `Esska-App: Passwort zuruecksetzen / Reset your password`
    - Message body: kompletten Inhalt von `recovery.html` einfuegen.
    - Save.
 
