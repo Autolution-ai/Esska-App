@@ -41,6 +41,13 @@ export default function SalesAdminPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [historieOffen, setHistorieOffen] = useState<string | null>(null);
+    // Zeitraum-Export: Standard ist der laufende Monat
+    const [exportVon, setExportVon] = useState<string>(() => {
+        const jetzt = new Date();
+        return isoDatum(new Date(jetzt.getFullYear(), jetzt.getMonth(), 1));
+    });
+    const [exportBis, setExportBis] = useState<string>(isoDatum(new Date()));
+    const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -94,39 +101,110 @@ export default function SalesAdminPage() {
         setDatum(isoDatum(plusTage(new Date(), offset)));
     };
 
-    const csvExport = () => {
+    // Gemeinsamer CSV-Bau fuer Tages- und Zeitraum-Export.
+    // Enthaelt bewusst ALLE Eintraege inkl. Korrekturhistorie, damit die
+    // Aufzeichnung fuer die Buchhaltung vollstaendig ist. "Gueltig" markiert
+    // pro Center+Tag den jeweils neuesten (massgeblichen) Eintrag.
+    const csvErzeugen = (
+        eintraege: Array<{ datum: string; center: EsskaCenter | null; sale: EsskaDailySale; gueltig: boolean }>,
+        dateiname: string
+    ) => {
         const header = [
             "Datum", "Center", "Stadt", "Saison",
-            "Startbestand", "Einnahmen", "Ausgaben", "Endbestand", "Abschoepfung",
-            "Erfasst_am", "Korrektur", "Korrektur_Grund", "Notiz",
+            "Startbestand", "Einnahmen", "Ausgaben", "Endbestand", "Abschoepfung", "Karteneinnahmen",
+            "Gueltig", "Erfasst_am", "Korrektur", "Korrektur_Grund", "Notiz",
         ];
-        // Export enthaelt bewusst ALLE Eintraege inkl. Korrekturhistorie,
-        // damit die Aufzeichnung fuer die Buchhaltung vollstaendig ist.
-        const rows = status.flatMap((s) =>
-            [s.sale, ...s.historie].filter(Boolean).map((e) => [
-                datum,
-                s.center.name,
-                s.center.stadt,
-                s.center.saison,
-                bargeld(e!.startbestand_cent),
-                bargeld(e!.einnahmen_cent),
-                bargeld(e!.ausgaben_cent),
-                bargeld(e!.endbestand_cent),
-                bargeld(e!.abschoepfung_cent),
-                new Date(e!.erfasst_am).toLocaleString("de-DE"),
-                e!.korrigiert_eintrag_id ? "ja" : "nein",
-                (e!.korrektur_grund ?? "").replace(/"/g, '""'),
-                (e!.notiz ?? "").replace(/"/g, '""'),
-            ])
-        );
+        const rows = eintraege.map((e) => [
+            e.datum,
+            e.center?.name ?? "?",
+            e.center?.stadt ?? "?",
+            e.center?.saison ?? "?",
+            bargeld(e.sale.startbestand_cent),
+            bargeld(e.sale.einnahmen_cent),
+            bargeld(e.sale.ausgaben_cent),
+            bargeld(e.sale.endbestand_cent),
+            bargeld(e.sale.abschoepfung_cent),
+            bargeld(e.sale.karteneinnahmen_cent),
+            e.gueltig ? "ja" : "nein",
+            new Date(e.sale.erfasst_am).toLocaleString("de-DE"),
+            e.sale.korrigiert_eintrag_id ? "ja" : "nein",
+            (e.sale.korrektur_grund ?? "").replace(/"/g, '""'),
+            (e.sale.notiz ?? "").replace(/"/g, '""'),
+        ]);
         const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(";")).join("\n");
         const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Esska_Kassenbericht_${datum}.csv`;
+        a.download = dateiname;
         a.click();
         URL.revokeObjectURL(url);
+    };
+
+    const csvExport = () => {
+        const eintraege = status.flatMap((s) =>
+            [s.sale, ...s.historie].filter(Boolean).map((e, i) => ({
+                datum,
+                center: s.center,
+                sale: e!,
+                gueltig: i === 0,
+            }))
+        );
+        csvErzeugen(eintraege, `Esska_Kassenbericht_${datum}.csv`);
+    };
+
+    const zeitraumExport = async () => {
+        if (!exportVon || !exportBis) {
+            setError("Bitte Von- und Bis-Datum für den Export angeben.");
+            return;
+        }
+        if (exportVon > exportBis) {
+            setError("Das Von-Datum liegt nach dem Bis-Datum.");
+            return;
+        }
+        setExporting(true);
+        setError(null);
+        try {
+            const client = await getEsskaClient();
+            // Alle Center laden (auch abgeschlossene), damit historische
+            // Eintraege im Export ihren Center-Namen behalten.
+            const [cRes, sRes] = await Promise.all([
+                client.from("centers").select("*"),
+                client
+                    .from("daily_sales")
+                    .select("*")
+                    .gte("datum", exportVon)
+                    .lte("datum", exportBis)
+                    .order("datum", { ascending: true })
+                    .order("erfasst_am", { ascending: false }),
+            ]);
+            if (cRes.error) throw cRes.error;
+            if (sRes.error) throw sRes.error;
+            const alleCenters = (cRes.data as EsskaCenter[]) ?? [];
+            const alle = (sRes.data as EsskaDailySale[]) ?? [];
+            if (alle.length === 0) {
+                setError(`Im Zeitraum ${exportVon} bis ${exportBis} gibt es keine Einträge.`);
+                return;
+            }
+            // Pro Center+Tag ist der neueste Eintrag der gueltige
+            const neuesteJeTag = new Set<string>();
+            const eintraege = alle.map((s) => {
+                const schluessel = `${s.center_id}::${s.datum}`;
+                const gueltig = !neuesteJeTag.has(schluessel);
+                neuesteJeTag.add(schluessel);
+                return {
+                    datum: s.datum,
+                    center: alleCenters.find((c) => c.id === s.center_id) ?? null,
+                    sale: s,
+                    gueltig,
+                };
+            });
+            csvErzeugen(eintraege, `Esska_Kassenbericht_${exportVon}_bis_${exportBis}.csv`);
+        } catch (err) {
+            setError(friendlyError(err, { aktion: "Zeitraum-Export" }));
+        } finally {
+            setExporting(false);
+        }
     };
 
     const datumAlsText = (() => {
@@ -143,7 +221,7 @@ export default function SalesAdminPage() {
                 <div>
                     <h1 className="text-2xl font-bold">Umsätze</h1>
                     <p className="text-gray-500 text-sm">
-                        Übersicht des Bargeldbestands aller Center je Tag.
+                        Übersicht von Bargeldbestand und Karteneinnahmen aller Center je Tag.
                     </p>
                 </div>
                 <div className="flex gap-2">
@@ -159,7 +237,7 @@ export default function SalesAdminPage() {
                         className="inline-flex items-center px-4 py-2 border rounded-md hover:bg-secondary-100"
                     >
                         <Download className="h-4 w-4 mr-2" />
-                        CSV
+                        CSV (Tag)
                     </button>
                 </div>
             </div>
@@ -186,6 +264,49 @@ export default function SalesAdminPage() {
                             max={isoDatum(new Date())}
                             className="border rounded-md px-3 py-1.5 text-sm"
                         />
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Zeitraum-Export fuer die Buchhaltung */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Export für die Buchhaltung</CardTitle>
+                    <CardDescription>
+                        Alle Kasseneinträge eines Zeitraums als CSV – inklusive Korrekturhistorie.
+                        Öffnet sich direkt in Excel/Numbers.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Von</label>
+                            <input
+                                type="date"
+                                value={exportVon}
+                                onChange={(e) => setExportVon(e.target.value)}
+                                max={isoDatum(new Date())}
+                                className="border rounded-md px-3 py-1.5 text-sm"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs text-gray-500 mb-1">Bis</label>
+                            <input
+                                type="date"
+                                value={exportBis}
+                                onChange={(e) => setExportBis(e.target.value)}
+                                max={isoDatum(new Date())}
+                                className="border rounded-md px-3 py-1.5 text-sm"
+                            />
+                        </div>
+                        <button
+                            onClick={zeitraumExport}
+                            disabled={exporting}
+                            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                        >
+                            <Download className="h-4 w-4 mr-2" />
+                            {exporting ? "Erstellt…" : "CSV für Zeitraum"}
+                        </button>
                     </div>
                 </CardContent>
             </Card>
@@ -285,6 +406,7 @@ function CenterTable({
                         <th className="px-3 py-2 font-medium text-right">Ausgaben</th>
                         <th className="px-3 py-2 font-medium text-right">Endbestand</th>
                         <th className="px-3 py-2 font-medium text-right">Abschöpfung</th>
+                        <th className="px-3 py-2 font-medium text-right">Karte</th>
                         <th className="px-3 py-2 font-medium">Notiz</th>
                     </tr>
                 </thead>
@@ -314,6 +436,7 @@ function CenterTable({
                                 <td className="px-3 py-2 text-right">{bargeld(r.sale?.ausgaben_cent)}</td>
                                 <td className="px-3 py-2 text-right font-medium">{bargeld(r.sale?.endbestand_cent)}</td>
                                 <td className="px-3 py-2 text-right">{bargeld(r.sale?.abschoepfung_cent)}</td>
+                                <td className="px-3 py-2 text-right">{bargeld(r.sale?.karteneinnahmen_cent)}</td>
                                 <td className="px-3 py-2 text-gray-600">{r.sale?.notiz ?? ""}</td>
                             </tr>
                             {historieOffen === r.center.id &&
@@ -330,6 +453,7 @@ function CenterTable({
                                         <td className="px-3 py-1.5 text-right">{bargeld(h.ausgaben_cent)}</td>
                                         <td className="px-3 py-1.5 text-right">{bargeld(h.endbestand_cent)}</td>
                                         <td className="px-3 py-1.5 text-right">{bargeld(h.abschoepfung_cent)}</td>
+                                        <td className="px-3 py-1.5 text-right">{bargeld(h.karteneinnahmen_cent)}</td>
                                         <td className="px-3 py-1.5">{h.notiz ?? ""}</td>
                                     </tr>
                                 ))}

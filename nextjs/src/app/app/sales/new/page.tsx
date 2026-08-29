@@ -21,6 +21,7 @@ export default function SalesEntryPage() {
     const [ausgaben, setAusgaben] = useState("");
     const [endbestand, setEndbestand] = useState("");
     const [abschoepfung, setAbschoepfung] = useState("");
+    const [karteneinnahmen, setKarteneinnahmen] = useState("");
     // Bestehender Eintrag fuer Center+Datum – dann ist es eine Korrektur
     const [bestehend, setBestehend] = useState<EsskaDailySale | null>(null);
     const [korrekturGrund, setKorrekturGrund] = useState("");
@@ -124,6 +125,7 @@ export default function SalesEntryPage() {
                 ausgaben_cent: ausgaben ? euroToCent(ausgaben) : null,
                 endbestand_cent: endbestand ? euroToCent(endbestand) : null,
                 abschoepfung_cent: abschoepfung ? euroToCent(abschoepfung) : null,
+                karteneinnahmen_cent: karteneinnahmen ? euroToCent(karteneinnahmen) : null,
                 korrigiert_eintrag_id: bestehend?.id ?? null,
                 korrektur_grund: bestehend ? korrekturGrund.trim() : null,
                 erfasst_von: user.id,
@@ -141,6 +143,7 @@ export default function SalesEntryPage() {
             setAusgaben("");
             setEndbestand("");
             setAbschoepfung("");
+            setKarteneinnahmen("");
             setKorrekturGrund("");
             setBestehend(null);
         } catch (err) {
@@ -256,11 +259,11 @@ export default function SalesEntryPage() {
                     <h2 className="text-base font-semibold">Bargeld / Cash</h2>
                     <p className="text-xs text-gray-600 mt-1 mb-4">
                         Hier geht es <strong>ausschließlich um Bargeld</strong>. Kartenzahlungen werden
-                        separat abgerechnet und hier nicht eingetragen.
+                        weiter unten in einem eigenen Feld eingetragen.
                         <br />
                         <span className="italic">
-                            This section is about <strong>cash only</strong>. Card payments are handled
-                            separately and are not entered here.
+                            This section is about <strong>cash only</strong>. Card payments are entered
+                            in their own field further down.
                         </span>
                     </p>
 
@@ -358,6 +361,30 @@ export default function SalesEntryPage() {
                                 className="w-full border rounded-md px-3 py-2 text-sm"
                             />
                         </div>
+                    </div>
+                </div>
+
+                {/* Kartenzahlungen */}
+                <div className="border-t pt-5">
+                    <h2 className="text-base font-semibold">Kartenzahlungen / Card payments</h2>
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium mb-1">Karteneinnahmen (€)</label>
+                        <p className="text-xs text-gray-500 mb-1.5">
+                            Mache am Ende der Schicht den Tagesabschluss am Kartenterminal und trage
+                            die dort angezeigte Gesamtsumme der Kartenzahlungen ein.
+                            <br />
+                            <span className="italic">
+                                Run the daily closing on the card terminal at the end of your shift and
+                                enter the total card payment amount shown there.
+                            </span>
+                        </p>
+                        <input
+                            value={karteneinnahmen}
+                            onChange={(e) => setKarteneinnahmen(e.target.value)}
+                            inputMode="decimal"
+                            placeholder="z. B. 420,00"
+                            className="w-full border rounded-md px-3 py-2 text-sm"
+                        />
                     </div>
                 </div>
 

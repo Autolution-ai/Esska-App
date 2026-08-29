@@ -399,6 +399,8 @@ export interface EsskaDailySale {
     ausgaben_cent: number | null;
     endbestand_cent: number | null;
     abschoepfung_cent: number | null;
+    // Kartenumsaetze laut Tagesabschluss (Z-Bericht) des Kartenterminals
+    karteneinnahmen_cent: number | null;
     // Korrektur-Kette: verweist auf den Eintrag, der hiermit ersetzt wird
     korrigiert_eintrag_id: string | null;
     korrektur_grund: string | null;
