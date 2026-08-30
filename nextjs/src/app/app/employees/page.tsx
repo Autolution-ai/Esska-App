@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, UserPlus } from "lucide-react";
+import { Search, Send, UserPlus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaProfile } from "@/lib/esska/types";
@@ -30,6 +30,12 @@ export default function EmployeesPage() {
     const [filter, setFilter] = useState("");
     const [centerFilter, setCenterFilter] = useState<string>("alle");
     const [gruppierung, setGruppierung] = useState<"keine" | "center" | "stadt">("keine");
+    // Auswahl fuer den Sammel-Versand an die Buchhaltung
+    const [auswahl, setAuswahl] = useState<Set<string>>(new Set());
+    const [versandDialog, setVersandDialog] = useState(false);
+    const [versandEmpfaenger, setVersandEmpfaenger] = useState<string | null>(null);
+    const [versandLaeuft, setVersandLaeuft] = useState(false);
+    const [versandErfolg, setVersandErfolg] = useState<string | null>(null);
 
     // Diese Seite ist eine reine Admin-Ansicht. Mitarbeiter wuerden durch RLS
     // ohnehin nur sich selbst sehen – wir leiten sie gar nicht erst hierher.
@@ -137,6 +143,66 @@ export default function EmployeesPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gruppierung, sichtbar, assignments, centers]);
 
+    const toggleAuswahl = (id: string) => {
+        setAuswahl((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleAlle = (personen: EsskaProfile[]) => {
+        setAuswahl((prev) => {
+            const next = new Set(prev);
+            const alleDrin = personen.every((p) => next.has(p.id));
+            for (const p of personen) {
+                if (alleDrin) next.delete(p.id);
+                else next.add(p.id);
+            }
+            return next;
+        });
+    };
+
+    const versandOeffnen = async () => {
+        setVersandErfolg(null);
+        setError(null);
+        setVersandDialog(true);
+        try {
+            const res = await fetch("/api/employees/send-to-accounting");
+            const json = await res.json();
+            setVersandEmpfaenger(json.empfaenger ?? null);
+        } catch {
+            setVersandEmpfaenger(null);
+        }
+    };
+
+    const versandAbschicken = async () => {
+        setVersandLaeuft(true);
+        setError(null);
+        try {
+            const res = await fetch("/api/employees/send-to-accounting", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ profileIds: [...auswahl] }),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error ?? "Versand fehlgeschlagen.");
+            setVersandErfolg(
+                `Stammdaten von ${json.verschickt} Mitarbeiter${json.verschickt === 1 ? "" : "n"} an ${json.empfaenger} gesendet: ${(json.namen as string[]).join(", ")}`
+            );
+            setVersandDialog(false);
+            setAuswahl(new Set());
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Versand fehlgeschlagen.");
+            setVersandDialog(false);
+        } finally {
+            setVersandLaeuft(false);
+        }
+    };
+
+    const ausgewaehltePersonen = profiles.filter((p) => auswahl.has(p.id));
+
     if (!globalLoading && role === "mitarbeiter") return null;
 
     return (
@@ -146,14 +212,68 @@ export default function EmployeesPage() {
                     <h1 className="text-2xl font-bold">Mitarbeiter</h1>
                     <p className="text-gray-500">Eingeladene und registrierte Personen verwalten.</p>
                 </div>
-                <Link
-                    href="/app/employees/invite"
-                    className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-                >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Mitarbeiter einladen
-                </Link>
+                <div className="flex gap-2 flex-wrap">
+                    <Link
+                        href="/app/employees/invite"
+                        className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                    >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Mitarbeiter einladen
+                    </Link>
+                    <button
+                        onClick={versandOeffnen}
+                        disabled={auswahl.size === 0}
+                        className="inline-flex items-center px-4 py-2 border rounded-md hover:bg-secondary-100 disabled:opacity-50"
+                        title={auswahl.size === 0 ? "Zuerst Mitarbeiter über die Kästchen auswählen" : undefined}
+                    >
+                        <Send className="h-4 w-4 mr-2" />
+                        Stammdaten an Buchhaltung senden ({auswahl.size})
+                    </button>
+                </div>
             </div>
+
+            {versandErfolg && (
+                <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{versandErfolg}</div>
+            )}
+
+            {versandDialog && (
+                <div className="p-4 bg-amber-50 border border-amber-300 rounded-md text-sm space-y-3">
+                    <p className="font-medium text-amber-900">
+                        Personalstammdaten wirklich an die Buchhaltung senden?
+                    </p>
+                    <p className="text-amber-800">
+                        Empfänger: <strong>{versandEmpfaenger ?? "wird geladen…"}</strong>
+                        <br />
+                        Anhänge: je ein Stammdaten-PDF pro Person plus eine Übersichts-CSV.
+                    </p>
+                    <ul className="list-disc pl-5 text-amber-900">
+                        {ausgewaehltePersonen.map((p) => (
+                            <li key={p.id}>
+                                {`${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "?")}
+                                {!p.onboarding_abgeschlossen && (
+                                    <span className="text-red-700"> — Achtung: Onboarding offen, Stammdaten vermutlich unvollständig</span>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={versandAbschicken}
+                            disabled={versandLaeuft}
+                            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                        >
+                            {versandLaeuft ? "Wird gesendet…" : "Ja, jetzt senden"}
+                        </button>
+                        <button
+                            onClick={() => setVersandDialog(false)}
+                            disabled={versandLaeuft}
+                            className="px-4 py-2 border rounded-md hover:bg-secondary-100"
+                        >
+                            Abbrechen
+                        </button>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-wrap items-end gap-3">
                 <div className="relative w-full max-w-xs">
@@ -222,6 +342,9 @@ export default function EmployeesPage() {
                             personen={sichtbar}
                             centerVon={centerVon}
                             verfuegbarkeit={verfuegbarkeit}
+                            auswahl={auswahl}
+                            toggleAuswahl={toggleAuswahl}
+                            toggleAlle={toggleAlle}
                         />
                     )}
                     {sichtbar.length > 0 && gruppen !== null && (
@@ -236,6 +359,9 @@ export default function EmployeesPage() {
                                         personen={personen}
                                         centerVon={centerVon}
                                         verfuegbarkeit={verfuegbarkeit}
+                                        auswahl={auswahl}
+                                        toggleAuswahl={toggleAuswahl}
+                                        toggleAlle={toggleAlle}
                                     />
                                 </div>
                             ))}
@@ -251,16 +377,31 @@ function MitarbeiterTabelle({
     personen,
     centerVon,
     verfuegbarkeit,
+    auswahl,
+    toggleAuswahl,
+    toggleAlle,
 }: {
     personen: EsskaProfile[];
     centerVon: (id: string) => EsskaCenter[];
     verfuegbarkeit: Record<string, boolean[]>;
+    auswahl: Set<string>;
+    toggleAuswahl: (id: string) => void;
+    toggleAlle: (personen: EsskaProfile[]) => void;
 }) {
+    const alleGewaehlt = personen.length > 0 && personen.every((p) => auswahl.has(p.id));
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-left">
                     <tr>
+                        <th className="px-3 py-2">
+                            <input
+                                type="checkbox"
+                                checked={alleGewaehlt}
+                                onChange={() => toggleAlle(personen)}
+                                title="Alle in dieser Liste auswählen"
+                            />
+                        </th>
                         <Th>Name</Th>
                         <Th>E-Mail</Th>
                         <Th>Center</Th>
@@ -276,6 +417,13 @@ function MitarbeiterTabelle({
                         const wochen = verfuegbarkeit[p.id] ?? [false, false, false];
                         return (
                             <tr key={p.id} className="border-t hover:bg-gray-50">
+                                <td className="px-3 py-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={auswahl.has(p.id)}
+                                        onChange={() => toggleAuswahl(p.id)}
+                                    />
+                                </td>
                                 <Td>
                                     <Link href={`/app/employees/${p.id}`} className="text-primary-600 hover:underline">
                                         {p.vorname || p.nachname ? `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() : "—"}
