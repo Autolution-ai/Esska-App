@@ -1,7 +1,13 @@
 // Esska-spezifische Domain-Typen.
 // Halten Datenmodell (Postgres) und TypeScript synchron.
 
-export type EsskaRole = "admin" | "mitarbeiter";
+export type EsskaRole = "admin" | "regionalmanager" | "mitarbeiter";
+
+export const ROLE_LABELS: Record<EsskaRole, string> = {
+    admin: "Admin",
+    regionalmanager: "Regionalmanager",
+    mitarbeiter: "Mitarbeiter",
+};
 
 export type EsskaFamilienstand = "ledig" | "verheiratet" | "geschieden";
 
@@ -31,11 +37,27 @@ export const AKTUELLER_STATUS_LABELS: Record<EsskaAktuellerStatus, string> = {
 
 export type EsskaKvStatus = "gesetzlich" | "privat";
 
+// O-1: Untergliederung, wenn aktueller_status = 'berufstaetig'
+export type EsskaBerufstaetigArt = "minijob" | "teilzeit" | "vollzeit";
+
+export const BERUFSTAETIG_ART_LABELS: Record<EsskaBerufstaetigArt, string> = {
+    minijob: "Minijob",
+    teilzeit: "Teilzeit",
+    vollzeit: "Vollzeit",
+};
+
 export type EsskaSteuerklasse = "I" | "II" | "III" | "IV" | "V" | "VI";
 
 export type EsskaKonfession = "evangelisch" | "katholisch" | "keine";
 
-export type EsskaCenterStatus = "geplant" | "aktiv" | "abgeschlossen";
+export type EsskaCenterStatus = "in_absprache" | "geplant" | "aktiv" | "abgeschlossen";
+
+export const CENTER_STATUS_LABELS: Record<EsskaCenterStatus, string> = {
+    in_absprache: "In Absprache",
+    geplant: "Geplant",
+    aktiv: "Aktiv",
+    abgeschlossen: "Beendet",
+};
 
 export type EsskaCenterKategorie = "A" | "B" | "C";
 
@@ -72,6 +94,10 @@ export interface EsskaProfile {
     notfall_name: string | null;
     notfall_beziehung: string | null;
     notfall_telefon: string | null;
+    // Struktur-Update 31.08.: O-9, O-1, O-16
+    geburtsland: string | null;
+    berufstaetig_art: EsskaBerufstaetigArt | null;
+    sozialleistungen_bezug: boolean | null;
     stammdaten_bestaetigt_am: string | null;
     stammdaten_bestaetigt_ip: string | null;
     onboarding_abgeschlossen: boolean;
@@ -95,10 +121,110 @@ export interface EsskaCenter {
     flaeche_qm: number | null;
     mietdauer_tage: number | null;
     miete_eur_cent: number;
+    // S-2: zustaendiger Regionalmanager (profiles.id) oder null
+    manager_id: string | null;
     status: EsskaCenterStatus;
     notiz: string | null;
     created_at: string;
     updated_at: string;
+}
+
+// S-4: Oeffnungstage/-zeiten je Center, ein Datensatz je Wochentag.
+// wochentag: 0 = Montag ... 6 = Sonntag (wie im Verfuegbarkeitsraster)
+export interface EsskaCenterOpeningHour {
+    id: string;
+    center_id: string;
+    wochentag: number;
+    geoeffnet: boolean;
+    oeffnet: string | null;
+    schliesst: string | null;
+}
+
+export const WOCHENTAG_LABELS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"] as const;
+
+// S-5: Zeitraeume je Center als Historie
+export type EsskaZeitraumTyp = "miete" | "betrieb" | "verlaengerung";
+
+export const ZEITRAUM_TYP_LABELS: Record<EsskaZeitraumTyp, string> = {
+    miete: "Mietzeitraum (Vertrag)",
+    betrieb: "Tatsächlicher Betrieb",
+    verlaengerung: "Verlängerung",
+};
+
+export interface EsskaCenterZeitraum {
+    id: string;
+    center_id: string;
+    typ: EsskaZeitraumTyp;
+    von: string;
+    bis: string | null;
+    notiz: string | null;
+    created_at: string;
+}
+
+// C-5: Center-Status automatisch aus den Zeitraeumen ableiten.
+// Nur 'in_absprache' bleibt eine manuelle Entscheidung (es gibt noch keine
+// Vertragsdaten). Sonst gilt: laeuft heute ein Miet- oder
+// Verlaengerungszeitraum -> aktiv; liegt einer in der Zukunft -> geplant;
+// sonst -> abgeschlossen ("Beendet").
+export function berechneCenterStatus(
+    gespeicherterStatus: EsskaCenterStatus,
+    zeitraeume: EsskaCenterZeitraum[],
+    heute: string = isoDatum(new Date())
+): EsskaCenterStatus {
+    if (gespeicherterStatus === "in_absprache") return "in_absprache";
+    const relevant = zeitraeume.filter((z) => z.typ === "miete" || z.typ === "verlaengerung");
+    if (relevant.length === 0) return gespeicherterStatus;
+    if (relevant.some((z) => z.von <= heute && (!z.bis || z.bis >= heute))) return "aktiv";
+    if (relevant.some((z) => z.von > heute)) return "geplant";
+    return "abgeschlossen";
+}
+
+// S-7: Karteneinnahmen, erfasst durch den Admin (ein Betrag je Center+Tag)
+export interface EsskaCardRevenue {
+    id: string;
+    center_id: string;
+    datum: string;
+    betrag_cent: number;
+    notiz: string | null;
+    erfasst_von: string | null;
+    erfasst_am: string;
+    updated_at: string;
+}
+
+// S-8: Bestellungen
+export interface EsskaBestellArtikel {
+    id: string;
+    name: string;
+    kategorie: string | null;
+    farben: string[];
+    aktiv: boolean;
+    sortierung: number;
+}
+
+export type EsskaBestellStatus = "offen" | "weitergeleitet" | "erledigt";
+
+export const BESTELL_STATUS_LABELS: Record<EsskaBestellStatus, string> = {
+    offen: "Offen",
+    weitergeleitet: "Weitergeleitet",
+    erledigt: "Erledigt",
+};
+
+export interface EsskaBestellung {
+    id: string;
+    center_id: string;
+    besteller_id: string;
+    status: EsskaBestellStatus;
+    notiz: string | null;
+    erstellt_am: string;
+    weitergeleitet_am: string | null;
+}
+
+export interface EsskaBestellungPosition {
+    id: string;
+    bestellung_id: string;
+    artikel_id: string;
+    farbe: string | null;
+    menge: number;
 }
 
 export interface EsskaCenterAssignment {

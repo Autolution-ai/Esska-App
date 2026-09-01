@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 
 const statusFarben: Record<EsskaCenter["status"], string> = {
+    in_absprache: "bg-amber-100 text-amber-800",
     geplant: "bg-gray-100 text-gray-800",
     aktiv: "bg-green-100 text-green-800",
     abgeschlossen: "bg-blue-100 text-blue-800",
