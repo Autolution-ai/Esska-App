@@ -24,13 +24,15 @@ export type EsskaAktuellerStatus =
     | "schueler"
     | "student"
     | "berufstaetig"
+    | "selbststaendig"
     | "rentner"
     | "sonstiges";
 
 export const AKTUELLER_STATUS_LABELS: Record<EsskaAktuellerStatus, string> = {
     schueler: "Schüler/in",
     student: "Student/in",
-    berufstaetig: "Berufstätig (Arbeitnehmer/in oder Selbstständig)",
+    berufstaetig: "Berufstätig (angestellt)",
+    selbststaendig: "Selbstständig",
     rentner: "Rentner/in",
     sonstiges: "Sonstiges",
 };
@@ -98,6 +100,7 @@ export interface EsskaProfile {
     geburtsland: string | null;
     berufstaetig_art: EsskaBerufstaetigArt | null;
     sozialleistungen_bezug: boolean | null;
+    eu_staatsbuergerschaft: boolean | null;
     stammdaten_bestaetigt_am: string | null;
     stammdaten_bestaetigt_ip: string | null;
     onboarding_abgeschlossen: boolean;
@@ -348,6 +351,8 @@ export type EsskaDokumentTyp =
     | "ausweis_rueckseite"
     | "aufenthaltsgenehmigung"
     | "immatrikulation"
+    | "schulbescheinigung"
+    | "rentenbescheid"
     | "sonstiges";
 
 export const DOKUMENT_TYP_LABELS: Record<EsskaDokumentTyp, string> = {
@@ -355,6 +360,8 @@ export const DOKUMENT_TYP_LABELS: Record<EsskaDokumentTyp, string> = {
     ausweis_rueckseite: "Ausweis – Rückseite",
     aufenthaltsgenehmigung: "Aufenthaltsgenehmigung",
     immatrikulation: "Immatrikulationsbescheinigung",
+    schulbescheinigung: "Schülerausweis / Schulbescheinigung",
+    rentenbescheid: "Rentenbescheinigung / Rentenbescheid",
     sonstiges: "Sonstiges Dokument",
 };
 
@@ -565,4 +572,52 @@ export function formatDate(iso: string | null | undefined): string {
     // Timestamps normal ueber Date.
     const date = iso.length === 10 ? parseIsoDatum(iso) : new Date(iso);
     return date.toLocaleDateString("de-DE");
+}
+
+// ---------------------------------------------------------------------------
+// Validierung Steuer-ID und Rentenversicherungsnummer (O-7 / O-8)
+// ---------------------------------------------------------------------------
+
+/** Entfernt Leerzeichen/Trennzeichen und prueft: genau 11 Ziffern. */
+export function validiereSteuerId(wert: string): { ok: boolean; normalisiert: string; fehler?: string } {
+    const normalisiert = wert.replace(/[\s/.-]/g, "");
+    if (!/^\d{11}$/.test(normalisiert)) {
+        return {
+            ok: false,
+            normalisiert,
+            fehler: "Die Steuer-ID besteht aus genau 11 Ziffern (steht z. B. auf dem Schreiben vom Bundeszentralamt für Steuern oder auf der Lohnsteuerbescheinigung).",
+        };
+    }
+    return { ok: true, normalisiert };
+}
+
+/**
+ * Rentenversicherungsnummer: 8 Ziffern + 1 Buchstabe + 3 Ziffern
+ * (insgesamt 11 Ziffern + 1 Buchstabe, z. B. 65 170839 W 001).
+ * Die Ziffern 3-8 enthalten das Geburtsdatum (TTMMJJ), der Buchstabe ist
+ * der Anfangsbuchstabe des Geburtsnamens.
+ */
+export function validiereRvNummer(
+    wert: string,
+    geburtsdatum?: string | null
+): { ok: boolean; normalisiert: string; fehler?: string; warnung?: string } {
+    const normalisiert = wert.replace(/[\s/.-]/g, "").toUpperCase();
+    if (!/^\d{8}[A-Z]\d{3}$/.test(normalisiert)) {
+        return {
+            ok: false,
+            normalisiert,
+            fehler: "Die Rentenversicherungsnummer hat das Format: 8 Ziffern, 1 Buchstabe, 3 Ziffern (z. B. 65170839W001). Sie steht auf dem Sozialversicherungsausweis.",
+        };
+    }
+    let warnung: string | undefined;
+    if (geburtsdatum && /^\d{4}-\d{2}-\d{2}$/.test(geburtsdatum)) {
+        const tt = geburtsdatum.slice(8, 10);
+        const mm = geburtsdatum.slice(5, 7);
+        const jj = geburtsdatum.slice(2, 4);
+        if (normalisiert.slice(2, 8) !== `${tt}${mm}${jj}`) {
+            warnung =
+                "Hinweis: Die Ziffern 3–8 der Nummer sollten deinem Geburtsdatum entsprechen (TTMMJJ). Bitte noch einmal mit dem Sozialversicherungsausweis abgleichen.";
+        }
+    }
+    return { ok: true, normalisiert, warnung };
 }

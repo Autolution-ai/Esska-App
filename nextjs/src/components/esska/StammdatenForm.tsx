@@ -12,12 +12,31 @@ import type {
     EsskaProfile,
     EsskaSteuerklasse,
 } from "@/lib/esska/types";
-import { AKTUELLER_STATUS_LABELS, centToEuro, euroToCent } from "@/lib/esska/types";
+import {
+    AKTUELLER_STATUS_LABELS,
+    BERUFSTAETIG_ART_LABELS,
+    centToEuro,
+    euroToCent,
+    validiereRvNummer,
+    validiereSteuerId,
+} from "@/lib/esska/types";
+import type { EsskaBerufstaetigArt } from "@/lib/esska/types";
 
 // Bekannteste deutsche Krankenkassen, alphabetisch sortiert.
 // "Andere…" ermoeglicht Freitext fuer alle nicht gelisteten Kassen.
 const KRANKENKASSEN_GESETZLICH = [
-    "AOK",
+    // O-6: Es gibt keine bundesweite "AOK" - die 11 regionalen AOKs einzeln
+    "AOK Baden-Württemberg",
+    "AOK Bayern",
+    "AOK Bremen/Bremerhaven",
+    "AOK Hessen",
+    "AOK Niedersachsen",
+    "AOK Nordost",
+    "AOK NordWest",
+    "AOK PLUS (Sachsen und Thüringen)",
+    "AOK Rheinland/Hamburg",
+    "AOK Rheinland-Pfalz/Saarland",
+    "AOK Sachsen-Anhalt",
     "Audi BKK",
     "Barmer",
     "BIG direkt gesund",
@@ -132,8 +151,33 @@ export default function StammdatenForm({
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setSaving(true);
         setError(null);
+
+        // O-7: Steuer-ID = genau 11 Ziffern
+        let steuerIdWert: string | null = form.steuer_id?.trim() || null;
+        if (steuerIdWert) {
+            const pruefung = validiereSteuerId(steuerIdWert);
+            if (!pruefung.ok) {
+                setError(pruefung.fehler ?? "Steuer-ID ungültig.");
+                return;
+            }
+            steuerIdWert = pruefung.normalisiert;
+        }
+
+        // O-8: RV-Nummer = 8 Ziffern + Buchstabe + 3 Ziffern
+        let rvWert: string | null = form.rentenversicherungsnummer?.trim() || null;
+        let rvWarnung: string | null = null;
+        if (rvWert) {
+            const pruefung = validiereRvNummer(rvWert, form.geburtsdatum);
+            if (!pruefung.ok) {
+                setError(pruefung.fehler ?? "Rentenversicherungsnummer ungültig.");
+                return;
+            }
+            rvWert = pruefung.normalisiert;
+            rvWarnung = pruefung.warnung ?? null;
+        }
+
+        setSaving(true);
         try {
             const client = await getEsskaClient();
             const payload = {
@@ -141,7 +185,9 @@ export default function StammdatenForm({
                 nachname: form.nachname || null,
                 geburtsdatum: form.geburtsdatum || null,
                 geburtsort: form.geburtsort || null,
+                geburtsland: form.geburtsland || null,
                 staatsangehoerigkeit: form.staatsangehoerigkeit || null,
+                eu_staatsbuergerschaft: form.eu_staatsbuergerschaft,
                 familienstand: form.familienstand,
                 anschrift_strasse: form.anschrift_strasse || null,
                 anschrift_plz: form.anschrift_plz || null,
@@ -153,6 +199,9 @@ export default function StammdatenForm({
                     form.aktueller_status === "sonstiges"
                         ? form.aktueller_status_sonstiges?.trim() || null
                         : null,
+                berufstaetig_art:
+                    form.aktueller_status === "berufstaetig" ? form.berufstaetig_art : null,
+                sozialleistungen_bezug: form.sozialleistungen_bezug,
                 stunden_pro_woche: form.stunden_pro_woche_str
                     ? parseFloat(form.stunden_pro_woche_str.replace(",", "."))
                     : null,
@@ -161,11 +210,11 @@ export default function StammdatenForm({
                     : null,
                 verdienst_monat_eur_cent: form.verdienst_euro ? euroToCent(form.verdienst_euro) : null,
                 weitere_beschaeftigungen: form.weitere_beschaeftigungen || null,
-                rentenversicherungsnummer: form.rentenversicherungsnummer || null,
+                rentenversicherungsnummer: rvWert,
                 krankenversicherung_name: form.krankenversicherung_name || null,
                 krankenversicherung_status: form.krankenversicherung_status,
                 rentenversicherung_befreit: form.rentenversicherung_befreit,
-                steuer_id: form.steuer_id || null,
+                steuer_id: steuerIdWert,
                 steuerklasse: form.steuerklasse,
                 kinderfreibetrag: form.kinderfreibetrag_str
                     ? parseFloat(form.kinderfreibetrag_str.replace(",", "."))
@@ -188,6 +237,7 @@ export default function StammdatenForm({
                 .select("*")
                 .single();
             if (e) throw e;
+            if (rvWarnung) setError(rvWarnung);
             onSaved(data as EsskaProfile);
             setForm((prev) => ({ ...prev, bestaetigt: false }));
         } catch (err) {
@@ -215,8 +265,27 @@ export default function StammdatenForm({
                     <Field label="Geburtsort" required>
                         <input value={form.geburtsort ?? ""} onChange={(e) => update("geburtsort", e.target.value)} required className={inputCls} />
                     </Field>
+                    <Field label="Geburtsland" required>
+                        <input value={form.geburtsland ?? ""} onChange={(e) => update("geburtsland", e.target.value)} required placeholder="z. B. Deutschland" className={inputCls} />
+                    </Field>
                     <Field label="Staatsangehörigkeit" required>
                         <input value={form.staatsangehoerigkeit ?? ""} onChange={(e) => update("staatsangehoerigkeit", e.target.value)} required className={inputCls} />
+                    </Field>
+                    <Field
+                        label="Staatsbürgerschaft eines EU-Landes?"
+                        required
+                        hint="Bei Nein wird im Dokumente-Schritt zusätzlich der Aufenthaltstitel benötigt."
+                    >
+                        <select
+                            value={form.eu_staatsbuergerschaft === null ? "" : form.eu_staatsbuergerschaft ? "ja" : "nein"}
+                            onChange={(e) => update("eu_staatsbuergerschaft", e.target.value === "" ? null : e.target.value === "ja")}
+                            required
+                            className={inputCls}
+                        >
+                            <option value="">– wählen –</option>
+                            <option value="ja">Ja (inkl. Deutschland)</option>
+                            <option value="nein">Nein</option>
+                        </select>
                     </Field>
                     <Field label="Familienstand" required>
                         <select value={form.familienstand ?? ""} onChange={(e) => update("familienstand", (e.target.value || null) as EsskaFamilienstand | null)} required className={inputCls}>
@@ -270,6 +339,38 @@ export default function StammdatenForm({
                                     {AKTUELLER_STATUS_LABELS[s]}
                                 </option>
                             ))}
+                        </select>
+                    </Field>
+                    {form.aktueller_status === "berufstaetig" && (
+                        <Field label="In welchem Umfang?" required hint="Minijob, Teilzeit oder Vollzeit bei deinem anderen Arbeitgeber.">
+                            <select
+                                value={form.berufstaetig_art ?? ""}
+                                onChange={(e) => update("berufstaetig_art", (e.target.value || null) as EsskaBerufstaetigArt | null)}
+                                required
+                                className={inputCls}
+                            >
+                                <option value="">– wählen –</option>
+                                {(Object.keys(BERUFSTAETIG_ART_LABELS) as EsskaBerufstaetigArt[]).map((a) => (
+                                    <option key={a} value={a}>{BERUFSTAETIG_ART_LABELS[a]}</option>
+                                ))}
+                            </select>
+                        </Field>
+                    )}
+                    <Field
+                        label="Beziehst du selbst Sozialleistungen?"
+                        required
+                        full
+                        hint="z. B. Bürgergeld oder Arbeitslosengeld. Wichtig für die richtige Anmeldung deiner Beschäftigung – die Angabe muss bei einer Prüfung nachweisbar sein."
+                    >
+                        <select
+                            value={form.sozialleistungen_bezug === null ? "" : form.sozialleistungen_bezug ? "ja" : "nein"}
+                            onChange={(e) => update("sozialleistungen_bezug", e.target.value === "" ? null : e.target.value === "ja")}
+                            required
+                            className={inputCls}
+                        >
+                            <option value="">– wählen –</option>
+                            <option value="nein">Nein</option>
+                            <option value="ja">Ja</option>
                         </select>
                     </Field>
                     {form.aktueller_status === "sonstiges" && (

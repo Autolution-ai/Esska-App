@@ -91,20 +91,35 @@ export default function OnboardingPage() {
         return <div className="p-6 text-red-600 text-sm">{error ?? "Profil nicht gefunden."}</div>;
     }
 
-    // KuBe-Schritt: nur wenn Admin den User als 'kurzfristig' eingestuft hat
-    const brauchtKube = profile.arbeitszeit_modell === "kurzfristig";
+    // KuBe-Schritt: nur wenn Admin den User als 'kurzfristig' eingestuft hat.
+    // O-16: Bei Sozialleistungsbezug ist die kurzfristige Beschaeftigung
+    // ausgeschlossen - das Formular entfaellt, der Fall wird angezeigt und
+    // muss vom Admin geklaert werden.
+    const sozialleistungsAusschluss =
+        profile.arbeitszeit_modell === "kurzfristig" && profile.sozialleistungen_bezug === true;
+    const brauchtKube = profile.arbeitszeit_modell === "kurzfristig" && !sozialleistungsAusschluss;
 
     // Ausweis Vorder- und Rueckseite: Pflicht bei allen
     const ausweisDa =
         docs.some((d) => d.dokument_typ === "ausweis_vorderseite") &&
         docs.some((d) => d.dokument_typ === "ausweis_rueckseite");
 
-    // Student: Immatrikulationsbescheinigung Pflicht
-    let zusaetzlichePflicht: { typ: EsskaDokumentTyp; label: string } | null = null;
+    // Pflicht-Nachweise je Status (O-2/O-3/O-4) und bei Nicht-EU-
+    // Staatsbuergerschaft zusaetzlich der Aufenthaltstitel (O-10)
+    const zusaetzlichePflichten: { typ: EsskaDokumentTyp; label: string }[] = [];
     if (profile.aktueller_status === "student") {
-        zusaetzlichePflicht = { typ: "immatrikulation", label: "Immatrikulationsbescheinigung" };
+        zusaetzlichePflichten.push({ typ: "immatrikulation", label: "Immatrikulationsbescheinigung" });
     }
-    const zusatzDa = !zusaetzlichePflicht || docs.some((d) => d.dokument_typ === zusaetzlichePflicht!.typ);
+    if (profile.aktueller_status === "schueler") {
+        zusaetzlichePflichten.push({ typ: "schulbescheinigung", label: "Schülerausweis / Schulbescheinigung" });
+    }
+    if (profile.aktueller_status === "rentner") {
+        zusaetzlichePflichten.push({ typ: "rentenbescheid", label: "Rentenbescheinigung / Rentenbescheid" });
+    }
+    if (profile.eu_staatsbuergerschaft === false) {
+        zusaetzlichePflichten.push({ typ: "aufenthaltsgenehmigung", label: "Aufenthaltstitel" });
+    }
+    const zusatzDa = zusaetzlichePflichten.every((z) => docs.some((d) => d.dokument_typ === z.typ));
     const dokumentePflichtErfuellt = ausweisDa && zusatzDa;
 
     const rvBefreiungErledigt = !!pension?.unterzeichnet_am;
@@ -168,6 +183,18 @@ export default function OnboardingPage() {
                 </p>
             </div>
 
+            {sozialleistungsAusschluss && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+                    <p className="font-medium mb-1">Wichtiger Hinweis zu deiner Beschäftigung</p>
+                    <p>
+                        Du hast angegeben, dass du Sozialleistungen beziehst. Eine Anmeldung als
+                        kurzfristige Beschäftigung ist dann nicht möglich – die KuBe-Erklärung
+                        entfällt für dich. Deine Ansprechperson meldet sich wegen der passenden
+                        Anmeldeform bei dir. Alle übrigen Schritte kannst du normal abschließen.
+                    </p>
+                </div>
+            )}
+
             {/* Fortschritt */}
             <div className="flex flex-wrap gap-2">
                 {schritte.map((s) => (
@@ -201,6 +228,9 @@ export default function OnboardingPage() {
                 <PensionExemptionForm
                     profileId={profile.id}
                     rentenversicherungsnummer={profile.rentenversicherungsnummer}
+                    vorname={profile.vorname}
+                    nachname={profile.nachname}
+                    geburtsdatum={profile.geburtsdatum}
                     existing={pension}
                     onSaved={(e) => {
                         setPension(e);
@@ -227,18 +257,18 @@ export default function OnboardingPage() {
                         <h3 className="text-base font-semibold mb-1">Ausweis & Nachweise hochladen</h3>
                         <p className="text-sm text-gray-600 mb-3">
                             Pflicht: Ausweis Vorder- und Rückseite (gut lesbar).
-                            {zusaetzlichePflicht && (
-                                <> Zusätzlich: <strong>{zusaetzlichePflicht.label}</strong>.</>
+                            {zusaetzlichePflichten.length > 0 && (
+                                <> Zusätzlich: <strong>{zusaetzlichePflichten.map((z) => z.label).join(", ")}</strong>.</>
                             )}
                             {" "}Optional kannst du weitere Bescheinigungen hochladen.
                         </p>
                         <DokumenteUpload
                             profileId={profile.id}
-                            pflicht={
-                                zusaetzlichePflicht
-                                    ? ["ausweis_vorderseite", "ausweis_rueckseite", zusaetzlichePflicht.typ]
-                                    : ["ausweis_vorderseite", "ausweis_rueckseite"]
-                            }
+                            pflicht={[
+                                "ausweis_vorderseite",
+                                "ausweis_rueckseite",
+                                ...zusaetzlichePflichten.map((z) => z.typ),
+                            ]}
                             onChanged={setDocs}
                         />
                     </div>

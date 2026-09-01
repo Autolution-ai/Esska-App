@@ -8,8 +8,9 @@ import type { EsskaDokumentTyp, EsskaEmployeeDocument } from "@/lib/esska/types"
 import { DOKUMENT_TYP_LABELS } from "@/lib/esska/types";
 
 const BUCKET = "employee-documents";
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
-const ERLAUBTE_TYPEN = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
+const MAX_BYTES = 20 * 1024 * 1024; // 20 MB (Handyfotos koennen gross sein)
+const ERLAUBTE_TYPEN = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
+const ERLAUBTE_ENDUNGEN = ["jpg", "jpeg", "png", "webp", "heic", "heif", "pdf"];
 
 type Props = {
     profileId: string;
@@ -24,6 +25,8 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
     const [uploadTyp, setUploadTyp] = useState<EsskaDokumentTyp>("ausweis_vorderseite");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // O-12: Erfolg dauerhaft anzeigen statt als fluechtiges Pop-up
+    const [erfolg, setErfolg] = useState<string | null>(null);
 
     const reload = async () => {
         try {
@@ -51,12 +54,25 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
 
     const handleFile = async (file: File) => {
         setError(null);
+        setErfolg(null);
         if (file.size > MAX_BYTES) {
-            setError("Datei zu groß (max. 10 MB).");
+            setError(
+                `Die Datei ist zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB, erlaubt sind 20 MB). ` +
+                "Tipp: In den Kamera-Einstellungen eine kleinere Auflösung wählen oder das Foto als Screenshot senden."
+            );
             return;
         }
-        if (!ERLAUBTE_TYPEN.includes(file.type)) {
-            setError("Nur Bilder (JPG, PNG, WebP, HEIC) oder PDF erlaubt.");
+        // Manche Handy-Browser liefern keinen Dateityp - dann entscheidet
+        // die Dateiendung (O-11: sporadisches "Upload fehlgeschlagen")
+        const endung = (file.name.split(".").pop() ?? "").toLowerCase();
+        const typOk = file.type
+            ? ERLAUBTE_TYPEN.includes(file.type)
+            : ERLAUBTE_ENDUNGEN.includes(endung);
+        if (!typOk) {
+            setError(
+                `Dieses Dateiformat (${file.type || "." + endung}) wird nicht unterstützt. ` +
+                "Erlaubt: Fotos (JPG, PNG, WebP, HEIC) oder PDF."
+            );
             return;
         }
         setBusy(true);
@@ -80,6 +96,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
             if (insErr) throw insErr;
 
             await reload();
+            setErfolg(`${DOKUMENT_TYP_LABELS[uploadTyp]} erfolgreich hochgeladen.`);
         } catch (err) {
             setError(friendlyError(err, { aktion: "Upload fehlgeschlagen" }));
         } finally {
@@ -120,6 +137,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
     return (
         <div className="space-y-4">
             {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
+            {erfolg && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">✓ {erfolg}</div>}
 
             {fehlendePflicht.length > 0 && (
                 <div className="p-3 bg-amber-50 text-amber-800 rounded-md text-sm">

@@ -4,11 +4,16 @@ import React, { useState } from "react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaPensionExemption } from "@/lib/esska/types";
+import { validiereRvNummer } from "@/lib/esska/types";
 
 type Props = {
     profileId: string;
     /** Aus dem Profil vorgegebene RV-Nummer (Pflichtfeld in Stammdaten). */
     rentenversicherungsnummer: string | null;
+    /** O-14: Name aus dem Account vorbefuellen und im Antrag anzeigen. */
+    vorname?: string | null;
+    nachname?: string | null;
+    geburtsdatum?: string | null;
     existing?: EsskaPensionExemption | null;
     onSaved: (e: EsskaPensionExemption) => void;
 };
@@ -16,6 +21,9 @@ type Props = {
 export default function PensionExemptionForm({
     profileId,
     rentenversicherungsnummer,
+    vorname,
+    nachname,
+    geburtsdatum,
     existing,
     onSaved,
 }: Props) {
@@ -33,6 +41,12 @@ export default function PensionExemptionForm({
             setError("Bitte Rentenversicherungsnummer angeben.");
             return;
         }
+        // O-8: Formatpruefung wie in den Stammdaten
+        const pruefung = validiereRvNummer(rvNr, geburtsdatum);
+        if (!pruefung.ok) {
+            setError(pruefung.fehler ?? "Rentenversicherungsnummer ungültig.");
+            return;
+        }
         if (!merkblatt) {
             setError("Bitte das Merkblatt zur Kenntnis nehmen.");
             return;
@@ -47,7 +61,7 @@ export default function PensionExemptionForm({
             const client = await getEsskaClient();
             const payload = {
                 profile_id: profileId,
-                rentenversicherungsnummer: rvNr.trim(),
+                rentenversicherungsnummer: validiereRvNummer(rvNr).normalisiert,
                 merkblatt_zur_kenntnis_genommen: merkblatt,
                 unterzeichnet_am: new Date().toISOString(),
                 unterzeichnet_ort: ort.trim(),
@@ -85,6 +99,32 @@ export default function PensionExemptionForm({
                 Mitarbeitern aus. Falls du bei uns als geringfügig Beschäftigte/r (Minijob) eingestuft
                 wirst, haben wir den Antrag dann sofort griffbereit. Es kommt nur dann zur Anwendung
                 und ist für dich sonst ohne Auswirkung. Dauert keine 2 Minuten.
+            </div>
+
+            {(vorname || nachname) && (
+                <div className="text-sm">
+                    <span className="block font-medium mb-1">Antragsteller/in</span>
+                    <span className="inline-block border rounded-md px-3 py-2 bg-secondary-50">
+                        {`${vorname ?? ""} ${nachname ?? ""}`.trim()}
+                    </span>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Übernommen aus deinen Stammdaten. Falls falsch, bitte zuerst dort korrigieren.
+                    </p>
+                </div>
+            )}
+
+            <div className="text-sm">
+                <a
+                    href="/dokumente/rv-befreiung-merkblatt.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary-600 underline"
+                >
+                    📄 Offizielles Merkblatt zur Befreiung von der Rentenversicherungspflicht (PDF öffnen)
+                </a>
+                <p className="text-xs text-gray-500 mt-1">
+                    Bitte vor dem Absenden lesen – die Bestätigung unten bezieht sich auf dieses Merkblatt.
+                </p>
             </div>
 
             <div>
