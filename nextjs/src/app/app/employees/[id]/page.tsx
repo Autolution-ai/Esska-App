@@ -292,8 +292,9 @@ export default function EmployeeDetailPage() {
                                 disabled={busy}
                                 className="border rounded-md px-2 py-1 text-sm"
                             >
-                                <option value="mitarbeiter">mitarbeiter</option>
-                                <option value="admin">admin</option>
+                                <option value="mitarbeiter">Mitarbeiter</option>
+                                <option value="regionalmanager">Regionalmanager</option>
+                                <option value="admin">Admin</option>
                             </select>
                         </Row>
                         <Row label="Aktiv">

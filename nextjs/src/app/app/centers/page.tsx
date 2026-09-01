@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import type { EsskaCenter } from "@/lib/esska/types";
-import { formatDate, formatMoney } from "@/lib/esska/types";
+import type { EsskaCenter, EsskaCenterZeitraum, EsskaProfile } from "@/lib/esska/types";
+import { CENTER_STATUS_LABELS, berechneCenterStatus, formatDate, formatMoney } from "@/lib/esska/types";
 import {
     Card,
     CardHeader,
@@ -24,21 +24,36 @@ const statusFarben: Record<EsskaCenter["status"], string> = {
 
 export default function CentersPage() {
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
+    const [zeitraeume, setZeitraeume] = useState<EsskaCenterZeitraum[]>([]);
+    const [managerListe, setManagerListe] = useState<Pick<EsskaProfile, "id" | "vorname" | "nachname" | "email">[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filterSaison, setFilterSaison] = useState<string>("");
+    const [sortierung, setSortierung] = useState<"name" | "start" | "ende">("name");
+    const [gruppierung, setGruppierung] = useState<"keine" | "status" | "manager">("keine");
 
     useEffect(() => {
         const load = async () => {
             try {
                 const client = await getEsskaClient();
-                const { data, error: e } = await client
-                    .from("centers")
-                    .select("*")
-                    .order("saison", { ascending: false })
-                    .order("name", { ascending: true });
-                if (e) throw e;
-                setCenters((data as EsskaCenter[]) ?? []);
+                const [cRes, zRes, mRes] = await Promise.all([
+                    client
+                        .from("centers")
+                        .select("*")
+                        .order("saison", { ascending: false })
+                        .order("name", { ascending: true }),
+                    client.from("center_zeitraeume").select("*"),
+                    client
+                        .from("profiles")
+                        .select("id, vorname, nachname, email")
+                        .in("role", ["admin", "regionalmanager"]),
+                ]);
+                if (cRes.error) throw cRes.error;
+                setCenters((cRes.data as EsskaCenter[]) ?? []);
+                // Zeitraeume/Manager sind optional (fehlen z. B. solange die
+                // Struktur-Migration nicht eingespielt ist) - kein harter Fehler
+                setZeitraeume((zRes.data as EsskaCenterZeitraum[]) ?? []);
+                setManagerListe((mRes.data as typeof managerListe) ?? []);
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -48,10 +63,45 @@ export default function CentersPage() {
         load();
     }, []);
 
+    // C-5: Status aus den Zeitraeumen ableiten (nur Anzeige; gespeichert
+    // wird der Status beim Speichern des Centers bzw. der Zeitraeume)
+    const statusVon = (c: EsskaCenter) =>
+        berechneCenterStatus(c.status, zeitraeume.filter((z) => z.center_id === c.id));
+
+    const managerName = (id: string | null) => {
+        if (!id) return null;
+        const m = managerListe.find((x) => x.id === id);
+        if (!m) return "?";
+        return `${m.vorname ?? ""} ${m.nachname ?? ""}`.trim() || (m.email ?? "?");
+    };
+
     const saisonOptions = Array.from(new Set(centers.map((c) => c.saison))).sort().reverse();
-    const sichtbar = filterSaison
+    const sichtbar = (filterSaison
         ? centers.filter((c) => c.saison === filterSaison)
-        : centers;
+        : centers
+    ).slice().sort((a, b) => {
+        if (sortierung === "start") return a.start_datum.localeCompare(b.start_datum);
+        if (sortierung === "ende") return a.end_datum.localeCompare(b.end_datum);
+        return 0; // Standard: Reihenfolge aus der Datenbank (Saison, Name)
+    });
+
+    // C-3/C-6: Gruppierte Darstellung
+    const gruppen: Array<[string, EsskaCenter[]]> | null = (() => {
+        if (gruppierung === "keine") return null;
+        const map = new Map<string, EsskaCenter[]>();
+        for (const c of sichtbar) {
+            const schluessel =
+                gruppierung === "status"
+                    ? CENTER_STATUS_LABELS[statusVon(c)]
+                    : managerName(c.manager_id) ?? "— Ohne Manager —";
+            map.set(schluessel, [...(map.get(schluessel) ?? []), c]);
+        }
+        return [...map.entries()].sort(([a], [b]) => {
+            if (a.startsWith("—")) return 1;
+            if (b.startsWith("—")) return -1;
+            return a.localeCompare(b, "de");
+        });
+    })();
 
     return (
         <div className="space-y-6 p-2 md:p-6">
@@ -69,23 +119,49 @@ export default function CentersPage() {
                 </Link>
             </div>
 
-            {saisonOptions.length > 1 && (
-                <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Saison:</label>
+            <div className="flex items-end gap-3 flex-wrap">
+                {saisonOptions.length > 1 && (
+                    <div>
+                        <label className="block text-xs text-gray-500 mb-1">Saison</label>
+                        <select
+                            value={filterSaison}
+                            onChange={(e) => setFilterSaison(e.target.value)}
+                            className="border rounded-md px-3 py-1.5 text-sm"
+                        >
+                            <option value="">alle</option>
+                            {saisonOptions.map((s) => (
+                                <option key={s} value={s}>
+                                    {s}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+                <div>
+                    <label className="block text-xs text-gray-500 mb-1">Sortieren nach</label>
                     <select
-                        value={filterSaison}
-                        onChange={(e) => setFilterSaison(e.target.value)}
-                        className="border rounded-md px-3 py-1 text-sm"
+                        value={sortierung}
+                        onChange={(e) => setSortierung(e.target.value as typeof sortierung)}
+                        className="border rounded-md px-3 py-1.5 text-sm"
                     >
-                        <option value="">alle</option>
-                        {saisonOptions.map((s) => (
-                            <option key={s} value={s}>
-                                {s}
-                            </option>
-                        ))}
+                        <option value="name">Name</option>
+                        <option value="start">Startdatum</option>
+                        <option value="ende">Enddatum</option>
                     </select>
                 </div>
-            )}
+                <div>
+                    <label className="block text-xs text-gray-500 mb-1">Gruppieren nach</label>
+                    <select
+                        value={gruppierung}
+                        onChange={(e) => setGruppierung(e.target.value as typeof gruppierung)}
+                        className="border rounded-md px-3 py-1.5 text-sm"
+                    >
+                        <option value="keine">Keine Gruppierung</option>
+                        <option value="status">Status</option>
+                        <option value="manager">Manager</option>
+                    </select>
+                </div>
+            </div>
 
             <Card>
                 <CardHeader>
@@ -114,61 +190,91 @@ export default function CentersPage() {
                             </div>
                         </div>
                     )}
-                    {sichtbar.length > 0 && (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-gray-50 text-left">
-                                    <tr>
-                                        <Th>Saison</Th>
-                                        <Th>Kürzel</Th>
-                                        <Th>Center</Th>
-                                        <Th>Stadt</Th>
-                                        <Th>Kat.</Th>
-                                        <Th>Start</Th>
-                                        <Th>Ende</Th>
-                                        <Th className="text-right">Fläche</Th>
-                                        <Th className="text-right">Tage</Th>
-                                        <Th className="text-right">Miete</Th>
-                                        <Th>Status</Th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {sichtbar.map((c) => (
-                                        <tr key={c.id} className="border-t hover:bg-gray-50">
-                                            <Td>{c.saison}</Td>
-                                            <Td className="font-mono">{c.kuerzel}</Td>
-                                            <Td>
-                                                <Link
-                                                    href={`/app/centers/${c.id}`}
-                                                    className="text-primary-600 hover:underline"
-                                                >
-                                                    {c.name}
-                                                </Link>
-                                            </Td>
-                                            <Td>{c.stadt}</Td>
-                                            <Td>{c.kategorie}</Td>
-                                            <Td>{formatDate(c.start_datum)}</Td>
-                                            <Td>{formatDate(c.end_datum)}</Td>
-                                            <Td className="text-right">
-                                                {c.flaeche_qm ? `${c.flaeche_qm} m²` : "—"}
-                                            </Td>
-                                            <Td className="text-right">{c.mietdauer_tage ?? "—"}</Td>
-                                            <Td className="text-right">{formatMoney(c.miete_eur_cent)}</Td>
-                                            <Td>
-                                                <span
-                                                    className={`px-2 py-0.5 rounded-full text-xs ${statusFarben[c.status]}`}
-                                                >
-                                                    {c.status}
-                                                </span>
-                                            </Td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                    {sichtbar.length > 0 && gruppen === null && (
+                        <CenterTabelle rows={sichtbar} statusVon={statusVon} managerName={managerName} />
+                    )}
+                    {sichtbar.length > 0 && gruppen !== null && (
+                        <div className="space-y-6">
+                            {gruppen.map(([schluessel, rows]) => (
+                                <div key={schluessel}>
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-2">
+                                        {schluessel}{" "}
+                                        <span className="font-normal text-gray-400">({rows.length})</span>
+                                    </h3>
+                                    <CenterTabelle rows={rows} statusVon={statusVon} managerName={managerName} />
+                                </div>
+                            ))}
                         </div>
                     )}
                 </CardContent>
             </Card>
+        </div>
+    );
+}
+
+function CenterTabelle({
+    rows,
+    statusVon,
+    managerName,
+}: {
+    rows: EsskaCenter[];
+    statusVon: (c: EsskaCenter) => keyof typeof statusFarben;
+    managerName: (id: string | null) => string | null;
+}) {
+    return (
+        <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-left">
+                    <tr>
+                        <Th>Saison</Th>
+                        <Th>Kürzel</Th>
+                        <Th>Center</Th>
+                        <Th>Stadt</Th>
+                        <Th>Kat.</Th>
+                        <Th>Manager</Th>
+                        <Th>Start</Th>
+                        <Th>Ende</Th>
+                        <Th className="text-right">Fläche</Th>
+                        <Th className="text-right">Tage</Th>
+                        <Th className="text-right">Miete</Th>
+                        <Th>Status</Th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((c) => {
+                        const status = statusVon(c);
+                        return (
+                            <tr key={c.id} className="border-t hover:bg-gray-50">
+                                <Td>{c.saison}</Td>
+                                <Td className="font-mono">{c.kuerzel}</Td>
+                                <Td>
+                                    <Link
+                                        href={`/app/centers/${c.id}`}
+                                        className="text-primary-600 hover:underline"
+                                    >
+                                        {c.name}
+                                    </Link>
+                                </Td>
+                                <Td>{c.stadt}</Td>
+                                <Td>{c.kategorie}</Td>
+                                <Td>{managerName(c.manager_id) ?? "—"}</Td>
+                                <Td>{formatDate(c.start_datum)}</Td>
+                                <Td>{formatDate(c.end_datum)}</Td>
+                                <Td className="text-right">
+                                    {c.flaeche_qm ? `${c.flaeche_qm} m²` : "—"}
+                                </Td>
+                                <Td className="text-right">{c.mietdauer_tage ?? "—"}</Td>
+                                <Td className="text-right">{formatMoney(c.miete_eur_cent)}</Td>
+                                <Td>
+                                    <span className={`px-2 py-0.5 rounded-full text-xs ${statusFarben[status]}`}>
+                                        {CENTER_STATUS_LABELS[status]}
+                                    </span>
+                                </Td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
         </div>
     );
 }

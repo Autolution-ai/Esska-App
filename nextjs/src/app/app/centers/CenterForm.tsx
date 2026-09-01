@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import type { EsskaCenter, EsskaCenterKategorie, EsskaCenterStatus } from "@/lib/esska/types";
-import { centToEuro, euroToCent } from "@/lib/esska/types";
+import type { EsskaCenter, EsskaCenterKategorie, EsskaCenterOpeningHour, EsskaCenterZeitraum, EsskaProfile } from "@/lib/esska/types";
+import { WOCHENTAG_LABELS, berechneCenterStatus, centToEuro, euroToCent } from "@/lib/esska/types";
 
 type FormState = {
     saison: string;
@@ -21,7 +21,9 @@ type FormState = {
     flaeche_qm_override: string;
     mietdauer_tage_override: string;
     miete_euro: string;
-    status: EsskaCenterStatus;
+    // C-5: Status wird berechnet - manuell bleibt nur "In Absprache"
+    in_absprache: boolean;
+    manager_id: string;
     notiz: string;
 };
 
@@ -39,9 +41,22 @@ const leereForm: FormState = {
     flaeche_qm_override: "",
     mietdauer_tage_override: "",
     miete_euro: "",
-    status: "geplant",
+    in_absprache: false,
+    manager_id: "",
     notiz: "",
 };
+
+// C-7/C-8: ein Eintrag je Wochentag (0 = Montag ... 6 = Sonntag).
+// Standard: Mo-Sa geoeffnet, So geschlossen (Ausnahmen wie Leipzig setzt
+// der Admin einfach per Haken). Ohne Zeiten gelten die Slot-Standardzeiten.
+type OeffnungState = { geoeffnet: boolean; oeffnet: string; schliesst: string };
+
+const standardOeffnung = (): OeffnungState[] =>
+    Array.from({ length: 7 }, (_, i) => ({
+        geoeffnet: i !== 6,
+        oeffnet: "",
+        schliesst: "",
+    }));
 
 function defaultSaison(): string {
     const now = new Date();
@@ -67,11 +82,61 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
         flaeche_qm_override: center?.flaeche_qm?.toString() ?? "",
         mietdauer_tage_override: center?.mietdauer_tage?.toString() ?? "",
         miete_euro: center?.miete_eur_cent ? centToEuro(center.miete_eur_cent) : "",
-        status: center?.status ?? "geplant",
+        in_absprache: center?.status === "in_absprache",
+        manager_id: center?.manager_id ?? "",
         notiz: center?.notiz ?? "",
     });
+    const [oeffnung, setOeffnung] = useState<OeffnungState[]>(standardOeffnung());
+    const [zeitraeume, setZeitraeume] = useState<EsskaCenterZeitraum[]>([]);
+    const [manager, setManager] = useState<Pick<EsskaProfile, "id" | "vorname" | "nachname" | "email">[]>([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Manager-Kandidaten (Admins + Regionalmanager) und - beim Bearbeiten -
+    // die gespeicherten Oeffnungszeiten laden
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const client = await getEsskaClient();
+                const { data: mData } = await client
+                    .from("profiles")
+                    .select("id, vorname, nachname, email")
+                    .in("role", ["admin", "regionalmanager"])
+                    .order("nachname");
+                setManager((mData as typeof manager) ?? []);
+
+                if (center) {
+                    const { data: zData } = await client
+                        .from("center_zeitraeume")
+                        .select("*")
+                        .eq("center_id", center.id);
+                    setZeitraeume((zData as EsskaCenterZeitraum[]) ?? []);
+
+                    const { data: oData } = await client
+                        .from("center_opening_hours")
+                        .select("*")
+                        .eq("center_id", center.id);
+                    const rows = (oData as EsskaCenterOpeningHour[]) ?? [];
+                    if (rows.length > 0) {
+                        setOeffnung(
+                            Array.from({ length: 7 }, (_, i) => {
+                                const r = rows.find((x) => x.wochentag === i);
+                                return {
+                                    geoeffnet: r?.geoeffnet ?? i !== 6,
+                                    oeffnet: r?.oeffnet ? r.oeffnet.slice(0, 5) : "",
+                                    schliesst: r?.schliesst ? r.schliesst.slice(0, 5) : "",
+                                };
+                            })
+                        );
+                    }
+                }
+            } catch {
+                // Nicht kritisch - Formular bleibt nutzbar, Fehler zeigt sich beim Speichern
+            }
+        };
+        load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [center?.id]);
 
     const flaecheAuto = useMemo(() => {
         const l = parseFloat(form.laenge_m.replace(",", "."));
@@ -100,6 +165,27 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
         try {
             const client = await getEsskaClient();
 
+            // C-5: Status automatisch aus dem Zeitraum ableiten; nur
+            // "In Absprache" ist eine manuelle Entscheidung.
+            // Grundlage: der Miet-Zeitraum aus dem Formular plus alle bereits
+            // gespeicherten Verlaengerungen (damit ein verlaengertes Center
+            // beim Bearbeiten nicht faelschlich auf "Beendet" faellt).
+            const formularZeitraum: EsskaCenterZeitraum = {
+                id: "",
+                center_id: "",
+                typ: "miete",
+                von: form.start_datum,
+                bis: form.end_datum || null,
+                notiz: null,
+                created_at: "",
+            };
+            const status = form.in_absprache
+                ? "in_absprache"
+                : berechneCenterStatus("geplant", [
+                      formularZeitraum,
+                      ...zeitraeume.filter((z) => z.typ === "verlaengerung"),
+                  ]);
+
             const payload = {
                 saison: form.saison.trim(),
                 name: form.name.trim(),
@@ -118,17 +204,19 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                     ? parseInt(form.mietdauer_tage_override, 10)
                     : null,
                 miete_eur_cent: euroToCent(form.miete_euro),
-                status: form.status,
+                status,
+                manager_id: form.manager_id || null,
                 notiz: form.notiz.trim() || null,
             };
 
+            let centerId: string;
             if (center) {
                 const { error: e } = await client
                     .from("centers")
                     .update(payload)
                     .eq("id", center.id);
                 if (e) throw e;
-                router.push(`/app/centers/${center.id}`);
+                centerId = center.id;
             } else {
                 const { data, error: e } = await client
                     .from("centers")
@@ -136,8 +224,39 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                     .select("id")
                     .single();
                 if (e) throw e;
-                router.push(`/app/centers/${data.id}`);
+                centerId = (data as { id: string }).id;
             }
+
+            // Miet-Zeitraum synchron halten (S-5): den 'miete'-Eintrag auf die
+            // Formulardaten setzen bzw. anlegen. Verlaengerungen bleiben unberuehrt.
+            const mieteVorhanden = zeitraeume.find((z) => z.typ === "miete");
+            if (mieteVorhanden) {
+                const { error: zErr } = await client
+                    .from("center_zeitraeume")
+                    .update({ von: form.start_datum, bis: form.end_datum || null })
+                    .eq("id", mieteVorhanden.id);
+                if (zErr) throw zErr;
+            } else {
+                const { error: zErr } = await client
+                    .from("center_zeitraeume")
+                    .insert({ center_id: centerId, typ: "miete", von: form.start_datum, bis: form.end_datum || null });
+                if (zErr) throw zErr;
+            }
+
+            // Oeffnungszeiten speichern (C-7/C-8): ein Datensatz je Wochentag
+            const { error: oErr } = await client.from("center_opening_hours").upsert(
+                oeffnung.map((o, wochentag) => ({
+                    center_id: centerId,
+                    wochentag,
+                    geoeffnet: o.geoeffnet,
+                    oeffnet: o.geoeffnet && o.oeffnet ? o.oeffnet : null,
+                    schliesst: o.geoeffnet && o.schliesst ? o.schliesst : null,
+                })),
+                { onConflict: "center_id,wochentag" }
+            );
+            if (oErr) throw oErr;
+
+            router.push(`/app/centers/${centerId}`);
             router.refresh();
         } catch (err) {
             setError(friendlyError(err, { aktion: center ? "Center aktualisieren" : "Center anlegen", entitaet: "Center" }));
@@ -185,15 +304,31 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                             className={`${inputCls} font-mono uppercase`}
                         />
                     </Field>
-                    <Field label="Status" required>
+                    <Field
+                        label="Status"
+                        hint="Geplant/Aktiv/Beendet wird automatisch aus dem Zeitraum berechnet. Haken setzen, solange der Vertrag noch verhandelt wird."
+                    >
+                        <label className="flex items-center gap-2 border rounded-md px-3 py-2 text-sm cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={form.in_absprache}
+                                onChange={(e) => update("in_absprache", e.target.checked)}
+                            />
+                            In Absprache (noch nicht fix)
+                        </label>
+                    </Field>
+                    <Field label="Regionalmanager" hint="Sieht und plant nur die eigenen Center.">
                         <select
-                            value={form.status}
-                            onChange={(e) => update("status", e.target.value as EsskaCenterStatus)}
+                            value={form.manager_id}
+                            onChange={(e) => update("manager_id", e.target.value)}
                             className={inputCls}
                         >
-                            <option value="geplant">geplant</option>
-                            <option value="aktiv">aktiv</option>
-                            <option value="abgeschlossen">abgeschlossen</option>
+                            <option value="">– kein Manager –</option>
+                            {manager.map((m) => (
+                                <option key={m.id} value={m.id}>
+                                    {`${m.vorname ?? ""} ${m.nachname ?? ""}`.trim() || (m.email ?? "?")}
+                                </option>
+                            ))}
                         </select>
                     </Field>
                     <Field label="Center-Name" required full>
@@ -292,6 +427,63 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                         />
                     </Field>
                 </Grid>
+            </Section>
+
+            <Section titel="Öffnungstage & -zeiten">
+                <p className="text-xs text-gray-500 mb-3">
+                    Ohne Uhrzeiten gelten die Standard-Slotzeiten (09:00–15:00 / 15:00–20:30).
+                    Geschlossene Tage sind im Verfügbarkeits- und Schichtplan nicht wählbar.
+                </p>
+                <div className="space-y-2">
+                    {oeffnung.map((o, i) => (
+                        <div key={i} className="flex items-center gap-3 flex-wrap">
+                            <label className="flex items-center gap-2 w-32 text-sm cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={o.geoeffnet}
+                                    onChange={(e) =>
+                                        setOeffnung((prev) =>
+                                            prev.map((x, j) => (j === i ? { ...x, geoeffnet: e.target.checked } : x))
+                                        )
+                                    }
+                                />
+                                {WOCHENTAG_LABELS[i]}
+                            </label>
+                            {o.geoeffnet ? (
+                                <div className="flex items-center gap-2 text-sm">
+                                    <input
+                                        type="time"
+                                        step={900}
+                                        value={o.oeffnet}
+                                        onChange={(e) =>
+                                            setOeffnung((prev) =>
+                                                prev.map((x, j) => (j === i ? { ...x, oeffnet: e.target.value } : x))
+                                            )
+                                        }
+                                        className="border rounded px-2 py-1 text-sm"
+                                    />
+                                    <span>–</span>
+                                    <input
+                                        type="time"
+                                        step={900}
+                                        value={o.schliesst}
+                                        onChange={(e) =>
+                                            setOeffnung((prev) =>
+                                                prev.map((x, j) => (j === i ? { ...x, schliesst: e.target.value } : x))
+                                            )
+                                        }
+                                        className="border rounded px-2 py-1 text-sm"
+                                    />
+                                    {!o.oeffnet && !o.schliesst && (
+                                        <span className="text-xs text-gray-400">Standardzeiten</span>
+                                    )}
+                                </div>
+                            ) : (
+                                <span className="text-sm text-gray-400">geschlossen</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
             </Section>
 
             <Section titel="Miete & Notiz">

@@ -1,13 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
+import { getEsskaClient } from "@/lib/esska/client";
+import type { EsskaCenter } from "@/lib/esska/types";
 
 export default function InvitePage() {
     const router = useRouter();
     const [email, setEmail] = useState("");
+    // M-1: optionale Center-Zuordnung schon beim Einladen
+    const [centers, setCenters] = useState<EsskaCenter[]>([]);
+    const [centerId, setCenterId] = useState("");
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const client = await getEsskaClient();
+                const { data } = await client
+                    .from("centers")
+                    .select("*")
+                    .in("status", ["aktiv", "geplant", "in_absprache"])
+                    .order("name");
+                setCenters((data as EsskaCenter[]) ?? []);
+            } catch {
+                // Dropdown bleibt leer - Einladen funktioniert trotzdem
+            }
+        };
+        load();
+    }, []);
     const [sending, setSending] = useState(false);
     const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
 
@@ -19,13 +41,16 @@ export default function InvitePage() {
             const res = await fetch("/api/employees/invite", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({ email }),
+                body: JSON.stringify({ email, centerId: centerId || undefined }),
             });
             const data = await res.json();
             if (!res.ok) {
                 setResult({ ok: false, message: data.error ?? "Einladung fehlgeschlagen" });
             } else {
-                setResult({ ok: true, message: `Einladung an ${email} verschickt.` });
+                setResult({
+                    ok: true,
+                    message: data.hinweis ?? `Einladung an ${email} verschickt.`,
+                });
                 setEmail("");
             }
         } catch (err) {
@@ -60,6 +85,26 @@ export default function InvitePage() {
                             className="w-full border rounded-md pl-9 pr-3 py-2 text-sm"
                         />
                     </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Center zuordnen (optional)
+                    </label>
+                    <select
+                        value={centerId}
+                        onChange={(e) => setCenterId(e.target.value)}
+                        className="w-full border rounded-md px-3 py-2 text-sm"
+                    >
+                        <option value="">– später zuordnen –</option>
+                        {centers.map((c) => (
+                            <option key={c.id} value={c.id}>
+                                {c.name} ({c.kuerzel}) · {c.stadt} · {c.saison}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Kann jederzeit über die Mitarbeiter-Detailseite geändert oder ergänzt werden.
+                    </p>
                 </div>
                 {result && (
                     <div

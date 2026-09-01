@@ -34,6 +34,18 @@ const adminNavigation: NavItem[] = [
     { name: 'Einstellungen', href: '/app/user-settings', icon: User },
 ];
 
+// R-2: Regionalmanager arbeiten wie ein Admin, sehen durch die
+// Datenbank-Zugriffsregeln aber nur ihre eigenen Center samt Mitarbeitern,
+// Plaenen und Umsaetzen.
+const regionalmanagerNavigation: NavItem[] = [
+    { name: 'Übersicht', href: '/app', icon: Home },
+    { name: 'Center', href: '/app/centers', icon: Store },
+    { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
+    { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
+    { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
+    { name: 'Einstellungen', href: '/app/user-settings', icon: User },
+];
+
 const mitarbeiterNavigation: NavItem[] = [
     { name: 'Übersicht', href: '/app', icon: Home },
     { name: 'Verfügbarkeit', href: '/app/availability', icon: CalendarDays },
@@ -81,7 +93,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ? onboardingNavigation
         : role === 'admin'
             ? adminNavigation
-            : mitarbeiterNavigation;
+            : role === 'regionalmanager'
+                ? regionalmanagerNavigation
+                : mitarbeiterNavigation;
 
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
 

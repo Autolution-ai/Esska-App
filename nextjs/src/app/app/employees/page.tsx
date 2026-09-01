@@ -212,24 +212,26 @@ export default function EmployeesPage() {
                     <h1 className="text-2xl font-bold">Mitarbeiter</h1>
                     <p className="text-gray-500">Eingeladene und registrierte Personen verwalten.</p>
                 </div>
-                <div className="flex gap-2 flex-wrap">
-                    <Link
-                        href="/app/employees/invite"
-                        className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-                    >
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Mitarbeiter einladen
-                    </Link>
-                    <button
-                        onClick={versandOeffnen}
-                        disabled={auswahl.size === 0}
-                        className="inline-flex items-center px-4 py-2 border rounded-md hover:bg-secondary-100 disabled:opacity-50"
-                        title={auswahl.size === 0 ? "Zuerst Mitarbeiter über die Kästchen auswählen" : undefined}
-                    >
-                        <Send className="h-4 w-4 mr-2" />
-                        Stammdaten an Buchhaltung senden ({auswahl.size})
-                    </button>
-                </div>
+                {role === "admin" && (
+                    <div className="flex gap-2 flex-wrap">
+                        <Link
+                            href="/app/employees/invite"
+                            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                        >
+                            <UserPlus className="h-4 w-4 mr-2" />
+                            Mitarbeiter einladen
+                        </Link>
+                        <button
+                            onClick={versandOeffnen}
+                            disabled={auswahl.size === 0}
+                            className="inline-flex items-center px-4 py-2 border rounded-md hover:bg-secondary-100 disabled:opacity-50"
+                            title={auswahl.size === 0 ? "Zuerst Mitarbeiter über die Kästchen auswählen" : undefined}
+                        >
+                            <Send className="h-4 w-4 mr-2" />
+                            Stammdaten an Buchhaltung senden ({auswahl.size})
+                        </button>
+                    </div>
+                )}
             </div>
 
             {versandErfolg && (
@@ -345,6 +347,7 @@ export default function EmployeesPage() {
                             auswahl={auswahl}
                             toggleAuswahl={toggleAuswahl}
                             toggleAlle={toggleAlle}
+                            verlinken={role === "admin"}
                         />
                     )}
                     {sichtbar.length > 0 && gruppen !== null && (
@@ -362,6 +365,7 @@ export default function EmployeesPage() {
                                         auswahl={auswahl}
                                         toggleAuswahl={toggleAuswahl}
                                         toggleAlle={toggleAlle}
+                                        verlinken={role === "admin"}
                                     />
                                 </div>
                             ))}
@@ -380,6 +384,7 @@ function MitarbeiterTabelle({
     auswahl,
     toggleAuswahl,
     toggleAlle,
+    verlinken,
 }: {
     personen: EsskaProfile[];
     centerVon: (id: string) => EsskaCenter[];
@@ -387,6 +392,7 @@ function MitarbeiterTabelle({
     auswahl: Set<string>;
     toggleAuswahl: (id: string) => void;
     toggleAlle: (personen: EsskaProfile[]) => void;
+    verlinken: boolean;
 }) {
     const alleGewaehlt = personen.length > 0 && personen.every((p) => auswahl.has(p.id));
     return (
@@ -425,9 +431,13 @@ function MitarbeiterTabelle({
                                     />
                                 </td>
                                 <Td>
-                                    <Link href={`/app/employees/${p.id}`} className="text-primary-600 hover:underline">
-                                        {p.vorname || p.nachname ? `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() : "—"}
-                                    </Link>
+                                    {verlinken ? (
+                                        <Link href={`/app/employees/${p.id}`} className="text-primary-600 hover:underline">
+                                            {p.vorname || p.nachname ? `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() : "—"}
+                                        </Link>
+                                    ) : (
+                                        <span>{p.vorname || p.nachname ? `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() : "—"}</span>
+                                    )}
                                 </Td>
                                 <Td>{p.email ?? "—"}</Td>
                                 <Td>

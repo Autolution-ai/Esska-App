@@ -37,30 +37,22 @@ export default function SalesEntryPage() {
                 if (!user) throw new Error("Nicht angemeldet");
 
                 const { data: profile } = await client.from("profiles").select("role").eq("id", user.id).single();
-                const admin = (profile as { role?: string } | null)?.role === "admin";
-                setIstAdmin(admin);
+                const rolle = (profile as { role?: string } | null)?.role;
+                setIstAdmin(rolle === "admin" || rolle === "regionalmanager");
 
-                if (admin) {
-                    const { data, error: e } = await client
-                        .from("centers")
-                        .select("*")
-                        .in("status", ["aktiv", "geplant"])
-                        .order("name");
-                    if (e) throw e;
-                    const cs = (data as EsskaCenter[]) ?? [];
-                    setCenters(cs);
-                    if (cs[0]) setCenterId(cs[0].id);
-                } else {
-                    const { data, error: e } = await client
-                        .from("center_assignments")
-                        .select("centers(*)")
-                        .eq("profile_id", user.id);
-                    if (e) throw e;
-                    const cs = ((data as unknown) as Array<{ centers: EsskaCenter | null }> ?? [])
-                        .flatMap((r) => (r.centers ? [r.centers] : []));
-                    setCenters(cs);
-                    if (cs[0]) setCenterId(cs[0].id);
-                }
+                // Eine Abfrage fuer alle Rollen: die Datenbank-Zugriffsregeln
+                // liefern Admins alle Center, Regionalmanagern ihre eigenen
+                // und Mitarbeitern die zugeordneten (U-1: dadurch ist das
+                // Center bei Mitarbeitern automatisch vorausgewaehlt).
+                const { data, error: e } = await client
+                    .from("centers")
+                    .select("*")
+                    .in("status", ["aktiv", "geplant"])
+                    .order("name");
+                if (e) throw e;
+                const cs = (data as EsskaCenter[]) ?? [];
+                setCenters(cs);
+                if (cs[0]) setCenterId(cs[0].id);
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             }
