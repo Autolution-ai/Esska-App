@@ -650,6 +650,13 @@ export default function StammdatenForm({
                 )}
             </Section>
 
+            {/* Fehlermeldung auch direkt beim Speichern-Button anzeigen:
+                nach dem Klick ist man ganz unten gescrollt und wuerde die
+                Meldung oben sonst gar nicht sehen. */}
+            {error && (
+                <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>
+            )}
+
             <div className="flex gap-3">
                 <button
                     type="submit"

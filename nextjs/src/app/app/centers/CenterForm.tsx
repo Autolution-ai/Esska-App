@@ -508,6 +508,10 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                 </Grid>
             </Section>
 
+            {error && (
+                <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>
+            )}
+
             <div className="flex gap-3">
                 <button
                     type="submit"

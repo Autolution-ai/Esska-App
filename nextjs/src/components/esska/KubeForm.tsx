@@ -336,6 +336,9 @@ export default function KubeForm({ profileId, saison, existing, onSaved }: Props
                 </div>
             </Section>
 
+            {error && (
+                <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>
+            )}
             <button
                 type="submit"
                 disabled={saving}

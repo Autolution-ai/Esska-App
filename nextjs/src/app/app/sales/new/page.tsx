@@ -391,6 +391,9 @@ export default function SalesEntryPage() {
                     />
                 </div>
 
+                {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
+                {success && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{success}</div>}
+
                 <div className="flex gap-3">
                     <button
                         type="submit"
