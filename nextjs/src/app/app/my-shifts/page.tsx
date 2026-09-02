@@ -13,6 +13,8 @@ type ShiftMitCenter = EsskaShift & { center?: EsskaCenter | null };
 export default function MyShiftsPage() {
     const [wochenStart, setWochenStart] = useState<Date>(montagDerWoche(new Date()));
     const [shifts, setShifts] = useState<ShiftMitCenter[]>([]);
+    // L-1: alle veroeffentlichten Schichten des Monats fuer die Stundensumme
+    const [monatsShifts, setMonatsShifts] = useState<EsskaShift[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,6 +46,17 @@ export default function MyShiftsPage() {
                     center: s.centers,
                 }));
                 setShifts(rows);
+
+                // Monatssumme: alle eigenen Schichten im Monat des Wochenstarts
+                const monatVon = isoDatum(new Date(wochenStart.getFullYear(), wochenStart.getMonth(), 1));
+                const monatBis = isoDatum(new Date(wochenStart.getFullYear(), wochenStart.getMonth() + 1, 0));
+                const { data: mData } = await client
+                    .from("shifts")
+                    .select("*")
+                    .eq("profile_id", user.id)
+                    .gte("datum", monatVon)
+                    .lte("datum", monatBis);
+                setMonatsShifts((mData as EsskaShift[]) ?? []);
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -57,6 +70,13 @@ export default function MyShiftsPage() {
         (sum, s) => sum + nettoStunden(zeitKurz(s.start_zeit), zeitKurz(s.end_zeit), s.pause_min ?? 0),
         0
     );
+
+    // L-1: Monats-Zusammenfassung
+    const monatsStunden = monatsShifts.reduce(
+        (sum, s) => sum + nettoStunden(zeitKurz(s.start_zeit), zeitKurz(s.end_zeit), s.pause_min ?? 0),
+        0
+    );
+    const monatsName = wochenStart.toLocaleDateString("de-DE", { month: "long", year: "numeric" });
 
     return (
         <div className="space-y-6 p-2 md:p-6">
@@ -86,7 +106,7 @@ export default function MyShiftsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle>
-                        {loading ? "Lädt…" : `${shifts.length} Schicht${shifts.length === 1 ? "" : "en"} · ${stundenTotal.toFixed(2).replace(".", ",")} Std (Brutto-Pause)`}
+                        {loading ? "Lädt…" : `${shifts.length} Schicht${shifts.length === 1 ? "" : "en"} · ${stundenTotal.toFixed(2).replace(".", ",")} Std diese Woche · ${monatsName} gesamt: ${monatsShifts.length} Schicht${monatsShifts.length === 1 ? "" : "en"}, ${monatsStunden.toFixed(2).replace(".", ",")} Std (netto, mit Pausenabzug)`}
                     </CardTitle>
                     <CardDescription>Alle veröffentlichten Schichten dieser Woche.</CardDescription>
                 </CardHeader>
