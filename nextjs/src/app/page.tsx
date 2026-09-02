@@ -68,6 +68,11 @@ export default function Home() {
                                 eingeplant bist. Melde dich bei deiner Ansprechperson, falls die
                                 E-Mail nicht angekommen ist.
                             </p>
+                            <p className="mt-2">
+                                <a href="/anleitung" className="text-primary-600 underline">
+                                    📱 So holst du dir die App als Icon aufs Handy
+                                </a>
+                            </p>
                         </div>
                     </div>
                 </section>

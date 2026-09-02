@@ -1,0 +1,14 @@
+{
+    "name": "Esska Collection",
+    "short_name": "Esska",
+    "description": "Saison-App der Esska Collection: Verfuegbarkeit, Schichten, Kassenmeldung.",
+    "start_url": "/app",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#fbf7ec",
+    "theme_color": "#9e2a2b",
+    "icons": [
+        { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    ]
+}
