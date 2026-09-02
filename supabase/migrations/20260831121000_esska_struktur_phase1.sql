@@ -18,6 +18,16 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
+-- 0) S-2: Manager am Center - MUSS vor den Helper-Funktionen stehen,
+--    weil Postgres deren SQL-Koerper beim Anlegen validiert und die
+--    Spalte manager_id sonst noch nicht existiert.
+-- ---------------------------------------------------------------------
+alter table public.centers
+    add column if not exists manager_id uuid references public.profiles(id) on delete set null;
+
+create index if not exists centers_manager_idx on public.centers(manager_id);
+
+-- ---------------------------------------------------------------------
 -- 1) Helper-Funktionen
 --    SECURITY DEFINER wie is_admin(), damit keine RLS-Rekursion entsteht.
 -- ---------------------------------------------------------------------
@@ -64,14 +74,6 @@ as $$
         where ca.profile_id = pid and c.manager_id = auth.uid()
     );
 $$;
-
--- ---------------------------------------------------------------------
--- 2) S-2: Manager am Center
--- ---------------------------------------------------------------------
-alter table public.centers
-    add column if not exists manager_id uuid references public.profiles(id) on delete set null;
-
-create index if not exists centers_manager_idx on public.centers(manager_id);
 
 -- ---------------------------------------------------------------------
 -- 3) S-4: Oeffnungstage und -zeiten je Center
