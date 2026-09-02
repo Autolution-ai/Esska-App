@@ -15,8 +15,10 @@ import {
     CalendarDays,
     TrendingUp,
     ClipboardList,
+    ShoppingCart,
 } from 'lucide-react';
 import { useGlobal } from "@/lib/context/GlobalContext";
+import { ROLE_LABELS } from "@/lib/esska/types";
 import { createSPASassClient } from "@/lib/supabase/client";
 
 type NavItem = {
@@ -31,6 +33,7 @@ const adminNavigation: NavItem[] = [
     { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
     { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
     { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
+    { name: 'Ware bestellen', href: '/app/orders', icon: ShoppingCart },
     { name: 'Einstellungen', href: '/app/user-settings', icon: User },
 ];
 
@@ -43,6 +46,7 @@ const regionalmanagerNavigation: NavItem[] = [
     { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
     { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
     { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
+    { name: 'Ware bestellen', href: '/app/orders', icon: ShoppingCart },
     { name: 'Einstellungen', href: '/app/user-settings', icon: User },
 ];
 
@@ -51,6 +55,7 @@ const mitarbeiterNavigation: NavItem[] = [
     { name: 'Verfügbarkeit', href: '/app/availability', icon: CalendarDays },
     { name: 'Meine Schichten', href: '/app/my-shifts', icon: CalendarDays },
     { name: 'Umsatz melden', href: '/app/sales/new', icon: TrendingUp },
+    { name: 'Ware bestellen', href: '/app/orders', icon: ShoppingCart },
     { name: 'Stammdaten', href: '/app/user-settings', icon: User },
 ];
 
@@ -116,7 +121,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         <span className="text-xl font-semibold text-primary-600">{productName}</span>
                         {role && (
                             <span className="text-xs text-gray-500">
-                                {role === 'admin' ? 'Admin' : 'Mitarbeiter'}
+                                {ROLE_LABELS[role]}
                             </span>
                         )}
                     </div>

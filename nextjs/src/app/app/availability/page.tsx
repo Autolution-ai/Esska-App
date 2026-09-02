@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import type { EsskaAvailabilityRow, EsskaShiftSlot, EsskaWunsch } from "@/lib/esska/types";
+import type { EsskaAvailabilityRow, EsskaCenterOpeningHour, EsskaShiftSlot, EsskaWunsch } from "@/lib/esska/types";
 import {
     SLOT_DEFAULT_ZEITEN,
     SLOT_LABELS,
@@ -68,6 +68,10 @@ const key = (datum: string, slot: EsskaShiftSlot) => `${datum}::${slot}`;
 
 export default function AvailabilityPage() {
     const [profileId, setProfileId] = useState<string | null>(null);
+    // V-2: Oeffnungstage der zugeordneten Center - an Tagen, an denen ALLE
+    // eigenen Center geschlossen sind, ist keine Eingabe noetig/moeglich.
+    const [oeffnungen, setOeffnungen] = useState<EsskaCenterOpeningHour[]>([]);
+    const [eigeneCenterIds, setEigeneCenterIds] = useState<string[]>([]);
     const [wochenStart, setWochenStart] = useState<Date>(montagDerWoche(new Date()));
     const [state, setState] = useState<WocheState>({});
     const [loading, setLoading] = useState(true);
@@ -87,6 +91,20 @@ export default function AvailabilityPage() {
                 const { data: { user } } = await client.auth.getUser();
                 if (!user) throw new Error("Nicht angemeldet");
                 setProfileId(user.id);
+
+                const { data: aData } = await client
+                    .from("center_assignments")
+                    .select("center_id")
+                    .eq("profile_id", user.id);
+                const ids = ((aData as Array<{ center_id: string }>) ?? []).map((a) => a.center_id);
+                setEigeneCenterIds(ids);
+                if (ids.length > 0) {
+                    const { data: oData } = await client
+                        .from("center_opening_hours")
+                        .select("*")
+                        .in("center_id", ids);
+                    setOeffnungen((oData as EsskaCenterOpeningHour[]) ?? []);
+                }
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Anmeldung pruefen" }));
             }
@@ -135,6 +153,16 @@ export default function AvailabilityPage() {
         };
         load();
     }, [profileId, wochenStart.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // V-2: geschlossen, wenn fuer JEDES zugeordnete Center ein Eintrag
+    // "geoeffnet = false" fuer diesen Wochentag existiert. Ohne Center oder
+    // ohne Eintraege bleibt der Tag offen.
+    const tagGeschlossen = (wochentag: number): boolean => {
+        if (eigeneCenterIds.length === 0) return false;
+        return eigeneCenterIds.every((cid) =>
+            oeffnungen.some((o) => o.center_id === cid && o.wochentag === wochentag && !o.geoeffnet)
+        );
+    };
 
     const setzeWunsch = (datum: string, slot: EsskaShiftSlot, w: EsskaWunsch) => {
         const k = key(datum, slot);
@@ -235,6 +263,12 @@ export default function AvailabilityPage() {
                     >
                         Nächste Woche
                     </button>
+                    <button
+                        onClick={() => setWochenStart(addTage(montagDerWoche(new Date()), 14))}
+                        className="px-3 py-1.5 text-sm border rounded-md hover:bg-secondary-100"
+                    >
+                        Übernächste Woche
+                    </button>
                 </div>
             </div>
 
@@ -278,7 +312,8 @@ export default function AvailabilityPage() {
                                         const datum = isoDatum(t);
                                         const feiertag = feiertagFuer(datum);
                                         const sonntag = istSonntag(datum);
-                                        const istFreierTag = !!feiertag || sonntag;
+                                        const geschlossen = tagGeschlossen((t.getDay() + 6) % 7);
+                                        const istFreierTag = !!feiertag || sonntag || geschlossen;
                                         return (
                                             <tr
                                                 key={datum}
@@ -295,11 +330,21 @@ export default function AvailabilityPage() {
                                                     {!feiertag && sonntag && (
                                                         <div className="text-xs text-gray-500 mt-0.5">Sonntag</div>
                                                     )}
+                                                    {geschlossen && (
+                                                        <div className="text-xs text-gray-500 mt-0.5">Center geschlossen</div>
+                                                    )}
                                                 </td>
                                                 {SLOTS.map((s) => {
                                                     const k = key(datum, s);
                                                     const wert = state[k];
                                                     const aktuell = wert?.wunsch ?? "koennte";
+                                                    if (geschlossen) {
+                                                        return (
+                                                            <td key={s} className="px-2 py-2 border text-center text-xs text-gray-400">
+                                                                geschlossen
+                                                            </td>
+                                                        );
+                                                    }
                                                     return (
                                                         <td key={s} className="px-2 py-2 border">
                                                             <div className="flex flex-wrap gap-1 justify-center items-center">

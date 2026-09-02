@@ -200,6 +200,9 @@ export interface EsskaBestellArtikel {
     name: string;
     kategorie: string | null;
     farben: string[];
+    // B-2: bestellt wird in Einheiten, z. B. 12 / "12er-Pack"
+    einheit_groesse: number;
+    einheit_label: string;
     aktiv: boolean;
     sortierung: number;
 }
