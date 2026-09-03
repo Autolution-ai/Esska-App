@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Camera, ChevronDown, ChevronUp, Lock } from "lucide-react";
@@ -53,6 +53,17 @@ export default function SalesEntryPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    // Welches Feld fehlt? Fuer rote Markierung am Feld selbst.
+    const [fehlerFeld, setFehlerFeld] = useState<string | null>(null);
+    const fehlerRef = useRef<HTMLDivElement | null>(null);
+
+    // Fehler anzeigen UND sichtbar machen - auf dem Handy steht man beim
+    // Klick ganz unten und wuerde eine Meldung sonst nicht sehen.
+    const zeigeFehler = (text: string, feld?: string) => {
+        setError(text);
+        setFehlerFeld(feld ?? null);
+        setTimeout(() => fehlerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+    };
 
     useEffect(() => {
         const load = async () => {
@@ -145,8 +156,9 @@ export default function SalesEntryPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
+        setFehlerFeld(null);
         if (!centerId || !datum) {
-            setError("Center und Datum sind Pflicht.");
+            zeigeFehler("Bitte Center und Datum ausfüllen.", "center");
             return;
         }
         if (!imZeitraum(centerId, datum)) {
@@ -159,34 +171,41 @@ export default function SalesEntryPage() {
             if (!trotzdem) return;
         }
         if (!zeitVon || !zeitBis) {
-            setError("Bitte das Zeitfenster angeben (von wann bis wann du an der Kasse warst).");
+            zeigeFehler(
+                "Bitte das Zeitfenster angeben: von wann bis wann warst du an der Kasse? (Feld weiter oben)",
+                "zeit"
+            );
             return;
         }
         if (zeitBis <= zeitVon) {
-            setError("Das Zeitfenster stimmt nicht: „Bis“ muss nach „Von“ liegen.");
+            zeigeFehler("Das Zeitfenster stimmt nicht: die „bis“-Zeit muss nach der „von“-Zeit liegen.", "zeit");
             return;
         }
         if (einnahmenCent === null) {
-            setError("Bitte Startbestand und Endbestand eintragen – die Einnahmen berechnen sich daraus.");
+            zeigeFehler("Bitte Startbestand und Endbestand eintragen – die Einnahmen berechnen sich daraus.", "bestand");
             return;
         }
         if (einnahmenCent < 0) {
-            setError(
+            zeigeFehler(
                 "Die berechneten Einnahmen wären negativ – das kann nicht stimmen. " +
-                "Bitte Startbestand und Endbestand noch einmal prüfen."
+                "Bitte Startbestand und Endbestand noch einmal prüfen.",
+                "bestand"
             );
             return;
         }
         if (!einnahmenBestaetigt) {
-            setError("Bitte die berechneten Einnahmen prüfen und per Haken bestätigen.");
+            zeigeFehler(
+                "Bitte den Haken bei den berechneten Einnahmen setzen („Die berechneten Einnahmen stimmen“).",
+                "bestaetigung"
+            );
             return;
         }
         if (modus === "korrektur" && !korrekturVonId) {
-            setError("Bitte auswählen, welcher Eintrag korrigiert wird.");
+            zeigeFehler("Bitte auswählen, welcher Eintrag korrigiert wird.", "korrektur");
             return;
         }
         if (modus === "korrektur" && !korrekturGrund.trim()) {
-            setError("Bitte den Grund der Korrektur angeben.");
+            zeigeFehler("Bitte den Grund der Korrektur angeben.", "korrektur");
             return;
         }
 
@@ -255,7 +274,7 @@ export default function SalesEntryPage() {
                 .order("erfasst_am", { ascending: true });
             setTagesEintraege((data as EsskaDailySale[]) ?? []);
         } catch (err) {
-            setError(friendlyError(err, { aktion: "Speichern fehlgeschlagen" }));
+            zeigeFehler(friendlyError(err, { aktion: "Speichern fehlgeschlagen" }));
         } finally {
             setSaving(false);
         }
@@ -300,8 +319,7 @@ export default function SalesEntryPage() {
                         <select
                             value={centerId}
                             onChange={(e) => setCenterId(e.target.value)}
-                            required
-                            className="w-full border rounded-md px-3 py-2 text-sm"
+                            className={`w-full border rounded-md px-3 py-2 text-sm ${fehlerFeld === "center" ? "border-red-500 bg-red-50" : ""}`}
                         >
                             <option value="">– wählen –</option>
                             {centers.map((c) => {
@@ -330,7 +348,6 @@ export default function SalesEntryPage() {
                             type="date"
                             value={datum}
                             onChange={(e) => setDatum(e.target.value)}
-                            required
                             max={isoDatum(new Date())}
                             className="flex-1 border rounded-md px-3 py-2 text-sm"
                         />
@@ -362,8 +379,7 @@ export default function SalesEntryPage() {
                         <select
                             value={zeitVon}
                             onChange={(e) => setZeitVon(e.target.value)}
-                            required
-                            className="border rounded-md px-3 py-2 text-sm"
+                            className={`border rounded-md px-3 py-2 text-sm ${fehlerFeld === "zeit" ? "border-red-500 bg-red-50" : ""}`}
                         >
                             <option value="">von…</option>
                             {ZEIT_OPTIONEN.map((z) => (
@@ -374,8 +390,7 @@ export default function SalesEntryPage() {
                         <select
                             value={zeitBis}
                             onChange={(e) => setZeitBis(e.target.value)}
-                            required
-                            className="border rounded-md px-3 py-2 text-sm"
+                            className={`border rounded-md px-3 py-2 text-sm ${fehlerFeld === "zeit" ? "border-red-500 bg-red-50" : ""}`}
                         >
                             <option value="">bis…</option>
                             {ZEIT_OPTIONEN.map((z) => (
@@ -478,9 +493,8 @@ export default function SalesEntryPage() {
                                 value={startbestand}
                                 onChange={(e) => setStartbestand(e.target.value)}
                                 inputMode="decimal"
-                                required
                                 placeholder="z. B. 150,00"
-                                className="w-full border rounded-md px-3 py-2 text-sm"
+                                className={`w-full border rounded-md px-3 py-2 text-sm ${fehlerFeld === "bestand" ? "border-red-500 bg-red-50" : ""}`}
                             />
                         </div>
 
@@ -501,9 +515,8 @@ export default function SalesEntryPage() {
                                 value={endbestand}
                                 onChange={(e) => setEndbestand(e.target.value)}
                                 inputMode="decimal"
-                                required
                                 placeholder="z. B. 890,40"
-                                className="w-full border rounded-md px-3 py-2 text-sm"
+                                className={`w-full border rounded-md px-3 py-2 text-sm ${fehlerFeld === "bestand" ? "border-red-500 bg-red-50" : ""}`}
                             />
                         </div>
 
@@ -561,7 +574,7 @@ export default function SalesEntryPage() {
                                     that this matches your sales day.
                                 </span>
                             </p>
-                            <label className="flex items-start gap-2 mt-2 cursor-pointer text-sm">
+                            <label className={`flex items-start gap-2 mt-2 cursor-pointer text-sm rounded p-1 ${fehlerFeld === "bestaetigung" ? "bg-red-50 ring-1 ring-red-400" : ""}`}>
                                 <input
                                     type="checkbox"
                                     checked={einnahmenBestaetigt}
@@ -659,8 +672,10 @@ export default function SalesEntryPage() {
                     />
                 </div>
 
-                {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
-                {success && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{success}</div>}
+                <div ref={fehlerRef}>
+                    {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
+                    {success && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{success}</div>}
+                </div>
 
                 <div className="flex gap-3">
                     <button
