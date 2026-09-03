@@ -150,11 +150,13 @@ export default function SalesEntryPage() {
             return;
         }
         if (!imZeitraum(centerId, datum)) {
-            setError(
-                "Für dieses Datum ist das Center laut Mietzeitraum nicht in Betrieb. " +
-                "Bitte Datum prüfen – oder beim Admin melden, falls der Zeitraum im System fehlt."
+            // Kein harter Block: vor Saisonstart (Tests, Aufbautage) muss
+            // das Speichern trotzdem moeglich sein - aber bewusst.
+            const trotzdem = window.confirm(
+                "Achtung: Dieses Datum liegt außerhalb des Mietzeitraums des Centers " +
+                "(z. B. weil die Saison noch nicht begonnen hat). Trotzdem speichern?"
             );
-            return;
+            if (!trotzdem) return;
         }
         if (!zeitVon || !zeitBis) {
             setError("Bitte das Zeitfenster angeben (von wann bis wann du an der Kasse warst).");
@@ -305,7 +307,7 @@ export default function SalesEntryPage() {
                             {centers.map((c) => {
                                 const offen = imZeitraum(c.id, datum);
                                 return (
-                                    <option key={c.id} value={c.id} disabled={!offen}>
+                                    <option key={c.id} value={c.id}>
                                         {c.name} ({c.kuerzel}) · {c.saison}
                                         {!offen ? " — außerhalb Mietzeitraum" : ""}
                                     </option>
