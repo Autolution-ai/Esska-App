@@ -3,20 +3,28 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGlobal } from '@/lib/context/GlobalContext';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Store, Users, CalendarDays, TrendingUp } from 'lucide-react';
+import { CalendarDays, CreditCard, ShoppingCart, Store, TrendingUp, User, Users } from 'lucide-react';
 import Link from 'next/link';
+import InstallHinweis from '@/components/esska/InstallHinweis';
 
-const adminKacheln = [
-    { href: '/app/centers', icon: Store, title: 'Center', text: 'Standorte anlegen und verwalten' },
-    { href: '/app/employees', icon: Users, title: 'Mitarbeiter', text: 'Personal einladen und zuordnen' },
+type Kachel = { href: string; icon: typeof Store; title: string; text: string };
+
+const adminKacheln: Kachel[] = [
+    { href: '/app/sales', icon: TrendingUp, title: 'Umsätze', text: 'Kassenmeldungen aller Center, Exporte' },
     { href: '/app/shifts', icon: CalendarDays, title: 'Schichtplan', text: 'Wochenpläne erstellen und veröffentlichen' },
-    { href: '/app/sales', icon: TrendingUp, title: 'Umsätze', text: 'Tagesumsätze und Auswertungen' },
+    { href: '/app/employees', icon: Users, title: 'Mitarbeiter', text: 'Personal einladen und zuordnen' },
+    { href: '/app/centers', icon: Store, title: 'Center', text: 'Standorte anlegen und verwalten' },
+    { href: '/app/sales/cards', icon: CreditCard, title: 'Karteneinnahmen', text: 'Kartenumsätze je Center und Tag' },
+    { href: '/app/orders', icon: ShoppingCart, title: 'Bestellungen', text: 'Warenbestellungen der Center' },
 ];
 
-const mitarbeiterKacheln = [
-    { href: '/app/my-centers', icon: Store, title: 'Meine Center', text: 'Standorte, denen ich zugeordnet bin' },
-    { href: '/app/my-shifts', icon: CalendarDays, title: 'Meine Schichten', text: 'Veröffentlichte Wochenpläne' },
-    { href: '/app/user-settings', icon: Users, title: 'Stammdaten', text: 'Persönliche Daten pflegen' },
+const managerKacheln: Kachel[] = adminKacheln.filter((k) => k.href !== '/app/sales/cards');
+
+const mitarbeiterKacheln: Kachel[] = [
+    { href: '/app/availability', icon: CalendarDays, title: 'Verfügbarkeit', text: 'Wann kannst du arbeiten?' },
+    { href: '/app/my-shifts', icon: CalendarDays, title: 'Meine Schichten', text: 'Deine veröffentlichten Einsätze' },
+    { href: '/app/orders', icon: ShoppingCart, title: 'Ware bestellen', text: 'Nachschub für deinen Stand' },
+    { href: '/app/user-settings', icon: User, title: 'Stammdaten', text: 'Persönliche Daten pflegen' },
 ];
 
 export default function DashboardContent() {
@@ -37,19 +45,40 @@ export default function DashboardContent() {
         );
     }
 
-    const kacheln = role === 'admin' ? adminKacheln : mitarbeiterKacheln;
-    const begruessung = role === 'admin' ? 'Admin-Übersicht' : 'Willkommen';
+    const istMitarbeiter = role === 'mitarbeiter';
+    const kacheln =
+        role === 'admin' ? adminKacheln : role === 'regionalmanager' ? managerKacheln : mitarbeiterKacheln;
+    const begruessung =
+        role === 'admin' ? 'Admin-Übersicht' : role === 'regionalmanager' ? 'Regionalleitung' : 'Willkommen';
 
     return (
-        <div className="space-y-6 p-6">
+        <div className="space-y-6 p-4 md:p-6">
+            <InstallHinweis />
+
             <Card>
                 <CardHeader>
                     <CardTitle>{begruessung}</CardTitle>
-                    <CardDescription>
-                        Angemeldet als {user?.email}
-                    </CardDescription>
+                    <CardDescription>Angemeldet als {user?.email}</CardDescription>
                 </CardHeader>
             </Card>
+
+            {/* Haupt-Aktion: taeglich gebraucht, deshalb ganz oben und gross */}
+            {istMitarbeiter && (
+                <Link
+                    href="/app/sales/new"
+                    className="flex items-center gap-4 p-5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
+                >
+                    <div className="p-3 bg-white/15 rounded-full">
+                        <TrendingUp className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold">Umsatz melden</h3>
+                        <p className="text-sm text-white/85">
+                            Kassenbestand deiner Schicht eintragen – am besten direkt nach Schichtende.
+                        </p>
+                    </div>
+                </Link>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
                 {kacheln.map((kachel) => (

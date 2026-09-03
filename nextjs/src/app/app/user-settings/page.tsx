@@ -75,6 +75,13 @@ export default function UserSettingsPage() {
             <div>
                 <h1 className="text-2xl font-bold">Einstellungen & Stammdaten</h1>
                 <p className="text-gray-500">Persönliche Daten, Passwort und Sicherheits-Einstellungen.</p>
+                {/* Dauerhaft auffindbarer Ort fuer die Installations-Anleitung -
+                    der Hinweis auf dem Dashboard laesst sich wegklicken. */}
+                <p className="mt-2 text-sm">
+                    <a href="/anleitung" className="text-primary-600 underline">
+                        📱 Esska-App aufs Handy holen (Anleitung)
+                    </a>
+                </p>
             </div>
 
             {error && (

@@ -297,6 +297,19 @@ export default function OnboardingPage() {
                         <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>
                     )}
 
+                    {alleErledigt && (
+                        <div className="bg-secondary-100 border border-secondary-300 rounded-lg p-4 text-sm">
+                            <p className="font-medium text-gray-900 mb-1">📱 Tipp zum Schluss</p>
+                            <p className="text-gray-700">
+                                Hol dir die App als Icon auf den Startbildschirm – dann musst du den
+                                Link nie wieder suchen und bist mit einem Tipp drin.{" "}
+                                <a href="/anleitung" target="_blank" rel="noopener noreferrer" className="text-primary-700 underline font-medium">
+                                    Anleitung öffnen
+                                </a>
+                            </p>
+                        </div>
+                    )}
+
                     <div className="flex items-center justify-between bg-white border rounded-lg p-4 flex-wrap gap-3">
                         <p className="text-sm text-gray-600">
                             {alleErledigt

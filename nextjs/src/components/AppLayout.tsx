@@ -50,6 +50,23 @@ const regionalmanagerNavigation: NavItem[] = [
     { name: 'Einstellungen', href: '/app/user-settings', icon: User },
 ];
 
+// Untere Schnellzugriff-Leiste auf dem Handy (max. 4 Eintraege, damit die
+// Beschriftungen lesbar bleiben). Enthaelt bewusst die Aufgaben, die
+// taeglich anfallen - beim Mitarbeiter vor allem "Umsatz melden".
+const schnellzugriffMitarbeiter: NavItem[] = [
+    { name: 'Start', href: '/app', icon: Home },
+    { name: 'Umsatz', href: '/app/sales/new', icon: TrendingUp },
+    { name: 'Verfügbar', href: '/app/availability', icon: CalendarDays },
+    { name: 'Schichten', href: '/app/my-shifts', icon: ClipboardList },
+];
+
+const schnellzugriffLeitung: NavItem[] = [
+    { name: 'Start', href: '/app', icon: Home },
+    { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
+    { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
+    { name: 'Team', href: '/app/employees', icon: Users },
+];
+
 const mitarbeiterNavigation: NavItem[] = [
     { name: 'Übersicht', href: '/app', icon: Home },
     { name: 'Verfügbarkeit', href: '/app/availability', icon: CalendarDays },
@@ -101,6 +118,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             : role === 'regionalmanager'
                 ? regionalmanagerNavigation
                 : mitarbeiterNavigation;
+
+    const schnellzugriff = onboardingOffen
+        ? []
+        : role === 'mitarbeiter'
+            ? schnellzugriffMitarbeiter
+            : schnellzugriffLeitung;
 
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
 
@@ -216,10 +239,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
 
-                <main className="p-4">
+                <main className="p-4 pb-24 lg:pb-4">
                     {children}
                 </main>
             </div>
+
+            {/* Schnellzugriff unten - nur auf dem Handy, nur wenn angemeldet */}
+            {schnellzugriff.length > 0 && (
+                <nav className="lg:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t shadow-[0_-1px_3px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom)]">
+                    <div className="grid grid-cols-4">
+                        {schnellzugriff.map((item) => {
+                            const isActive = pathname === item.href;
+                            return (
+                                <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    className={`flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium ${
+                                        isActive ? 'text-primary-600' : 'text-gray-500'
+                                    }`}
+                                >
+                                    <item.icon className={`h-5 w-5 ${isActive ? 'text-primary-600' : 'text-gray-400'}`} />
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                </nav>
+            )}
         </div>
     );
 }
