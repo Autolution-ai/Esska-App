@@ -10,12 +10,24 @@ import { isoDatum, parseIsoDatum, zeitKurz } from "@/lib/esska/types";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
+/** daily_sales inkl. der erfassenden Person (fuer Anzeige und CSV). */
+type SaleMitErfasser = EsskaDailySale & {
+    profiles?: { vorname: string | null; nachname: string | null; email: string | null } | null;
+};
+
+/** Name der erfassenden Person, oder Strich. */
+function erfasserName(s: SaleMitErfasser): string {
+    const p = s.profiles;
+    if (!p) return "";
+    return `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "");
+}
+
 type CenterStatus = {
     center: EsskaCenter;
     /** Gueltige Eintraege des Tages (nicht durch Korrektur ersetzt), nach Zeitfenster sortiert. */
-    aktuelle: EsskaDailySale[];
+    aktuelle: SaleMitErfasser[];
     /** Durch Korrektur ersetzte Eintraege - bleiben dauerhaft erhalten. */
-    historie: EsskaDailySale[];
+    historie: SaleMitErfasser[];
     karte: EsskaCardRevenue | null;
     /** Liegt der Tag im Miet-/Verlaengerungszeitraum? (UA-4) */
     inBetrieb: boolean;
@@ -36,20 +48,20 @@ function bargeld(cent: number | null | undefined): string {
     });
 }
 
-function zeitfenster(s: EsskaDailySale): string {
+function zeitfenster(s: SaleMitErfasser): string {
     if (s.umsatz_start && s.umsatz_ende) return `${zeitKurz(s.umsatz_start)}–${zeitKurz(s.umsatz_ende)}`;
     return "—";
 }
 
 /** Eintraege, deren id von einer Korrektur referenziert wird, sind ersetzt. */
-function ersetzteIds(alle: EsskaDailySale[]): Set<string> {
+function ersetzteIds(alle: SaleMitErfasser[]): Set<string> {
     return new Set(alle.map((s) => s.korrigiert_eintrag_id).filter(Boolean) as string[]);
 }
 
 export default function SalesAdminPage() {
     const { role } = useGlobal();
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
-    const [sales, setSales] = useState<EsskaDailySale[]>([]);
+    const [sales, setSales] = useState<SaleMitErfasser[]>([]);
     const [karten, setKarten] = useState<EsskaCardRevenue[]>([]);
     const [zeitraeume, setZeitraeume] = useState<EsskaCenterZeitraum[]>([]);
     const [datum, setDatum] = useState<string>(isoDatum(new Date()));
@@ -72,7 +84,7 @@ export default function SalesAdminPage() {
                     client.from("centers").select("*").in("status", ["aktiv", "geplant"]).order("name"),
                     client
                         .from("daily_sales")
-                        .select("*")
+                        .select("*, profiles!daily_sales_erfasst_von_fkey(vorname, nachname, email)")
                         .eq("datum", datum)
                         .order("erfasst_am", { ascending: true }),
                     client.from("card_revenues").select("*").eq("datum", datum),
@@ -81,7 +93,7 @@ export default function SalesAdminPage() {
                 if (cRes.error) throw cRes.error;
                 if (sRes.error) throw sRes.error;
                 setCenters((cRes.data as EsskaCenter[]) ?? []);
-                setSales((sRes.data as EsskaDailySale[]) ?? []);
+                setSales((sRes.data as SaleMitErfasser[]) ?? []);
                 setKarten((kRes.data as EsskaCardRevenue[]) ?? []);
                 setZeitraeume((zRes.data as EsskaCenterZeitraum[]) ?? []);
             } catch (err) {
@@ -133,20 +145,22 @@ export default function SalesAdminPage() {
     // ersetzten) sowie die Karteneinnahmen als eigene Zeilen (UA-3), damit
     // beim Summieren nichts doppelt zaehlt.
     const csvErzeugen = (
-        kassenzeilen: Array<{ datum: string; center: EsskaCenter | null; sale: EsskaDailySale; gueltig: boolean }>,
+        kassenzeilen: Array<{ datum: string; center: EsskaCenter | null; sale: SaleMitErfasser; gueltig: boolean }>,
         kartenzeilen: Array<{ datum: string; center: EsskaCenter | null; betrag_cent: number; notiz: string | null }>,
         dateiname: string
     ) => {
         const header = [
-            "Datum", "Center", "Stadt", "Saison", "Art", "Zeitfenster",
-            "Startbestand", "Einnahmen", "Ausgaben", "Endbestand", "Abschoepfung", "Karteneinnahmen",
-            "Gueltig", "Erfasst_am", "Korrektur", "Korrektur_Grund", "Notiz",
+            "Datum", "Center", "Kuerzel", "Stadt", "Saison", "Art", "Zeitfenster",
+            "Startbestand", "Einnahmen", "Ausgaben", "Einlagen", "Endbestand",
+            "In_Tresor", "Karteneinnahmen",
+            "Gueltig", "Erfasst_von", "Erfasst_am", "Korrektur", "Korrektur_Grund", "Notiz",
         ];
         const rows: string[][] = [];
         for (const e of kassenzeilen) {
             rows.push([
                 e.datum,
                 e.center?.name ?? "?",
+                e.center?.kuerzel ?? "?",
                 e.center?.stadt ?? "?",
                 e.center?.saison ?? "?",
                 "Bargeld",
@@ -154,10 +168,12 @@ export default function SalesAdminPage() {
                 bargeld(e.sale.startbestand_cent),
                 bargeld(e.sale.einnahmen_cent),
                 bargeld(e.sale.ausgaben_cent),
+                bargeld(e.sale.einlagen_cent),
                 bargeld(e.sale.endbestand_cent),
                 bargeld(e.sale.abschoepfung_cent),
                 "",
                 e.gueltig ? "ja" : "nein",
+                erfasserName(e.sale),
                 new Date(e.sale.erfasst_am).toLocaleString("de-DE"),
                 e.sale.korrigiert_eintrag_id ? "ja" : "nein",
                 (e.sale.korrektur_grund ?? "").replace(/"/g, '""'),
@@ -168,20 +184,22 @@ export default function SalesAdminPage() {
             rows.push([
                 k.datum,
                 k.center?.name ?? "?",
+                k.center?.kuerzel ?? "?",
                 k.center?.stadt ?? "?",
                 k.center?.saison ?? "?",
                 "Karte",
                 "",
-                "", "", "", "", "",
+                "", "", "", "", "", "",
                 bargeld(k.betrag_cent),
                 "ja",
+                "",
                 "",
                 "nein",
                 "",
                 (k.notiz ?? "").replace(/"/g, '""'),
             ]);
         }
-        rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1], "de") || a[4].localeCompare(b[4]));
+        rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1], "de") || a[5].localeCompare(b[5]));
         const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(";")).join("\n");
         const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
@@ -220,7 +238,7 @@ export default function SalesAdminPage() {
                 client.from("centers").select("*"),
                 client
                     .from("daily_sales")
-                    .select("*")
+                    .select("*, profiles!daily_sales_erfasst_von_fkey(vorname, nachname, email)")
                     .gte("datum", exportVon)
                     .lte("datum", exportBis)
                     .order("datum", { ascending: true }),
@@ -233,7 +251,7 @@ export default function SalesAdminPage() {
             if (cRes.error) throw cRes.error;
             if (sRes.error) throw sRes.error;
             const alleCenters = (cRes.data as EsskaCenter[]) ?? [];
-            const alle = (sRes.data as EsskaDailySale[]) ?? [];
+            const alle = (sRes.data as SaleMitErfasser[]) ?? [];
             const alleKarten = (kRes.data as EsskaCardRevenue[]) ?? [];
             if (alle.length === 0 && alleKarten.length === 0) {
                 setError(`Im Zeitraum ${exportVon} bis ${exportBis} gibt es keine Einträge.`);
@@ -500,10 +518,12 @@ function CenterTable({
                         <th className="px-3 py-2 font-medium text-right">Startbestand</th>
                         <th className="px-3 py-2 font-medium text-right">Einnahmen</th>
                         <th className="px-3 py-2 font-medium text-right">Ausgaben</th>
+                        <th className="px-3 py-2 font-medium text-right">Einlagen</th>
                         <th className="px-3 py-2 font-medium text-right">Endbestand</th>
-                        <th className="px-3 py-2 font-medium text-right">Abschöpfung</th>
+                        <th className="px-3 py-2 font-medium text-right">In Tresor</th>
                         <th className="px-3 py-2 font-medium text-right">Karte</th>
                         <th className="px-3 py-2 font-medium">Foto</th>
+                        <th className="px-3 py-2 font-medium">Erfasst von</th>
                         <th className="px-3 py-2 font-medium">Notiz</th>
                     </tr>
                 </thead>
@@ -539,6 +559,7 @@ function CenterTable({
                                         <td className="px-3 py-2 text-right">{bargeld(e?.startbestand_cent)}</td>
                                         <td className="px-3 py-2 text-right font-medium">{bargeld(e?.einnahmen_cent)}</td>
                                         <td className="px-3 py-2 text-right">{bargeld(e?.ausgaben_cent)}</td>
+                                        <td className="px-3 py-2 text-right">{bargeld(e?.einlagen_cent)}</td>
                                         <td className="px-3 py-2 text-right">{bargeld(e?.endbestand_cent)}</td>
                                         <td className="px-3 py-2 text-right">{bargeld(e?.abschoepfung_cent)}</td>
                                         <td className="px-3 py-2 text-right">
@@ -547,6 +568,7 @@ function CenterTable({
                                         <td className="px-3 py-2">
                                             {e?.beleg_foto_path ? <FotoLink pfad={e.beleg_foto_path} /> : ""}
                                         </td>
+                                        <td className="px-3 py-2 text-gray-600 text-xs">{e ? erfasserName(e) : ""}</td>
                                         <td className="px-3 py-2 text-gray-600">{e?.notiz ?? ""}</td>
                                     </tr>
                                 ))}
@@ -560,12 +582,14 @@ function CenterTable({
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.startbestand_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.einnahmen_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.ausgaben_cent)}</td>
+                                            <td className="px-3 py-1.5 text-right">{bargeld(h.einlagen_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.endbestand_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.abschoepfung_cent)}</td>
                                             <td className="px-3 py-1.5"></td>
                                             <td className="px-3 py-1.5">
                                                 {h.beleg_foto_path ? <FotoLink pfad={h.beleg_foto_path} /> : ""}
                                             </td>
+                                            <td className="px-3 py-1.5">{erfasserName(h)}</td>
                                             <td className="px-3 py-1.5">{h.notiz ?? ""}</td>
                                         </tr>
                                     ))}

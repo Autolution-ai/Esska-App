@@ -533,6 +533,9 @@ export interface EsskaDailySale {
     startbestand_cent: number | null;
     einnahmen_cent: number | null;
     ausgaben_cent: number | null;
+    // Geld, das waehrend der Schicht IN die Kasse gelegt wurde
+    // (z. B. Wechselgeld aus dem Tresor) - kein Umsatz!
+    einlagen_cent: number | null;
     endbestand_cent: number | null;
     abschoepfung_cent: number | null;
     // Kartenumsaetze laut Tagesabschluss (Z-Bericht) des Kartenterminals

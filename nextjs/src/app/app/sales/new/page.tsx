@@ -40,6 +40,7 @@ export default function SalesEntryPage() {
     const [startbestand, setStartbestand] = useState("");
     const [endbestand, setEndbestand] = useState("");
     const [ausgaben, setAusgaben] = useState("");
+    const [einlagen, setEinlagen] = useState("");
     const [ausgabenOffen, setAusgabenOffen] = useState(false);
     const [abschoepfung, setAbschoepfung] = useState("");
     const [einnahmenBestaetigt, setEinnahmenBestaetigt] = useState(false);
@@ -138,20 +139,25 @@ export default function SalesEntryPage() {
     );
     const aktuelleEintraege = tagesEintraege.filter((e) => !ersetzteIds.has(e.id));
 
-    // U-3: Einnahmen = Endbestand - Startbestand + Ausgaben.
-    // (Die Abschoepfung passiert erst NACH dem Zaehlen des Endbestands und
-    // veraendert die Rechnung deshalb nicht.)
+    // U-3: Kassenbericht-Rechnung der offenen Ladenkasse:
+    //   Einnahmen = Endbestand - Startbestand + Ausgaben - Einlagen
+    // Ausgaben mindern den Endbestand, ohne den Umsatz zu mindern -> addieren.
+    // Einlagen (z. B. Wechselgeld aus dem Tresor) erhoehen den Endbestand,
+    // ohne Umsatz zu sein -> abziehen.
+    // Das Geld fuer den Tresor wird erst NACH dem Zaehlen entnommen und
+    // veraendert die Rechnung deshalb nicht.
     const einnahmenCent = useMemo(() => {
         if (!startbestand || !endbestand) return null;
         try {
             const start = euroToCent(startbestand);
             const ende = euroToCent(endbestand);
             const aus = ausgaben ? euroToCent(ausgaben) : 0;
-            return ende - start + aus;
+            const ein = einlagen ? euroToCent(einlagen) : 0;
+            return ende - start + aus - ein;
         } catch {
             return null;
         }
-    }, [startbestand, endbestand, ausgaben]);
+    }, [startbestand, endbestand, ausgaben, einlagen]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -238,6 +244,7 @@ export default function SalesEntryPage() {
                 startbestand_cent: euroToCent(startbestand),
                 einnahmen_cent: einnahmenCent,
                 ausgaben_cent: ausgaben ? euroToCent(ausgaben) : null,
+                einlagen_cent: einlagen ? euroToCent(einlagen) : null,
                 endbestand_cent: euroToCent(endbestand),
                 abschoepfung_cent: abschoepfung ? euroToCent(abschoepfung) : null,
                 beleg_foto_path: fotoPath,
@@ -258,6 +265,7 @@ export default function SalesEntryPage() {
             setStartbestand("");
             setEndbestand("");
             setAusgaben("");
+            setEinlagen("");
             setAusgabenOffen(false);
             setAbschoepfung("");
             setEinnahmenBestaetigt(false);
@@ -532,7 +540,7 @@ export default function SalesEntryPage() {
                                 ) : (
                                     <ChevronDown className="h-4 w-4 mr-1" />
                                 )}
-                                Es wurden Ausgaben aus der Kasse bezahlt (selten)
+                                Geld aus der Kasse bezahlt oder Wechselgeld dazugelegt? (selten)
                             </button>
                             {ausgabenOffen && (
                                 <div className="mt-2">
@@ -553,6 +561,26 @@ export default function SalesEntryPage() {
                                         placeholder="z. B. 12,50"
                                         className="w-full border rounded-md px-3 py-2 text-sm"
                                     />
+
+                                    <label className="block text-sm font-medium mb-1 mt-4">Einlagen (€)</label>
+                                    <p className="text-xs text-gray-500 mb-1.5">
+                                        Wurde während der Schicht Geld in die Kasse <strong>gelegt</strong>
+                                        (z. B. Wechselgeld aus dem Tresor)? Das ist kein Umsatz und wird
+                                        bei den Einnahmen wieder abgezogen.
+                                        <br />
+                                        <span className="italic">
+                                            Was money <strong>added</strong> to the register during the shift
+                                            (e.g. change from the safe)? This is not revenue and is deducted
+                                            from the takings.
+                                        </span>
+                                    </p>
+                                    <input
+                                        value={einlagen}
+                                        onChange={(e) => setEinlagen(e.target.value)}
+                                        inputMode="decimal"
+                                        placeholder="z. B. 100,00"
+                                        className="w-full border rounded-md px-3 py-2 text-sm"
+                                    />
                                 </div>
                             )}
                         </div>
@@ -566,12 +594,14 @@ export default function SalesEntryPage() {
                                 </span>
                             </p>
                             <p className="text-xs text-gray-600 mt-1">
-                                Endbestand − Startbestand{ausgaben ? " + Ausgaben" : ""}. Bitte prüfen,
-                                ob das zu deinem Verkaufstag passt.
+                                Endbestand − Startbestand{ausgaben ? " + Ausgaben" : ""}
+                                {einlagen ? " − Einlagen" : ""}. Bitte prüfen, ob das zu deinem
+                                Verkaufstag passt.
                                 <br />
                                 <span className="italic">
-                                    End balance − start balance{ausgaben ? " + expenses" : ""}. Please check
-                                    that this matches your sales day.
+                                    End balance − start balance{ausgaben ? " + expenses" : ""}
+                                    {einlagen ? " − cash added" : ""}. Please check that this matches
+                                    your sales day.
                                 </span>
                             </p>
                             <label className={`flex items-start gap-2 mt-2 cursor-pointer text-sm rounded p-1 ${fehlerFeld === "bestaetigung" ? "bg-red-50 ring-1 ring-red-400" : ""}`}>
@@ -591,15 +621,16 @@ export default function SalesEntryPage() {
                         {/* U-4: Abschoepfung verstaendlich */}
                         <div>
                             <label className="block text-sm font-medium mb-1">
-                                4. In den Umschlag gelegt / Abschöpfung (€)
+                                4. In den Tresor gelegt (€)
+                                <span className="font-normal text-gray-500"> – früher &bdquo;Abschöpfung&ldquo;</span>
                             </label>
                             <p className="text-xs text-gray-500 mb-1.5">
                                 Wie viel Bargeld hast du nach dem Zählen aus der Kasse genommen und in den
-                                Umschlag gelegt? Falls nichts entnommen wurde, leer lassen.
+                                Tresor gelegt? Falls nichts entnommen wurde, leer lassen.
                                 <br />
                                 <span className="italic">
                                     How much cash did you take out of the register after counting and put
-                                    into the envelope? Leave empty if nothing was removed.
+                                    into the safe? Leave empty if nothing was removed.
                                 </span>
                             </p>
                             <input
