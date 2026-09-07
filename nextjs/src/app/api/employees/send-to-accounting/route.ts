@@ -11,8 +11,8 @@
 //
 // GET  (nur Admin) -> { empfaenger } zur Anzeige im Bestaetigungsdialog.
 //
-// Empfaenger kommt aus der Vercel-Umgebungsvariable BUCHHALTUNG_EMAIL;
-// ohne sie gilt der eingebaute Standard.
+// Empfaenger kommt ausschliesslich aus der Vercel-Umgebungsvariable
+// BUCHHALTUNG_EMAIL. Ist sie nicht gesetzt, wird NICHT verschickt.
 
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
@@ -23,10 +23,19 @@ import { generiereStammdatenPdf } from "@/lib/esska/pdf";
 import type { EsskaProfile } from "@/lib/esska/types";
 import { centToEuro } from "@/lib/esska/types";
 
-const STANDARD_EMPFAENGER = "buchhaltung.weinert@gmail.com";
-
-function empfaenger(): string {
-    return process.env.BUCHHALTUNG_EMAIL ?? STANDARD_EMPFAENGER;
+/**
+ * Empfaenger der Personalstammdaten.
+ *
+ * BEWUSST ohne eingebaute Standardadresse: Fehlt die Umgebungsvariable,
+ * bricht der Versand ab, statt hochsensible Daten (Steuer-ID,
+ * Rentenversicherungsnummer, Verdienst) an eine im Code hinterlegte
+ * Adresse zu schicken. Lieber ein sichtbarer Fehler als eine stille
+ * Fehlleitung personenbezogener Daten.
+ */
+function empfaenger(): string | null {
+    const wert = process.env.BUCHHALTUNG_EMAIL?.trim();
+    if (!wert || !/^\S+@\S+\.\S+$/.test(wert)) return null;
+    return wert;
 }
 
 /** Prueft die Admin-Rolle und liefert die User-ID, oder eine Fehler-Response. */
@@ -54,7 +63,13 @@ async function adminPruefen(): Promise<NextResponse | { userId: string }> {
 export async function GET() {
     const check = await adminPruefen();
     if (check instanceof NextResponse) return check;
-    return NextResponse.json({ empfaenger: empfaenger() });
+    const an = empfaenger();
+    return NextResponse.json({
+        empfaenger: an,
+        fehler: an
+            ? null
+            : "Die Empfängeradresse der Buchhaltung ist nicht hinterlegt (Vercel-Umgebungsvariable BUCHHALTUNG_EMAIL). Der Versand ist bis dahin gesperrt.",
+    });
 }
 
 function csvFeld(v: string | number | boolean | null | undefined): string {
@@ -121,6 +136,20 @@ export async function POST(request: Request) {
         );
     }
 
+    // Fail closed: ohne konfigurierte Empfaengeradresse wird NICHT verschickt
+    const an = empfaenger();
+    if (!an) {
+        return NextResponse.json(
+            {
+                error:
+                    "Versand gesperrt: Die Empfängeradresse der Buchhaltung ist nicht hinterlegt " +
+                    "(Vercel-Umgebungsvariable BUCHHALTUNG_EMAIL). Bitte zuerst eintragen – " +
+                    "Personaldaten werden nicht an eine Ersatzadresse geschickt.",
+            },
+            { status: 400 }
+        );
+    }
+
     try {
         // untypisiert, weil die generierten Database-Typen die Esska-Tabellen
         // nicht kennen (gleiches Muster wie getEsskaClient im Frontend)
@@ -150,7 +179,6 @@ export async function POST(request: Request) {
         });
 
         const namen = profile.map((p) => `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "?"));
-        const an = empfaenger();
 
         const transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST ?? "smtp.gmail.com",

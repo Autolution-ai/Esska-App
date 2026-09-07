@@ -56,9 +56,13 @@ export default function EmployeesPage() {
                 const client = await getEsskaClient();
                 const von = isoDatum(wochenStarts[0]);
                 const bis = isoDatum(addTage(wochenStarts[2], 6));
+                // Regionalmanager sehen die reduzierte Sicht ohne Steuer-ID,
+                // Rentenversicherungsnummer, Geburtsdatum, Adresse und
+                // Verdienst - fuer die Einsatzplanung sind die nicht noetig.
+                const quelle = role === "admin" ? "profiles" : "profiles_planung";
                 const [pRes, cRes, aRes, vRes] = await Promise.all([
                     client
-                        .from("profiles")
+                        .from(quelle)
                         .select("*")
                         .order("nachname", { ascending: true, nullsFirst: false }),
                     client.from("centers").select("*").order("saison", { ascending: false }).order("name"),
@@ -94,9 +98,9 @@ export default function EmployeesPage() {
                 setLoading(false);
             }
         };
-        load();
+        if (!globalLoading && role) load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [globalLoading, role]);
 
     const centerVon = (profileId: string): EsskaCenter[] => {
         const ids = assignments.filter((a) => a.profile_id === profileId).map((a) => a.center_id);

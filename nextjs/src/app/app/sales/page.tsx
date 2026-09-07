@@ -39,6 +39,22 @@ function plusTage(d: Date, t: number): Date {
     return x;
 }
 
+/**
+ * Ein Wert als CSV-Feld.
+ *
+ * Zwei Dinge muessen passieren:
+ *  - Anfuehrungszeichen verdoppeln, sonst zerreisst ein " im Namen die Zeile
+ *  - Formel-Injektion verhindern: Excel/Numbers fuehren Zellen aus, die mit
+ *    = + - @ beginnen. Ein Mitarbeiter koennte sonst ueber eine Notiz
+ *    Formeln in die Buchhaltungs-Datei schmuggeln.
+ */
+function csvFeld(v: string | number | null | undefined): string {
+    if (v === null || v === undefined) return '""';
+    let text = String(v);
+    if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
 /** Bargeld-Betrag als deutsch formatierter Euro-Wert, oder Strich wenn nicht erfasst. */
 function bargeld(cent: number | null | undefined): string {
     if (cent === null || cent === undefined) return "—";
@@ -176,8 +192,8 @@ export default function SalesAdminPage() {
                 erfasserName(e.sale),
                 new Date(e.sale.erfasst_am).toLocaleString("de-DE"),
                 e.sale.korrigiert_eintrag_id ? "ja" : "nein",
-                (e.sale.korrektur_grund ?? "").replace(/"/g, '""'),
-                (e.sale.notiz ?? "").replace(/"/g, '""'),
+                e.sale.korrektur_grund ?? "",
+                e.sale.notiz ?? "",
             ]);
         }
         for (const k of kartenzeilen) {
@@ -196,11 +212,11 @@ export default function SalesAdminPage() {
                 "",
                 "nein",
                 "",
-                (k.notiz ?? "").replace(/"/g, '""'),
+                k.notiz ?? "",
             ]);
         }
         rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1], "de") || a[5].localeCompare(b[5]));
-        const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(";")).join("\n");
+        const csv = [header, ...rows].map((r) => r.map(csvFeld).join(";")).join("\n");
         const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
@@ -210,6 +226,10 @@ export default function SalesAdminPage() {
         URL.revokeObjectURL(url);
     };
 
+    // Hinweis: Diese Datei deckt genau die Center ab, die in der Tagesansicht
+    // stehen (Status aktiv/geplant). Fuer eine vollstaendige Uebergabe an die
+    // Buchhaltung immer den Zeitraum-Export nutzen - der beruecksichtigt auch
+    // beendete Center.
     const csvExport = () => {
         const kassen = status.flatMap((s) =>
             [...s.aktuelle.map((e) => ({ sale: e, gueltig: true })), ...s.historie.map((e) => ({ sale: e, gueltig: false }))]

@@ -558,11 +558,68 @@ export function centToEuro(cent: number | null | undefined): string {
     });
 }
 
+/**
+ * Wandelt eine Geldeingabe in Cent um.
+ *
+ * WICHTIG - hier lauerte ein schwerer Fehler: Frueher wurden ALLE Punkte
+ * als Tausendertrennzeichen entfernt. Wer auf dem Handy "890.40" tippte
+ * (mit Punkt statt Komma - auf vielen Tastaturen der naheliegende Weg),
+ * bekam 89.040,00 EUR gespeichert. In einem GoBD-unveraenderbaren
+ * Kassenbeitrag ist das nicht mehr korrigierbar.
+ *
+ * Jetzt wird das Dezimaltrennzeichen erkannt:
+ *   "1.234,56" -> Komma trennt   -> 123456
+ *   "890,40"   -> Komma trennt   -> 89040
+ *   "890.40"   -> Punkt trennt   -> 89040   (1-2 Nachkommastellen)
+ *   "1.234"    -> Tausenderpunkt -> 123400  (genau 3 Stellen dahinter)
+ *
+ * Bei ungueltiger Eingabe wird eine Ausnahme geworfen statt still 0 zu
+ * liefern - ein stiller Nullwert in der Kasse waere schlimmer als ein
+ * sichtbarer Fehler.
+ */
 export function euroToCent(euro: string): number {
-    if (!euro) return 0;
-    const normalized = euro.replace(/\./g, "").replace(",", ".");
-    const value = parseFloat(normalized);
-    if (Number.isNaN(value)) return 0;
+    const wert = parseEuro(euro);
+    if (wert === null) {
+        throw new Error(
+            `„${euro}" ist kein gültiger Betrag. Bitte nur Zahlen eingeben, z. B. 890,40`
+        );
+    }
+    return wert;
+}
+
+/** Wie euroToCent, liefert aber null statt einer Ausnahme. */
+export function parseEuro(euro: string): number | null {
+    const roh = (euro ?? "").trim().replace(/\s/g, "").replace(/€/g, "");
+    if (!roh) return null;
+    if (!/^-?[\d.,]+$/.test(roh)) return null;
+
+    const letzterPunkt = roh.lastIndexOf(".");
+    const letztesKomma = roh.lastIndexOf(",");
+    let normalisiert: string;
+
+    if (letztesKomma > -1 && letzterPunkt > -1) {
+        // Beide vorhanden: das hintere Zeichen trennt die Nachkommastellen
+        normalisiert =
+            letztesKomma > letzterPunkt
+                ? roh.replace(/\./g, "").replace(",", ".")
+                : roh.replace(/,/g, "");
+    } else if (letztesKomma > -1) {
+        // Nur Komma -> deutsches Dezimaltrennzeichen
+        normalisiert = roh.replace(/,/g, ".");
+    } else if (letzterPunkt > -1) {
+        // Nur Punkt: genau 3 Stellen dahinter und nicht der einzige Punkt
+        // -> Tausendertrennzeichen; sonst Dezimalpunkt.
+        const stellenDanach = roh.length - letzterPunkt - 1;
+        const mehrerePunkte = roh.indexOf(".") !== letzterPunkt;
+        normalisiert = stellenDanach === 3 && (mehrerePunkte || roh.indexOf(".") > 0)
+            ? roh.replace(/\./g, "")
+            : roh.replace(/\./g, "#").replace("#", ".").replace(/#/g, "");
+    } else {
+        normalisiert = roh;
+    }
+
+    const value = parseFloat(normalisiert);
+    if (Number.isNaN(value) || !Number.isFinite(value)) return null;
     return Math.round(value * 100);
 }
 

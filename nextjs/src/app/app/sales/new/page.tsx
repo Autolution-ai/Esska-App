@@ -7,7 +7,7 @@ import { Camera, ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaCenterZeitraum, EsskaDailySale } from "@/lib/esska/types";
-import { centToEuro, euroToCent, isoDatum, zeitKurz } from "@/lib/esska/types";
+import { centToEuro, euroToCent, isoDatum, parseEuro, zeitKurz } from "@/lib/esska/types";
 
 // Zeitauswahl in 15-Minuten-Schritten fuer das Arbeits-Zeitfenster (U-9)
 const ZEIT_OPTIONEN: string[] = (() => {
@@ -186,6 +186,21 @@ export default function SalesEntryPage() {
         if (zeitBis <= zeitVon) {
             zeigeFehler("Das Zeitfenster stimmt nicht: die „bis“-Zeit muss nach der „von“-Zeit liegen.", "zeit");
             return;
+        }
+        // Jeden eingegebenen Betrag einzeln pruefen, damit der Fehler das
+        // konkrete Feld benennt (statt spaeter beim Speichern zu scheitern).
+        const betragsFelder: Array<[string, string, string]> = [
+            ["Startbestand", startbestand, "bestand"],
+            ["Endbestand", endbestand, "bestand"],
+            ["Ausgaben", ausgaben, "bestand"],
+            ["Einlagen", einlagen, "bestand"],
+            ["In den Tresor gelegt", abschoepfung, "bestand"],
+        ];
+        for (const [label, wert, feld] of betragsFelder) {
+            if (wert.trim() && parseEuro(wert) === null) {
+                zeigeFehler(`„${wert}" ist bei „${label}" kein gültiger Betrag. Bitte nur Zahlen eingeben, z. B. 890,40`, feld);
+                return;
+            }
         }
         if (einnahmenCent === null) {
             zeigeFehler("Bitte Startbestand und Endbestand eintragen – die Einnahmen berechnen sich daraus.", "bestand");
