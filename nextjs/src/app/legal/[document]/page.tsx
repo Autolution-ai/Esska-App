@@ -4,18 +4,33 @@ import React from 'react';
 import LegalDocument from '@/components/LegalDocument';
 import { notFound } from 'next/navigation';
 
+// Die Rechtstexte der Esska-App. Die alten englischen Pfade des Templates
+// zeigen weiter auf die passenden deutschen Texte, damit bestehende Links
+// (z. B. in verschickten E-Mails) nicht ins Leere laufen.
 const legalDocuments = {
+    'impressum': {
+        title: 'Impressum',
+        path: '/terms/impressum.md'
+    },
+    'datenschutz': {
+        title: 'Datenschutzerklärung',
+        path: '/terms/datenschutz.md'
+    },
+    'datenschutz-beschaeftigte': {
+        title: 'Datenschutzhinweise für Beschäftigte',
+        path: '/terms/datenschutz-beschaeftigte.md'
+    },
+    'nutzungsregeln': {
+        title: 'Nutzungsregeln',
+        path: '/terms/nutzungsregeln.md'
+    },
     'privacy': {
-        title: 'Privacy Notice',
-        path: '/terms/privacy-notice.md'
+        title: 'Datenschutzerklärung',
+        path: '/terms/datenschutz.md'
     },
     'terms': {
-        title: 'Terms of Service',
-        path: '/terms/terms-of-service.md'
-    },
-    'refund': {
-        title: 'Refund Policy',
-        path: '/terms/refund-policy.md'
+        title: 'Nutzungsregeln',
+        path: '/terms/nutzungsregeln.md'
     }
 } as const;
 

@@ -102,11 +102,14 @@ export default function Home() {
             <footer className="bg-white border-t border-secondary-200">
                 <div className="max-w-5xl mx-auto py-8 px-4 sm:px-6">
                     <div className="flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm">
-                        <Link href="/legal/privacy" className="text-gray-600 hover:text-gray-900">
+                        <Link href="/legal/impressum" className="text-gray-600 hover:text-gray-900">
+                            Impressum
+                        </Link>
+                        <Link href="/legal/datenschutz" className="text-gray-600 hover:text-gray-900">
                             Datenschutz
                         </Link>
-                        <Link href="/legal/terms" className="text-gray-600 hover:text-gray-900">
-                            Nutzungsbedingungen
+                        <Link href="/legal/nutzungsregeln" className="text-gray-600 hover:text-gray-900">
+                            Nutzungsregeln
                         </Link>
                     </div>
                     <p className="text-center text-sm text-gray-500 mt-6">
