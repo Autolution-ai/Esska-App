@@ -97,7 +97,10 @@ wurden.
 | Kassenaufzeichnungen | [DAUER_KASSE], gesetzlich 10 Jahre (§ 147 AO) |
 | Stammdaten ohne zustande gekommene Beschäftigung | [DAUER_BEWERBUNG], Vorschlag 6 Monate |
 | Verfügbarkeiten und Schichtpläne | [DAUER_PLANUNG], Vorschlag 3 Jahre |
-| Hochgeladene Nachweisdokumente | für die Dauer des Beschäftigungsverhältnisses zzgl. gesetzlicher Aufbewahrungsfristen |
+| Fotos der Verkaufslisten (Kassenbelege) | 10 Jahre (§ 147 AO) |
+| Kopie des Aufenthaltstitels | Dauer der Beschäftigung (§ 4a AufenthG) |
+| **Ausweiskopien** | werden nach der Anmeldung **gelöscht**, spätestens nach Saisonende – es gibt dafür keine Aufbewahrungspflicht |
+| Immatrikulations-, Schul- und Rentenbescheinigungen | bis zum Ende der Beschäftigung |
 
 Nach Ablauf der Fristen werden die Daten gelöscht.
 

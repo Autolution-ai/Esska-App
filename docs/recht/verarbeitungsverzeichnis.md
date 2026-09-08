@@ -36,8 +36,20 @@ Konfession); Ausweis- und Nachweisdokumente; Notfallkontakt.
 Finanzbehörden; Auftragsverarbeiter (siehe unten).
 
 **Löschfristen:** Lohn-/Steuerunterlagen [DAUER_LOHN]; Stammdaten ohne
-Beschäftigung [DAUER_BEWERBUNG]; Nachweisdokumente Beschäftigungsdauer zzgl.
-gesetzlicher Fristen.
+Beschäftigung [DAUER_BEWERBUNG].
+
+Für die hochgeladenen Dokumente gelten unterschiedliche Regeln – das wird in
+der Praxis oft falsch gemacht:
+
+| Dokument | Frist | Grundlage |
+|---|---|---|
+| Ausweiskopien (deutsch/EU) | **löschen, sobald die Anmeldung erfolgt ist**, spätestens nach Saisonende | keine Aufbewahrungspflicht; Datenminimierung nach Art. 5 Abs. 1 lit. c DSGVO |
+| Aufenthaltstitel | Dauer der Beschäftigung | § 4a Abs. 5 AufenthG |
+| Immatrikulations-, Schul-, Rentenbescheinigung | bis Ende der Beschäftigung | Nachweiszweck |
+| Fotos der Verkaufslisten | 10 Jahre | § 147 Abs. 1 Nr. 4 AO (Buchungsbelege) |
+
+**Offener Punkt:** Ein jährlicher Aufräumlauf, der abgelaufene
+Ausweiskopien löscht, ist noch nicht eingerichtet.
 
 **Technische und organisatorische Maßnahmen:** siehe Abschnitt TOM.
 

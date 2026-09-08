@@ -9,9 +9,9 @@ Briefing für Jannis · Stand 08.09.2026
 Die App ist funktional fertig: Personalakte, Schichtplanung, Kassenerfassung,
 Bestellwesen und die Auswertungen für die Buchhaltung laufen. Bevor echte
 Mitarbeiterdaten hineingehen, fehlen noch vier Dinge: eine eigene Domain,
-zwei bezahlte Tarife für Backups und kommerzielle Nutzung, deine Angaben für
-die Rechtstexte und ein letzter Testlauf. **Laufende Kosten danach:
-rund 42 € im Monat.**
+die Entscheidung über die Tarife, deine Angaben für die Rechtstexte und ein
+letzter Testlauf. **Laufende Kosten danach: zwischen 24 und 43 € im Monat,
+je nachdem, welche Variante du wählst.**
 
 ---
 
@@ -58,12 +58,10 @@ rund 42 € im Monat.**
 | 2 | **Hosting-Konto auf Esska umstellen** | Die Datenbank läuft schon auf Esska. Der Hosting-Zugang läuft noch über Brunos Agentur-Konto. Das sollte übertragen werden, damit Esska unabhängig ist. |
 | 3 | **Zwei bezahlte Tarife freigeben** | Der kostenlose Datenbank-Tarif macht **keine Backups** und schaltet sich nach einer Woche Pause ab. Bei Personal- und Kassendaten mit 10 Jahren Aufbewahrungspflicht geht das nicht. Beim Hosting verbietet der Gratis-Tarif die gewerbliche Nutzung. |
 | 4 | **Fragebogen beantworten** | Ohne Firmendaten, Steuernummer und Fristen können Impressum und Datenschutzerklärung nicht fertig werden. Ohne die darf die App keine echten Personaldaten verarbeiten. |
-| 5 | **Rechtstexte prüfen lassen?** | Die Entwürfe sind fertig und sorgfältig gemacht, aber von keinem Anwalt geprüft. Bei Personaldaten wäre eine einmalige Durchsicht sinnvoll. |
-| 6 | **Regionalmanager: angestellt oder nicht?** | Davon hängt ab, ob sie das Onboarding (Personalfragebogen etc.) durchlaufen müssen. |
+| 5 | **Regionalmanager: angestellt oder nicht?** | Davon hängt ab, ob sie das Onboarding (Personalfragebogen etc.) durchlaufen müssen. |
 
 ### Noch benötigte Zulieferungen
 
-- Logo als Bilddatei (für die E-Mails)
 - E-Mail-Adresse des Lagers (für die Warenbestellungen)
 - Farben für Kaschmir-Seide, -Wolle und -Viskose einfarbig
 - Mützen-Varianten und Packungsgröße
@@ -94,6 +92,38 @@ rund 42 € im Monat.**
 
 *Preise in US-Dollar schwanken mit dem Wechselkurs. Beide Tarife sind
 monatlich kündbar.*
+
+### Hosting: Bezahlt oder kostenlos?
+
+Der aktuelle Anbieter (Vercel) verlangt für gewerbliche Nutzung 20 USD im
+Monat. Es gibt eine ernstzunehmende Alternative: **Netlify**, dessen
+kostenloser Tarif gewerbliche Nutzung ausdrücklich erlaubt.
+
+| | Vercel Pro | Netlify (kostenlos) |
+|---|---|---|
+| Kosten | 20 USD/Monat ≈ 19 € | **0 €** |
+| Gewerbliche Nutzung | erlaubt | erlaubt |
+| Läuft die App dort? | ja, seit Monaten getestet | ja, nach Umbau |
+| Automatische Erinnerungs-E-Mails | eingerichtet | müssen umgebaut werden (halber Tag) |
+| Grenzen | keine relevanten | 300 Bau-Minuten und 100 GB Datenverkehr im Monat |
+
+Die genannten Grenzen sind für uns unkritisch: Ein Bauvorgang dauert gut eine
+Minute, und der Datenverkehr von 30 Mitarbeitern liegt weit unter der Grenze.
+Der Unterschied liegt woanders: Beim kostenlosen Tarif gibt es **keinen
+Support**. Fällt etwas aus, gibt es niemanden, den man anrufen kann.
+
+**Ersparnis: rund 225 € im Jahr.**
+
+Zwei mögliche Wege:
+
+- **Jetzt umziehen** – noch sind rund sieben Wochen bis Saisonstart, das
+  reicht für Umbau und Test in Ruhe.
+- **Diese Saison bei Vercel bleiben, danach umziehen** – das System läuft und
+  ist erprobt; ein Wechsel kurz vor der Saison bringt vermeidbares Risiko.
+
+**Empfehlung:** Wenn die Kostenersparnis wichtig ist, jetzt umziehen –
+lieber sieben Wochen vor der Saison als mittendrin. Ist Stabilität wichtiger,
+diese Saison bezahlt fahren und im Frühjahr wechseln.
 
 ### Drei Varianten für das Jahr
 
@@ -128,9 +158,51 @@ rund **185 € im Jahr**, aber die App ist außerhalb der Saison komplett
 offline. Nur sinnvoll, wenn im Sommer garantiert niemand darauf zugreifen
 muss.
 
-**Empfehlung:** Jahr 1 die Variante A, damit sich der Ablauf einspielt und
-niemand mitten in der Saison mit Reaktivierungen kämpft. Ab Jahr 2 ist
-Variante B ein vernünftiger Kompromiss.
+**Variante D – kostenloses Hosting (Netlify) plus Datenbank ganzjährig:**
+rund **290 € im Jahr**. Spart das Hosting komplett, behält aber die
+Datenbank mit Backups durchgehend – aus meiner Sicht das beste Verhältnis
+von Kosten zu Sicherheit, wenn der einmalige Umbau eingeplant wird.
+
+**Empfehlung:** Wenn der Umzug jetzt gemacht wird, ist **Variante D** die
+beste Wahl: Die Datenbank – wo die eigentlichen Daten liegen – bleibt
+durchgehend gesichert, und beim Hosting wird gespart, wo es keinen
+Sicherheitsverlust bedeutet. Wenn kein Umzug gewünscht ist, dann Variante A
+im ersten Jahr.
+
+### Zur Frage: Müssen die Fotos aufgehoben werden?
+
+Hier ist wichtig, zwei Arten von Bildern zu unterscheiden – für sie gelten
+**gegensätzliche** Regeln:
+
+**Fotos der Verkaufslisten: ja, 10 Jahre aufheben.**
+Sie sind Belege zu den Kassenaufzeichnungen und fallen damit unter die
+Aufbewahrungspflicht für Buchungsbelege (§ 147 AO). Sie dürfen also weder
+gelöscht noch nachträglich verändert werden – deshalb kann in der App auch
+nur die Geschäftsführung sie entfernen.
+
+**Ausweiskopien: nein – eher das Gegenteil.**
+Für Ausweise gibt es *keine* steuerliche Aufbewahrungspflicht. Der
+Arbeitgeber muss die Identität prüfen, nicht die Kopie dauerhaft behalten.
+Datenschutzrechtlich gilt sogar: Was nicht mehr gebraucht wird, muss weg.
+
+Eine wichtige Ausnahme: Bei Beschäftigten **ohne deutsche oder EU-Staats-
+angehörigkeit** muss die Kopie des Aufenthaltstitels für die Dauer der
+Beschäftigung aufbewahrt werden (§ 4a Aufenthaltsgesetz).
+
+**Vorschlag für den Umgang damit:**
+
+| Dokument | Aufbewahren | Danach |
+|---|---|---|
+| Fotos der Verkaufslisten | 10 Jahre | archivieren |
+| Aufenthaltstitel | Dauer der Beschäftigung | löschen |
+| Ausweiskopien (deutsch/EU) | bis zur Anmeldung geprüft | **zeitnah löschen**, spätestens nach der Saison |
+| Immatrikulations-, Schul- und Rentenbescheinigungen | bis zum Ende der Beschäftigung | löschen |
+
+**Wie werden sie gesichert?** Die tägliche automatische Sicherung umfasst
+bisher nur die Datenbank, nicht die Bilddateien. Für die Verkaufslisten-Fotos
+– die einzige Kategorie mit echter Aufbewahrungspflicht – richten wir eine
+zusätzliche wöchentliche Sicherung ein. Am Saisonende kommt beides
+verschlüsselt ins Archiv bei Esska.
 
 ### Zur Frage: Sind E-Mail-Adressen bei der Domain dabei?
 
@@ -164,7 +236,6 @@ lohnt erst, wenn regelmäßig unter der Firmenadresse kommuniziert wird.
 | Posten | Preis |
 |---|---|
 | Domain-Registrierung | ca. 15 € |
-| Anwaltliche Prüfung der Rechtstexte (optional) | ca. 300–800 € |
 | Entwicklung | 0 € (Praktikumsprojekt) |
 
 ### Zum Vergleich
@@ -216,8 +287,10 @@ schützt euch bei einer Prüfung.
 
 ## 6. Die drei Fragen, die das Gespräch beantworten sollte
 
-1. **Geben wir die rund 43 € im Monat frei** – Variante A (ganzjährig,
-   515 €) oder Variante B (Datenbank nur zur Saison, 340 €)?
+1. **Welche Kostenvariante?** Zur Wahl stehen 515 € (alles ganzjährig
+   bezahlt), 340 € (Datenbank nur zur Saison) oder 290 € (kostenloses
+   Hosting plus Datenbank ganzjährig) im Jahr.
 2. **Welche Domain**, und wer registriert sie?
-3. **Soll ein Anwalt einmal über die Rechtstexte schauen** (ca. 300–800 €),
-   oder gehen wir mit den geprüften Entwürfen live?
+3. **Sollen wir beim jetzigen Hosting bleiben oder auf einen kostenlosen
+   Anbieter wechseln** (spart 19 €/Monat, kostet einmalig einen halben Tag
+   Umbau)? Details dazu im Abschnitt „Hosting".

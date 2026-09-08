@@ -80,11 +80,35 @@ Ergebnis und Datum des Tests im Verarbeitungsverzeichnis eintragen
 Schichten, Verfuegbarkeiten, Kassendaten, Bestellungen) sowie das
 `auth`-Schema mit den Anmeldedaten.
 
-**NICHT enthalten:** die Dateien im Speicher (hochgeladene Ausweise und
-Fotos der Verkaufslisten). Die liegen im Supabase-Storage und muessten
-separat gesichert werden. Fuer die Aufbewahrungspflicht nach § 147 AO sind
-vor allem die Belegfotos relevant - **offener Punkt, vor dem Saisonende
-loesen** (Vorschlag: einmal pro Saison manuell exportieren).
+**NICHT enthalten:** die hochgeladenen Dateien (Ausweise, Nachweise und
+Fotos der Verkaufslisten). Die liegen im Supabase-Speicher und werden von
+`pg_dump` nicht erfasst.
+
+### Was davon muss ueberhaupt aufbewahrt werden?
+
+Fuer die beiden Arten von Dateien gelten **gegensaetzliche** Regeln:
+
+| Datei | Pflicht | Grundlage |
+|---|---|---|
+| **Fotos der Verkaufslisten** | **10 Jahre aufbewahren** | Buchungsbelege, § 147 Abs. 1 Nr. 4 AO |
+| **Aufenthaltstitel** | Dauer der Beschaeftigung aufbewahren | § 4a Abs. 5 AufenthG |
+| **Ausweiskopien (deutsch/EU)** | **keine** Aufbewahrungspflicht - eher Loeschpflicht | Datenminimierung, Art. 5 Abs. 1 lit. c DSGVO |
+| Immatrikulations-, Schul-, Rentenbescheinigung | bis Ende der Beschaeftigung | Nachweiszweck erfuellt |
+
+Das wird oft falsch gemacht: Ausweiskopien duerfen **nicht** vorsorglich
+jahrelang liegen bleiben. Der Arbeitgeber muss die Identitaet pruefen - nicht
+die Kopie behalten. Nach der Anmeldung sollten sie geloescht werden,
+spaetestens nach Saisonende.
+
+### Konsequenz fuer die Sicherung
+
+- **Verkaufslisten-Fotos** (Bucket `sales-receipts`) muessen mitgesichert und
+  archiviert werden. **Offener Punkt** - Vorschlag: woechentlicher Export
+  zusaetzlich zur taeglichen Datenbanksicherung, spaetestens vor Saisonende
+  einrichten.
+- **Ausweise und Nachweise** (Bucket `employee-documents`) muessen NICHT ins
+  Langzeitarchiv. Sinnvoller ist ein jaehrlicher Aufraeumlauf, der abgelaufene
+  Dokumente loescht.
 
 ## Aufbewahrung
 
