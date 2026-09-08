@@ -68,7 +68,13 @@ Zuordnung Fragebogen -> Platzhalter:
 ## Noch zu erledigen (nicht schreibbar, muss abgeschlossen werden)
 
 1. **AVV mit Vercel** - Dashboard, Settings -> Legal -> DPA
-2. **AVV mit Supabase** - Dashboard, Organization Settings -> Legal/Compliance
+2. ~~AVV mit Supabase~~ - **erledigt.** Das Supabase-DPA gilt automatisch mit
+   Annahme der Nutzungsbedingungen (DPA Ziffer 12.2) und enthaelt die
+   EU-Standardvertragsklauseln, Modul 2. Geprueft und dokumentiert im
+   Verarbeitungsverzeichnis. Offen bleiben zwei Kleinigkeiten:
+   - Benachrichtigungen zur Unterauftragsverarbeiter-Liste abonnieren
+   - pruefen, ob im Supabase-Konto eine regelmaessig gelesene E-Mail-Adresse
+     hinterlegt ist (dorthin gehen Meldungen ueber Sicherheitsvorfaelle)
 3. **AVV mit dem Mailanbieter** - bei Google Workspace ueber die
    Admin-Konsole; bei einem privaten Gmail-Konto ist KEIN AVV moeglich -
    das ist ein Argument fuer den Wechsel zu Resend mit eigener Domain

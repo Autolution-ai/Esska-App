@@ -55,14 +55,23 @@ und ein verschlüsselt gespeichertes Passwort.
 Wir setzen folgende Dienstleister ein, mit denen jeweils ein Vertrag zur
 Auftragsverarbeitung nach Art. 28 DSGVO besteht:
 
-| Dienstleister | Zweck | Serverstandort |
-|---|---|---|
-| Vercel Inc. | Betrieb der Anwendung (Hosting) | EU / Frankfurt |
-| Supabase Inc. | Datenbank, Anmeldung, Dateiablage | EU / Frankfurt (AWS) |
-| [MAILANBIETER] | Versand der System-E-Mails | [MAIL_STANDORT] |
+| Dienstleister | Zweck | Speicherort der Daten | Sitz des Unternehmens |
+|---|---|---|---|
+| Vercel Inc. | Betrieb der Anwendung (Hosting) | EU (Frankfurt) | USA |
+| Supabase Pte. Ltd. | Datenbank, Anmeldung, Dateiablage | EU (Frankfurt, AWS) | Singapur |
+| [MAILANBIETER] | Versand der System-E-Mails | [MAIL_STANDORT] | [MAIL_SITZ] |
 
-Eine Übermittlung in Drittländer findet nur statt, soweit sie durch geeignete
-Garantien (EU-Standardvertragsklauseln) abgesichert ist.
+**Hinweis zu Drittländern:** Die Daten werden auf Servern innerhalb der
+Europäischen Union gespeichert und verarbeitet. Die Unternehmen selbst haben
+ihren Sitz jedoch außerhalb der EU. Ein Zugriff aus einem Drittland kann daher
+nicht vollständig ausgeschlossen werden – etwa im Rahmen von Wartung oder
+Support.
+
+Für diesen Fall haben wir mit den Anbietern die **EU-Standardvertragsklauseln**
+(Durchführungsbeschluss (EU) 2021/914, Modul 2 – Verantwortlicher an
+Auftragsverarbeiter) vereinbart. Sie sind Bestandteil der jeweiligen
+Auftragsverarbeitungsverträge und verpflichten die Anbieter auf ein
+Schutzniveau, das dem der DSGVO entspricht.
 
 ## 6. Ihre Rechte
 

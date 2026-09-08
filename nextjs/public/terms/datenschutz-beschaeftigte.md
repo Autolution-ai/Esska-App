@@ -75,8 +75,15 @@ gesetzlich erforderlichen hinausgehen.
 - Sozialversicherungsträger, Minijob-Zentrale und Finanzbehörden, soweit
   gesetzlich vorgeschrieben
 - Unsere technischen Dienstleister als Auftragsverarbeiter nach Art. 28 DSGVO:
-  Vercel Inc. (Hosting, Frankfurt), Supabase Inc. (Datenbank und Dateiablage,
-  Frankfurt), [MAILANBIETER] (E-Mail-Versand)
+  Vercel Inc. (Hosting), Supabase Pte. Ltd. (Datenbank und Dateiablage),
+  [MAILANBIETER] (E-Mail-Versand)
+
+**Wo liegen deine Daten?** Auf Servern in **Frankfurt am Main**, also innerhalb
+der EU. Die beiden Anbieter haben ihren Firmensitz allerdings in den USA
+(Vercel) bzw. in Singapur (Supabase). Ein Zugriff von dort – etwa bei Wartung –
+ist deshalb nicht völlig ausgeschlossen. Für diesen Fall haben wir mit beiden
+die **EU-Standardvertragsklauseln** vereinbart, die sie auf das europäische
+Schutzniveau verpflichten.
 
 Jede Weitergabe deiner Stammdaten an die Buchhaltung wird in der App
 protokolliert, sodass nachvollziehbar bleibt, wessen Daten wann übermittelt

@@ -112,11 +112,57 @@ Vorschlag 3 Jahre
 
 ## Auftragsverarbeiter (Art. 28 DSGVO)
 
-| Dienstleister | Leistung | Standort | AVV geschlossen am |
-|---|---|---|---|
-| Vercel Inc. | Hosting der Anwendung | EU (Frankfurt) | [DATUM_AVV_VERCEL] |
-| Supabase Inc. | Datenbank, Authentifizierung, Dateiablage | EU (Frankfurt, AWS) | [DATUM_AVV_SUPABASE] |
-| [MAILANBIETER] | Versand von System-E-Mails | [MAIL_STANDORT] | [DATUM_AVV_MAIL] |
+| Dienstleister | Leistung | Speicherort | Unternehmenssitz | AVV / Transfergrundlage |
+|---|---|---|---|---|
+| Vercel Inc. | Hosting der Anwendung | EU (Frankfurt) | USA | DPA + SCCs, gilt mit Annahme der Nutzungsbedingungen, [DATUM_AVV_VERCEL] |
+| Supabase Pte. Ltd. | Datenbank, Authentifizierung, Dateiablage | EU (Frankfurt, AWS) | Singapur | DPA vom 08.09.2026 geprueft, SCCs Modul 2 enthalten (s. u.) |
+| [MAILANBIETER] | Versand von System-E-Mails | [MAIL_STANDORT] | [MAIL_SITZ] | [DATUM_AVV_MAIL] |
+
+### Details zum Supabase-DPA (geprueft am 08.09.2026)
+
+- **Vertragspartner:** Supabase Pte. Ltd., 65 Chulia Street #38-02/03,
+  OCBC Centre, Singapur 049513. Datenschutzkontakt: privacy@supabase.io
+- **Rollen:** Supabase ist Auftragsverarbeiter, Esska ist Verantwortlicher
+  (DPA Ziffer 2).
+- **Abschluss:** Die Annahme der Supabase-Nutzungsbedingungen gilt zugleich
+  als Unterzeichnung der Standardvertragsklauseln (DPA Ziffer 12.2). Eine
+  gesonderte Unterschrift ist nicht erforderlich - der Nachweis erfolgt ueber
+  die Kontoeroeffnung und diese Dokumentation.
+- **Transfergrundlage:** EU-Standardvertragsklauseln (2021/914), **Modul 2**
+  (Verantwortlicher an Auftragsverarbeiter). Anwendbares Recht: irisches
+  Recht, Gerichtsstand Irland (DPA Schedule 2, Ziffern 1.5 und 1.6).
+- **Regionsbindung:** Supabase sichert zu, dass Daten in der vom Kunden
+  gewaehlten Region gespeichert und primaer verarbeitet werden (DPA Ziffer
+  6.1). Gewaehlte Region: **AWS eu-central-1, Frankfurt**.
+- **Unterauftragsverarbeiter:** allgemeine Genehmigung erteilt; Aenderungen
+  werden mit 30 Tagen Vorlauf angekuendigt, Widerspruch binnen 5 Tagen
+  moeglich (DPA Ziffer 6.2/6.3).
+  **TO DO:** Benachrichtigungen abonnieren unter
+  https://supabase.com/legal/customer-resources/subprocessor-list
+- **Meldung von Sicherheitsvorfaellen:** unverzueglich, nach Moeglichkeit
+  binnen 48 Stunden an die im Konto hinterlegte Adresse (DPA Ziffer 10).
+  **TO DO:** sicherstellen, dass dort eine gelesene Adresse hinterlegt ist.
+- **Loeschung nach Vertragsende:** 30 Tage Frist zum Datenexport, danach
+  Loeschung aller Daten (DPA Ziffer 11.2).
+- **Sicherungen:** taegliche, verschluesselte Backups (DPA Schedule 1,
+  "Availability and backup") - im kostenlosen Tarif jedoch eingeschraenkt.
+  Weiteres Argument fuer Supabase Pro.
+- **Verschluesselung:** AES-256 im Ruhezustand inkl. Backups, TLS 1.2+ bei
+  der Uebertragung (DPA Schedule 1).
+- **Pruefrechte:** Zertifikate/Berichte auf Anfrage; eigene Audits einmal
+  jaehrlich mit 30 Tagen Vorlauf (DPA Ziffer 9).
+
+**Wichtige Auflage aus dem DPA (Ziffer 4 d):** Fuer besondere Kategorien
+personenbezogener Daten (Art. 9 DSGVO) verlangt Supabase vertraglich, dass
+der Kunde die Betroffenen informiert und die erforderlichen Einwilligungen
+eingeholt hat. In der App betrifft das die **Konfession** (Kirchensteuer)
+sowie moegliche Angaben auf hochgeladenen Ausweisdokumenten.
+
+Datenschutzrechtlich stuetzen wir diese Verarbeitung auf § 26 Abs. 3 BDSG
+(keine Einwilligung erforderlich). Um die vertragliche Auflage von Supabase
+dennoch zu erfuellen, weisen wir in den Datenschutzhinweisen fuer
+Beschaeftigte ausdruecklich auf diese Datenkategorien hin und dokumentieren
+die Kenntnisnahme. **Mit dem Steuerberater/Anwalt abstimmen.**
 
 ---
 
