@@ -89,23 +89,75 @@ rund 42 € im Monat.**
 | Datenbank (Supabase Pro) | 25 USD/Monat ≈ **23 €** | Tägliche Backups, keine Zwangspause, mehr Speicher |
 | Domain | ca. 15 €/Jahr ≈ **1 €** | Eigene Adresse |
 | E-Mail-Versand (Resend) | **0 €** | 3.000 E-Mails/Monat kostenlos – wir brauchen weit weniger |
+| E-Mail-Postfach (optional) | **0–3 €** | siehe unten |
 | **Summe** | | **≈ 43 €/Monat** |
 
 *Preise in US-Dollar schwanken mit dem Wechselkurs. Beide Tarife sind
 monatlich kündbar.*
 
-### Zwei Varianten für das Jahr
+### Drei Varianten für das Jahr
 
-**Variante A – ganzjährig (empfohlen für das erste Jahr):**
-rund **515 € im Jahr**. Die App ist jederzeit erreichbar, auch wenn im
+**Variante A – alles ganzjährig (empfohlen für das erste Jahr):**
+rund **515 € im Jahr**. Die App ist jederzeit voll nutzbar, auch wenn im
 Sommer das Finanzamt oder ein ehemaliger Mitarbeiter etwas wissen will.
 
-**Variante B – nur zur Saison (Oktober bis Januar):**
-rund **185 € im Jahr**. Nach der Saison werden die Tarife heruntergestuft.
-Das spart 330 €, bedeutet aber: Die Daten müssen vorher exportiert und
-archiviert werden, und bei Rückfragen im Sommer dauert es einen Tag, bis
-alles wieder läuft. Sinnvoll ab dem zweiten Jahr, wenn der Ablauf eingespielt
-ist.
+**Variante B – Hosting und Domain ganzjährig, Datenbank nur zur Saison:**
+rund **340 € im Jahr**. Hosting (19 €/Monat) und Domain laufen durch, der
+Datenbank-Tarif wird nach der Saison für acht Monate heruntergestuft.
+Spart rund 175 €.
+
+**Wichtig dazu:** Ohne Datenbank-Tarif pausiert die Datenbank nach einer
+Woche ohne Zugriff. Die App ist dann zwar erreichbar, aber **funktionslos** –
+man kann sich nicht anmelden und sieht keine Daten. Die Startseite lädt,
+mehr nicht. „Online" heißt in dem Fall also nicht „benutzbar".
+
+Damit das trotzdem sicher ist, muss vor dem Herunterstufen zwingend
+passieren:
+1. Vollständiger Export der Datenbank **und** der hochgeladenen Dateien
+   (Ausweise, Belegfotos – die sind nicht Teil des Datenbank-Exports)
+2. Archivierung an einem sicheren Ort bei Esska
+3. Alle drei bis vier Monate die Datenbank einmal kurz aufwecken
+
+Der letzte Punkt ist der kritische: Pausierte Projekte im Gratis-Tarif können
+nach längerer Inaktivität **gelöscht** werden. Bei einer gesetzlichen
+Aufbewahrungspflicht von zehn Jahren wäre das ein ernstes Problem – deshalb
+darf das Archiv nicht nur bei Supabase liegen.
+
+**Variante C – alles nur zur Saison:**
+rund **185 € im Jahr**, aber die App ist außerhalb der Saison komplett
+offline. Nur sinnvoll, wenn im Sommer garantiert niemand darauf zugreifen
+muss.
+
+**Empfehlung:** Jahr 1 die Variante A, damit sich der Ablauf einspielt und
+niemand mitten in der Saison mit Reaktivierungen kämpft. Ab Jahr 2 ist
+Variante B ein vernünftiger Kompromiss.
+
+### Zur Frage: Sind E-Mail-Adressen bei der Domain dabei?
+
+Hier werden zwei Dinge oft verwechselt, die getrennt zu betrachten sind:
+
+**1. Die App verschickt E-Mails** (Einladungen, Passwort-Reset, Erinnerungen).
+Dafür braucht es **kein Postfach**, sondern nur einen Versanddienst, der die
+Domain nutzen darf. Wir nehmen **Resend – kostenlos** bis 3.000 E-Mails im
+Monat. Eingerichtet wird das über ein paar Einträge bei der Domain, mehr
+nicht.
+
+**2. Jemand schreibt an Esska zurück** – etwa auf die Adresse im Impressum.
+Dafür braucht es tatsächlich ein Postfach oder eine Weiterleitung. Zwei
+Möglichkeiten:
+
+| Lösung | Kosten | Wann sinnvoll |
+|---|---|---|
+| **E-Mail-Weiterleitung** (z. B. info@esska…de → bestehende Adresse) | meist **0 €**, bei den meisten Anbietern inklusive | Reicht völlig fürs Impressum. Antworten kommen dann aber von der alten Adresse. |
+| **Echtes Postfach** | ca. 1–3 €/Monat beim Domain-Anbieter, 6–7 €/Monat bei Google Workspace | Wenn unter der Esska-Adresse auch geantwortet werden soll |
+
+Bei Anbietern wie Checkdomain, IONOS oder Netcup sind Weiterleitungen in
+der Regel im Domainpreis enthalten; Postfächer kosten extra. **Vor dem Kauf
+kurz prüfen**, ob Weiterleitungen inklusive sind – das ist der einzige Punkt,
+der den Preis unterscheidet.
+
+**Empfehlung:** Mit einer Weiterleitung starten (0 €). Ein echtes Postfach
+lohnt erst, wenn regelmäßig unter der Firmenadresse kommuniziert wird.
 
 ### Einmalig
 
@@ -164,8 +216,8 @@ schützt euch bei einer Prüfung.
 
 ## 6. Die drei Fragen, die das Gespräch beantworten sollte
 
-1. **Geben wir die rund 43 € im Monat frei** – und ganzjährig oder nur zur
-   Saison?
+1. **Geben wir die rund 43 € im Monat frei** – Variante A (ganzjährig,
+   515 €) oder Variante B (Datenbank nur zur Saison, 340 €)?
 2. **Welche Domain**, und wer registriert sie?
 3. **Soll ein Anwalt einmal über die Rechtstexte schauen** (ca. 300–800 €),
    oder gehen wir mit den geprüften Entwürfen live?
