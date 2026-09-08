@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
+import { useGlobal } from "@/lib/context/GlobalContext";
 import type {
     EsskaAvailabilityRow,
     EsskaCenter,
@@ -77,6 +78,7 @@ type AssignedProfile = Pick<
 
 export default function WocheEditorPage() {
     const params = useParams<{ centerId: string; woche: string }>();
+    const { role: rolle } = useGlobal();
     const wochenStart = useMemo(() => montagDerWoche(parseIsoDatum(params.woche)), [params.woche]);
     const tage = useMemo(() => Array.from({ length: 7 }, (_, i) => addTage(wochenStart, i)), [wochenStart]);
 
@@ -87,6 +89,8 @@ export default function WocheEditorPage() {
     const [shiftsWeekAll, setShiftsWeekAll] = useState<EsskaShift[]>([]);
     const [people, setPeople] = useState<AssignedProfile[]>([]);
     const [availability, setAvailability] = useState<EsskaAvailabilityRow[]>([]);
+    // true, wenn die Schichten anderer Center nicht sichtbar sind
+    const [limitUnvollstaendig, setLimitUnvollstaendig] = useState(false);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -159,6 +163,11 @@ export default function WocheEditorPage() {
                 ]);
                 setAvailability((aData.data as EsskaAvailabilityRow[]) ?? []);
                 setShiftsWeekAll((allShifts.data as EsskaShift[]) ?? []);
+                // Die Limit-Pruefung zaehlt Schichten ueber ALLE Center. Als
+                // Regionalmanager liefert die Datenbank aber nur die eigenen
+                // Center - die Zaehlung waere dann unvollstaendig, ohne dass
+                // man es sieht. Deshalb hier merken und im Plan anzeigen.
+                setLimitUnvollstaendig(!!allShifts.error);
             }
         } catch (err) {
             setError(friendlyError(err, { aktion: "Laden" }));
@@ -406,6 +415,17 @@ export default function WocheEditorPage() {
                             )}
                         </button>
                     </div>
+
+                    {(limitUnvollstaendig || rolle === "regionalmanager") && (
+                        <div className="p-3 bg-secondary-50 border border-secondary-200 rounded-md text-sm text-gray-700">
+                            <strong>Hinweis zur Stunden- und Schichtzählung:</strong> Die Zahlen in
+                            Klammern hinter den Namen (z. B. 3/5) zählen nur Schichten, die du sehen
+                            darfst. Ist jemand zusätzlich in einem Center einer anderen Region
+                            eingeplant, taucht das hier nicht auf – das Wochenlimit kann also in
+                            Summe höher liegen. Bei Mitarbeitern, die in mehreren Regionen arbeiten,
+                            bitte kurz mit der Zentrale abstimmen.
+                        </div>
+                    )}
 
                     {people.length === 0 ? (
                         <div className="p-3 bg-amber-50 text-amber-800 rounded-md text-sm">

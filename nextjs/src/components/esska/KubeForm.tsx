@@ -51,6 +51,11 @@ export default function KubeForm({ profileId, saison, existing, onSaved }: Props
     const [lebensunterhalt, setLebensunterhalt] = useState<EsskaKubeLebensunterhalt | "">(existing?.lebensunterhalt ?? "");
     const [lebensunterhaltSonstiges, setLebensunterhaltSonstiges] = useState(existing?.lebensunterhalt_sonstiges ?? "");
     const [monate, setMonate] = useState<number[]>(existing?.monate_ueber_geringfuegigkeit ?? []);
+    // Summe der bereits geleisteten Arbeitstage aus den Vorbeschaeftigungen.
+    // Die kurzfristige Beschaeftigung ist auf 70 Arbeitstage (bzw. 3 Monate)
+    // im Kalenderjahr begrenzt - ALLE Arbeitgeber zusammen. Ohne diese
+    // Summe koennte jemand ueber der Grenze angemeldet werden, ohne dass es
+    // jemandem auffaellt.
     const [vorbeschaeftigungen, setVorbeschaeftigungen] = useState<VorbeschaeftigungForm[]>(
         (existing?.weitere_kurzfristige_beschaeftigungen ?? []).map((v) => ({
             arbeitgeber: v.arbeitgeber,
@@ -88,6 +93,13 @@ export default function KubeForm({ profileId, saison, existing, onSaved }: Props
     };
 
     const alleErklaerungenBestaetigt = erkZeitgrenze && erkNichtberufsmaessig && verpflichtung && nachweis;
+
+    const summeVortage = vorbeschaeftigungen.reduce(
+        (sum, v) => sum + (parseInt(v.arbeitstage, 10) || 0),
+        0
+    );
+    const grenzeErreicht = begrenzung === "70_arbeitstage" && summeVortage >= 70;
+    const grenzeNah = begrenzung === "70_arbeitstage" && summeVortage >= 50 && summeVortage < 70;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -292,6 +304,42 @@ export default function KubeForm({ profileId, saison, existing, onSaved }: Props
                         </div>
                     ))}
                 </div>
+                {vorbeschaeftigungen.length > 0 && (
+                    <div
+                        className={`mt-3 p-3 rounded-md text-sm ${
+                            grenzeErreicht
+                                ? "bg-red-50 border border-red-300 text-red-800"
+                                : grenzeNah
+                                    ? "bg-amber-50 border border-amber-300 text-amber-900"
+                                    : "bg-secondary-50 border border-secondary-200 text-gray-700"
+                        }`}
+                    >
+                        <p className="font-medium">
+                            Bereits geleistet: {summeVortage} Arbeitstage in diesem Kalenderjahr
+                            {begrenzung === "70_arbeitstage" && ` von 70`}
+                        </p>
+                        {grenzeErreicht && (
+                            <p className="mt-1">
+                                Damit ist die Grenze für eine kurzfristige Beschäftigung bereits
+                                erreicht oder überschritten. Eine weitere kurzfristige Beschäftigung
+                                ist in diesem Jahr in der Regel nicht mehr möglich – bitte melde dich
+                                bei deiner Ansprechperson, bevor du fortfährst.
+                                <br />
+                                <span className="italic">
+                                    The limit for short-term employment is already reached. Please
+                                    contact your team lead before continuing.
+                                </span>
+                            </p>
+                        )}
+                        {grenzeNah && (
+                            <p className="mt-1">
+                                Damit bleiben noch {70 - summeVortage} Arbeitstage. Bitte im Blick
+                                behalten – die Grenze gilt für alle Arbeitgeber zusammen.
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 <button
                     type="button"
                     onClick={addVorbeschaeftigung}

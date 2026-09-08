@@ -1,0 +1,77 @@
+# Taegliche verschluesselte Sicherung der Esska-Datenbank.
+#
+# WARUM: Der kostenlose Supabase-Tarif macht keine Backups. Aber auch mit
+# Supabase Pro gilt: eine Sicherung an nur einer Stelle ist keine Sicherung.
+# Diese Aktion legt eine zweite, unabhaengige Kopie an.
+#
+# DATENSCHUTZ: Der Dump enthaelt Personal- und Kassendaten. Er wird deshalb
+# VOR dem Hochladen mit AES-256 verschluesselt; der Schluessel liegt
+# ausschliesslich als GitHub-Secret bei Esska. Unverschluesselt verlaesst
+# nichts den Runner.
+#
+# EINRICHTUNG (einmalig, unter Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL   Verbindungszeichenfolge aus Supabase:
+#                     Project Settings -> Database -> Connection string -> URI
+#                     (Session Pooler, Port 5432, mit echtem Passwort)
+#   BACKUP_PASSWORT   frei gewaehltes, langes Passwort fuer die
+#                     Verschluesselung. UNBEDINGT zusaetzlich im
+#                     Passwortmanager sichern - ohne dieses Passwort ist das
+#                     Backup wertlos.
+#
+# WIEDERHERSTELLEN (siehe auch docs/backup-wiederherstellen.md):
+#   openssl enc -d -aes-256-cbc -pbkdf2 -in esska-backup.sql.enc \
+#     -out esska-backup.sql -pass pass:DEIN_PASSWORT
+#   psql "postgresql://..." < esska-backup.sql
+
+name: Datenbank-Backup
+
+on:
+  schedule:
+    # taeglich 03:15 UTC (04:15 bzw. 05:15 deutscher Zeit)
+    - cron: '15 3 * * *'
+  workflow_dispatch: {}   # manuell ausloesbar ueber die Actions-Oberflaeche
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Passende PostgreSQL-Werkzeuge installieren
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+
+      - name: Sicherung erstellen und verschluesseln
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASSWORT: ${{ secrets.BACKUP_PASSWORT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DB_URL:-}" ] || [ -z "${PASSWORT:-}" ]; then
+            echo "::error::SUPABASE_DB_URL oder BACKUP_PASSWORT fehlt in den Repository-Secrets."
+            exit 1
+          fi
+          STAMP=$(date -u +%Y-%m-%d)
+          # --no-owner/--no-acl: der Dump laesst sich so auch in ein frisches
+          # Projekt einspielen, ohne dass die Rollen identisch sein muessen.
+          pg_dump "$DB_URL" \
+            --no-owner --no-acl \
+            --exclude-schema='supabase_functions' \
+            --exclude-schema='_realtime' \
+            --file=dump.sql
+          echo "Groesse unverschluesselt: $(du -h dump.sql | cut -f1)"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 250000 -salt \
+            -in dump.sql -out "esska-backup-${STAMP}.sql.enc" \
+            -pass env:PASSWORT
+          rm -f dump.sql   # niemals unverschluesselt weitergeben
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+
+      - name: Verschluesselte Sicherung ablegen
+        uses: actions/upload-artifact@v4
+        with:
+          name: esska-backup-${{ env.STAMP }}
+          path: esska-backup-*.sql.enc
+          retention-days: 90
+          if-no-files-found: error
