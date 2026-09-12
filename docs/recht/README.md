@@ -1,5 +1,34 @@
 # Rechtstexte der Esska-App
 
+## Stand der Platzhalter (12.09.2026)
+
+**Eingesetzt** (Antworten von Jannis, siehe `FRAGEBOGEN-Jannis.md`):
+Firmierung `Esska Collection`, Inhaber `Jannis Alekhanov`,
+Anschrift `Dornbluethstrasse 22, 01277 Dresden`, Telefon `+49 1512 2544117`,
+E-Mail `esska.app@gmail.com` (zugleich Datenschutz-Kontakt),
+Aufsichtsbehoerde Sachsen, Mailanbieter Google Ireland,
+Loeschfristen fuer Lohn und Kasse (gesetzlich 10 Jahre), Stand-Datum.
+
+**Bewusste Aenderungen:**
+- Der Abschnitt *Registereintrag* wurde aus dem Impressum **entfernt**.
+  Frage 7 ist unbeantwortet; bei einem Einzelunternehmen wird kein Eintrag
+  angenommen. Falls doch einer besteht, muss der Abschnitt zurueck.
+- Die USt-IdNr. steht als `wird ergaenzt` im Impressum. Das ist zulaessig,
+  solange keine vergeben ist - sobald sie da ist, eintragen.
+
+**Noch offen:**
+
+| Platzhalter | Fehlt aus | Datei |
+|---|---|---|
+| `[STEUERBERATER]` | Frage 13 | `datenschutz-beschaeftigte.md`, `verarbeitungsverzeichnis.md` |
+| `[DAUER_BEWERBUNG]`, `[DAUER_PLANUNG]`, `[DAUER_BESTELLUNGEN]`, `[DAUER_PROTOKOLL]` | Frage 11 | beide |
+| `[LAGER_EMAIL]` | Frage 20 | `verarbeitungsverzeichnis.md` |
+
+**Blocker fuer den Live-Gang, der aus den Antworten folgt:** Die
+Datenschutzerklaerung nennt fuer alle drei Dienstleister einen AVV. Fuer das
+private Google-Konto gibt es keinen. Entweder Google Workspace oder Resend mit
+eigener Domain, bevor echte Personaldaten drin sind.
+
 ## Wo liegt was?
 
 **Oeffentlich in der App** (unter /legal erreichbar, Quelldateien in

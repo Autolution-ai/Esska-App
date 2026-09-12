@@ -8,13 +8,13 @@ brauchen, wie lange wir sie behalten und welche Rechte du hast.
 
 ## 1. Wer ist verantwortlich?
 
-**[FIRMIERUNG]**
-[STRASSE HAUSNUMMER]
-[PLZ ORT]
-Telefon: [TELEFON]
-E-Mail: [EMAIL]
+**Esska Collection**
+Dornblüthstraße 22
+01277 Dresden
+Telefon: +49 1512 2544117
+E-Mail: esska.app@gmail.com
 
-Bei Fragen zum Datenschutz wende dich an: [DATENSCHUTZ_KONTAKT]
+Bei Fragen zum Datenschutz wende dich an: Jannis Alekhanov, esska.app@gmail.com
 
 ## 2. Welche Daten verarbeiten wir?
 
@@ -76,7 +76,7 @@ gesetzlich erforderlichen hinausgehen.
   gesetzlich vorgeschrieben
 - Unsere technischen Dienstleister als Auftragsverarbeiter nach Art. 28 DSGVO:
   Vercel Inc. (Hosting), Supabase Pte. Ltd. (Datenbank und Dateiablage),
-  [MAILANBIETER] (E-Mail-Versand)
+  Google Ireland Limited (Gmail) (E-Mail-Versand)
 
 **Wo liegen deine Daten?** Auf Servern in **Frankfurt am Main**, also innerhalb
 der EU. Die beiden Anbieter haben ihren Firmensitz allerdings in den USA
@@ -93,8 +93,8 @@ wurden.
 
 | Daten | Dauer |
 |---|---|
-| Lohn- und lohnsteuerrelevante Unterlagen | [DAUER_LOHN], gesetzlich i. d. R. 10 Jahre |
-| Kassenaufzeichnungen | [DAUER_KASSE], gesetzlich 10 Jahre (§ 147 AO) |
+| Lohn- und lohnsteuerrelevante Unterlagen | 10 Jahre, gesetzlich i. d. R. 10 Jahre |
+| Kassenaufzeichnungen | 10 Jahre, gesetzlich 10 Jahre (§ 147 AO) |
 | Stammdaten ohne zustande gekommene Beschäftigung | [DAUER_BEWERBUNG], Vorschlag 6 Monate |
 | Verfügbarkeiten und Schichtpläne | [DAUER_PLANUNG], Vorschlag 3 Jahre |
 | Fotos der Verkaufslisten (Kassenbelege) | 10 Jahre (§ 147 AO) |
@@ -117,10 +117,10 @@ Du hast jederzeit das Recht auf:
 - **Widerspruch** gegen Verarbeitungen auf Grundlage berechtigter Interessen
   (Art. 21)
 
-Eine formlose Nachricht an [EMAIL] genügt.
+Eine formlose Nachricht an esska.app@gmail.com genügt.
 
 Außerdem kannst du dich bei der zuständigen Aufsichtsbehörde beschweren:
-**[AUFSICHTSBEHOERDE]**
+**Sächsische Datenschutz- und Transparenzbeauftragte, Devrientstraße 5, 01067 Dresden**
 
 ## 7. Was passiert, wenn du Daten nicht angibst?
 
@@ -138,4 +138,4 @@ Zuordnungen vor, die Entscheidung trifft aber immer ein Mensch.
 
 ---
 
-*Stand: [DATUM] · Bei Änderungen informieren wir dich rechtzeitig.*
+*Stand: 12. September 2026 · Bei Änderungen informieren wir dich rechtzeitig.*

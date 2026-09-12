@@ -7,13 +7,13 @@ Beschäftigungsverhältnis im Detail beschreiben.
 
 ## 1. Verantwortlicher
 
-**[FIRMIERUNG]**
-[STRASSE HAUSNUMMER]
-[PLZ ORT]
-Telefon: [TELEFON]
-E-Mail: [EMAIL]
+**Esska Collection**
+Dornblüthstraße 22
+01277 Dresden
+Telefon: +49 1512 2544117
+E-Mail: esska.app@gmail.com
 
-Ansprechpartner für Datenschutzfragen: [DATENSCHUTZ_KONTAKT]
+Ansprechpartner für Datenschutzfragen: Jannis Alekhanov, esska.app@gmail.com
 
 ## 2. Was beim reinen Aufruf der Seite passiert
 
@@ -59,7 +59,7 @@ Auftragsverarbeitung nach Art. 28 DSGVO besteht:
 |---|---|---|---|
 | Vercel Inc. | Betrieb der Anwendung (Hosting) | EU (Frankfurt) | USA |
 | Supabase Pte. Ltd. | Datenbank, Anmeldung, Dateiablage | EU (Frankfurt, AWS) | Singapur |
-| [MAILANBIETER] | Versand der System-E-Mails | [MAIL_STANDORT] | [MAIL_SITZ] |
+| Google Ireland Limited (Gmail) | Versand der System-E-Mails | EU und USA | Irland (Konzernmutter USA) |
 
 **Hinweis zu Drittländern:** Die Daten werden auf Servern innerhalb der
 Europäischen Union gespeichert und verarbeitet. Die Unternehmen selbst haben
@@ -80,12 +80,12 @@ Sie haben das Recht auf Auskunft (Art. 15), Berichtigung (Art. 16), Löschung
 (Art. 20) sowie ein **Widerspruchsrecht** gegen Verarbeitungen, die auf einem
 berechtigten Interesse beruhen (Art. 21 DSGVO).
 
-Zur Ausübung genügt eine formlose Nachricht an [EMAIL].
+Zur Ausübung genügt eine formlose Nachricht an esska.app@gmail.com.
 
 Sie haben außerdem das Recht, sich bei einer Aufsichtsbehörde zu beschweren.
 Zuständig ist:
 
-**[AUFSICHTSBEHOERDE]**
+**Sächsische Datenschutz- und Transparenzbeauftragte, Devrientstraße 5, 01067 Dresden**
 *(Für Unternehmen mit Sitz in Sachsen: Sächsische Datenschutz- und
 Transparenzbeauftragte, Devrientstraße 5, 01067 Dresden)*
 
@@ -96,4 +96,4 @@ ist die jeweils hier veröffentlichte Fassung.
 
 ---
 
-*Stand: [DATUM]*
+*Stand: 12. September 2026*

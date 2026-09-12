@@ -55,4 +55,4 @@ werden im Rahmen der gesetzlichen Aufbewahrungsfristen weiter gespeichert
 
 ---
 
-*Stand: [DATUM] · [FIRMIERUNG]*
+*Stand: 12. September 2026 · Esska Collection*

@@ -4,35 +4,31 @@ Angaben gemäß § 5 Digitale-Dienste-Gesetz (DDG)
 
 ## Anbieter
 
-**[FIRMIERUNG]**
-[STRASSE HAUSNUMMER]
-[PLZ ORT]
+**Esska Collection**
+Dornblüthstraße 22
+01277 Dresden
 Deutschland
 
-Inhaber: [INHABER]
+Inhaber: Jannis Alekhanov
 
 ## Kontakt
 
-Telefon: [TELEFON]
-E-Mail: [EMAIL]
+Telefon: +49 1512 2544117
+E-Mail: esska.app@gmail.com
 
 ## Umsatzsteuer
 
 Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:
-[USTIDNR ODER: Steuernummer STEUERNUMMER]
-
-## Registereintrag
-
-[REGISTER – falls kein Handelsregistereintrag besteht, diesen Abschnitt löschen]
+wird ergänzt
 
 ## Verantwortlich für den Inhalt
 
-[INHABER], Anschrift wie oben.
+Jannis Alekhanov, Anschrift wie oben.
 
 ## Hinweis zu dieser Anwendung
 
 Diese Anwendung ist ein internes Werkzeug für die Personal- und
-Einsatzverwaltung von [FIRMIERUNG]. Sie richtet sich ausschließlich an
+Einsatzverwaltung von Esska Collection. Sie richtet sich ausschließlich an
 Beschäftigte des Unternehmens und stellt kein öffentliches Angebot dar.
 Ein Zugang wird nur auf Einladung vergeben.
 
@@ -50,4 +46,4 @@ Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.
 
 ---
 
-*Stand: [DATUM]*
+*Stand: 12. September 2026*

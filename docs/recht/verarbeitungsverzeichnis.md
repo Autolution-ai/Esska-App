@@ -6,10 +6,10 @@ aktualisieren.
 
 ## Verantwortlicher
 
-**[FIRMIERUNG]**, [STRASSE HAUSNUMMER], [PLZ ORT]
-Vertreten durch: [INHABER]
-Kontakt Datenschutz: [DATENSCHUTZ_KONTAKT]
-Datenschutzbeauftragter: [DSB ODER: nicht bestellt, da die Voraussetzungen des § 38 BDSG nicht vorliegen]
+**Esska Collection**, Dornblüthstraße 22, 01277 Dresden
+Vertreten durch: Jannis Alekhanov
+Kontakt Datenschutz: Jannis Alekhanov, esska.app@gmail.com
+Datenschutzbeauftragter: nicht bestellt, da die Voraussetzungen des § 38 BDSG nicht vorliegen
 
 ---
 
@@ -35,7 +35,7 @@ Konfession); Ausweis- und Nachweisdokumente; Notfallkontakt.
 **Empfänger:** [STEUERBERATER]; Sozialversicherungsträger, Minijob-Zentrale,
 Finanzbehörden; Auftragsverarbeiter (siehe unten).
 
-**Löschfristen:** Lohn-/Steuerunterlagen [DAUER_LOHN]; Stammdaten ohne
+**Löschfristen:** Lohn-/Steuerunterlagen 10 Jahre; Stammdaten ohne
 Beschäftigung [DAUER_BEWERBUNG].
 
 Für die hochgeladenen Dokumente gelten unterschiedliche Regeln – das wird in
@@ -126,9 +126,9 @@ Vorschlag 3 Jahre
 
 | Dienstleister | Leistung | Speicherort | Unternehmenssitz | AVV / Transfergrundlage |
 |---|---|---|---|---|
-| Vercel Inc. | Hosting der Anwendung | EU (Frankfurt) | USA | DPA + SCCs, gilt mit Annahme der Nutzungsbedingungen, [DATUM_AVV_VERCEL] |
+| Vercel Inc. | Hosting der Anwendung | EU (Frankfurt) | USA | DPA + SCCs, gilt mit Annahme der Nutzungsbedingungen; Abschluss im Dashboard noch zu bestaetigen |
 | Supabase Pte. Ltd. | Datenbank, Authentifizierung, Dateiablage | EU (Frankfurt, AWS) | Singapur | DPA vom 08.09.2026 geprueft, SCCs Modul 2 enthalten (s. u.) |
-| [MAILANBIETER] | Versand von System-E-Mails | [MAIL_STANDORT] | [MAIL_SITZ] | [DATUM_AVV_MAIL] |
+| Google Ireland Limited (Gmail) | Versand von System-E-Mails | EU und USA | Irland (Konzernmutter USA) | **offen** - privates Google-Konto, kein AVV moeglich; Wechsel zu einem Anbieter mit AVV vor dem Produktivbetrieb |
 
 ### Details zum Supabase-DPA (geprueft am 08.09.2026)
 
@@ -185,7 +185,8 @@ Rechenzentren der Auftragsverarbeiter innerhalb der EU.
 
 **Zugangskontrolle:** Zugang nur auf Einladung, keine Selbstregistrierung.
 Passwortanmeldung mit serverseitiger Verschlüsselung. Zwei-Faktor-
-Authentifizierung für Administrationskonten [STATUS_MFA].
+Authentifizierung für Administrationskonten ist derzeit **nicht aktiviert**
+(offener Punkt, vor dem Produktivbetrieb einzurichten).
 
 **Zugriffskontrolle:** Rollenmodell (Administration / Regionalleitung /
 Mitarbeitende) mit Durchsetzung auf Datenbankebene (Row Level Security), nicht
@@ -201,12 +202,15 @@ werden nur über zeitlich befristete Signaturen ausgeliefert.
 und ändernder Person protokolliert. Kassendaten sind unveränderbar; jede
 Korrektur ist als solche erkennbar und begründet.
 
-**Verfügbarkeitskontrolle:** Tägliche Sicherungen durch den Datenbankanbieter
-[STATUS_BACKUP]. Wiederherstellung getestet am [DATUM_RESTORE_TEST].
+**Verfügbarkeitskontrolle:** Zusätzlich zu den Sicherungen des Datenbank-
+anbieters wird die Datenbank **täglich automatisch exportiert und mit AES-256
+verschlüsselt abgelegt** (GitHub Actions, Aufbewahrung 90 Tage).
+Wiederherstellung getestet am: **noch ausstehend** (offener Punkt).
 
-**Trennungskontrolle:** Getrennte Umgebungen für Test und Produktivbetrieb
-[STATUS_TRENNUNG].
+**Trennungskontrolle:** Derzeit wird **eine** Umgebung betrieben; Testdaten
+werden vor der ersten echten Einladung vollständig gelöscht. Eine getrennte
+Testumgebung ist nicht eingerichtet.
 
 ---
 
-*Stand: [DATUM] · Verantwortlich für die Pflege dieses Verzeichnisses: [INHABER]*
+*Stand: 12. September 2026 · Verantwortlich für die Pflege dieses Verzeichnisses: Jannis Alekhanov*
