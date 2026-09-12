@@ -1,3 +1,383 @@
+# HANDOFF — Esska-App (Session 2)
+
+**Erstellt:** 2026-09-12
+**Session-Nr.:** 2 (29.08.–12.09.2026)
+**Auslöser:** manuell angefordert (Skill `context-handoff`)
+**Vorgänger:** Der Eintrag zu Session 1 (12.06.–06.08.2026) steht **weiter unten in
+dieser Datei** — dort finden sich Projektgrundlagen, Template-Wahl, CI-Farben und die
+Historie bis August. **Beide Einträge lesen**, dieser hier ergänzt den alten, ersetzt
+ihn nicht.
+
+---
+
+## 1. KURZFASSUNG (30 Sekunden)
+
+Die Esska-App (interne Saison-App für Esska Collection, Dresden) ist funktional
+**fertig**: Personalakte, Schichtplanung, Kassenerfassung nach GoBD, Bestellwesen,
+Buchhaltungs-Exporte, PWA. In dieser Session wurde die komplette Änderungsliste aus
+dem Meeting mit Jannis vom 31.08. in sechs Phasen abgearbeitet, ein Code-Review mit
+13 Funden durchgeführt (kritische behoben), alle Rechtstexte neu geschrieben und ein
+Kosten-Briefing für Jannis erstellt.
+
+**Stand jetzt:** Technisch launch-ready. Blockierend sind nur noch **organisatorische**
+Punkte: Jannis' Antworten auf den Fragebogen (Firmendaten für die Rechtstexte), eigene
+Domain, Entscheidung über die Tarife, Restore-Test.
+
+**Unmittelbar nächster Schritt:** Auf Jannis' Antwort warten. Parallel kann der
+Netlify-Umzug vorbereitet werden — der Nutzer hat danach gefragt, aber **noch kein
+Go gegeben**. Letzte Nachricht von mir war das Angebot, die Netlify-Konfiguration
+vorzubereiten, ohne das laufende System anzufassen.
+
+---
+
+## 2. PROJEKT-KONTEXT
+
+**Übergeordnetes Ziel:** unverändert (siehe Session 1) — All-in-One-App für die
+Saisonverwaltung, rollenbasiert, DSGVO-konform.
+
+**Session-Ziel:** Die 60+ Punkte umfassende Änderungsliste aus dem 89-minütigen
+Google-Meet-Durchgang mit Jannis (31.08.2026) umsetzen und die App produktionsreif
+machen.
+
+**Stakeholder:**
+| Person | Rolle |
+|---|---|
+| Bruno Hofmann | Praktikant, Entwickler, Nutzer dieser Session (`bruann1008@gmail.com`) |
+| Jannis Alekhanov | Inhaber Esska Collection, Auftraggeber |
+| Chris Taumann | Test-Mitarbeiter (`taumannchris@gmail.com`) |
+| Autolution (Brunos Agentur) | betreibt aktuell noch den Vercel-Account |
+
+---
+
+## 3. TOOL-STACK & UMGEBUNG
+
+Unverändert gegenüber Session 1, mit diesen Ergänzungen:
+
+| Kategorie | Konkret | Begründung |
+|---|---|---|
+| E-Mail-Versand | **nodemailer** über SMTP (aktuell Gmail) | generisch gehalten, damit ein Wechsel zu Resend reine Konfiguration ist |
+| PDF-Erzeugung (Doku) | headless Chromium unter `/opt/pw-browsers/chromium-1194/chrome-linux/chrome` | pandoc/weasyprint nicht installiert |
+| PDF-Bearbeitung | `pypdf` (per pip nachinstalliert) | Merkblatt-Seiten extrahieren |
+| Icons | `pillow` (per pip nachinstalliert) | PWA-Icons generiert |
+| Backups | GitHub Actions (`.github/workflows/backup.yml`) | Supabase Free hat keine Backups |
+| MCP | **Supabase-MCP aktiv genutzt** | Migrationen wurden teilweise direkt eingespielt |
+
+**Supabase-Projekt:** `tbkuqvnjywgjqcgzryww`, Region AWS eu-central-1 (Frankfurt).
+**Wichtig:** Der Supabase-Account läuft bereits auf **Esska**. Nur der **Vercel-Account
+läuft noch über Brunos Agentur** — das ist ein offener organisatorischer Punkt.
+
+**Umfang aktuell:** 14.081 Zeilen TS/TSX, 30 Seiten, 7 API-Routen, 23 Migrationen,
+19 Tabellen.
+
+**Befehle die funktionieren:**
+```bash
+cd /home/user/Esska-App/nextjs && npm run build          # vor jedem Commit
+cd /home/user/Esska-App/nextjs && npx tsc --noEmit       # schneller Typcheck
+cat ~/Esska-App/supabase/migrations/<DATEI>.sql | pbcopy # Mac: Migration kopieren
+```
+
+**Umgebungsvariablen (Namen, keine Werte):**
+| Variable | Wofür | Status |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase-Projekt | gesetzt |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client-Key | gesetzt |
+| `PRIVATE_SUPABASE_SERVICE_KEY` | Server-Key | gesetzt |
+| `SMTP_USER` / `SMTP_PASS` | Gmail-Versand (App-Passwort) | gesetzt, getestet |
+| `CRON_SECRET` | schützt die Erinnerungs-Route | gesetzt, getestet |
+| `BUCHHALTUNG_EMAIL` | Empfänger der Stammdaten | **muss gesetzt sein, sonst blockiert der Versand** |
+| `LAGER_EMAIL` | Empfänger der Bestellungen | **noch nicht gesetzt** (Adresse fehlt von Jannis) |
+| `APP_URL` | Links in Erinnerungs-Mails | optional, Standard `https://esska-app.vercel.app` |
+| `SUPABASE_DB_URL` (GitHub Secret) | Backup-Verbindung | **noch nicht gesetzt** |
+| `BACKUP_PASSWORT` (GitHub Secret) | Backup-Verschlüsselung | **noch nicht gesetzt** |
+
+---
+
+## 4. ARCHITEKTUR — was sich geändert hat
+
+**Rollenmodell ist jetzt dreistufig:** `admin` | `regionalmanager` | `mitarbeiter`.
+Durchgesetzt über RLS mit drei SECURITY-DEFINER-Helfern:
+- `is_regionalmanager()`
+- `manages_center(cid uuid)` — ist der Nutzer Manager dieses Centers?
+- `manages_employee(pid uuid)` — betreut er ein Center dieses Mitarbeiters?
+
+**Neue Tabellen (alle mit RLS):**
+| Tabelle | Zweck |
+|---|---|
+| `center_opening_hours` | Öffnungstage/-zeiten je Center und Wochentag (0=Mo…6=So) |
+| `center_zeitraeume` | Miete / Betrieb / Verlängerung als Historie |
+| `card_revenues` | Karteneinnahmen, erfasst durch Admin (1 Betrag je Center+Tag) |
+| `bestell_artikel` | Artikelkatalog mit Packgrößen und Farben |
+| `bestellungen` + `bestellung_positionen` | Warenbestellungen |
+
+**Neue View:** `profiles_planung` (security_invoker) — reduzierte Sicht ohne Steuer-ID,
+RV-Nummer, Geburtsdatum, Adresse, Verdienst. Wird von der Mitarbeiterliste für alle
+außer Admins genutzt.
+
+**Neue Trigger:**
+- `profiles_audit_log_trigger` — schreibt jede Stammdatenänderung mit Vorher-/Nachher-Wert
+- `profiles_schutz_role_aktiv_trigger` — nur Admins dürfen `role`/`aktiv` ändern
+- `daily_sales_vor_insert_trigger` — setzt `erfasst_von` aus der Session, prüft Korrektur-Kette
+
+**Kassenbericht-Formel (offene Ladenkasse):**
+```
+Einnahmen = Endbestand − Startbestand + Ausgaben − Einlagen
+```
+Die Tresor-Umlagerung (`abschoepfung_cent`, im UI „In den Tresor gelegt") passiert
+NACH dem Zählen und geht deshalb nicht in die Rechnung ein.
+
+---
+
+## 5. GETROFFENE ENTSCHEIDUNGEN
+
+| # | Entscheidung | Begründung | Verworfene Alternative |
+|---|---|---|---|
+| 1 | Center-Status wird **berechnet**, nur „In Absprache" bleibt manuell | Im Meeting fiel auf, dass Center fälschlich auf „aktiv" standen | Status weiter von Hand pflegen |
+| 2 | Regionalmanager sehen **keine** Steuer-/Sozial-/Gehaltsdaten | Datensparsamkeit; für Planung nicht nötig | Volle Profilzeile (war der Zustand vor dem Review) |
+| 3 | Mietzeitraum-Sperre bei der Kassenmeldung ist eine **Rückfrage**, keine Sperre | Vor Saisonstart wäre sonst jedes Center gesperrt; Aufbautage brauchen das auch | Harter Block (war zuerst gebaut, vom Tester als Fehler erlebt) |
+| 4 | Mehrere Kassenmeldungen pro Tag sind **regulär**, nicht automatisch Korrektur | Zwei Schichten pro Tag sind der Normalfall | Jeder zweite Eintrag = Korrektur (alter Stand) |
+| 5 | Karteneinnahmen als **eigene Tabelle**, erfasst vom Admin | Jannis kontrolliert sie ohnehin vor der Weitergabe | Feld im Mitarbeiter-Formular (war eine Woche lang so gebaut, wieder entfernt) |
+| 6 | **Keine AGB** erstellt, stattdessen Nutzungsregeln | AGB regeln Kundenverträge; hier gibt es keinen Vertragsschluss über die App | AGB nach Template |
+| 7 | **Kein Cookie-Banner** | Nur technisch notwendige Session-Cookies, § 25 Abs. 2 TDDDG | Banner „zur Sicherheit" |
+| 8 | RV-Befreiung bleibt **Pflicht für alle** | Ausdrückliche Vorgabe des Nutzers (zweimal bestätigt) | Nur bei Minijob (mein Vorschlag, abgelehnt) |
+| 9 | Schicht-Limit über Center-Grenzen: nur **Hinweis** | Ausdrückliche Vorgabe: „nur einen Hinweis hinmachen" | Harte Prüfung/Sperre |
+| 10 | Backups über **GitHub Actions**, AES-256-verschlüsselt | Supabase Free hat keine; zweite Kopie ist auch mit Pro sinnvoll | Nur auf Supabase Pro vertrauen |
+| 11 | Bei Vercel bleiben empfohlen — **aber Netlify als ernsthafte Option dargestellt** | Netlify Free erlaubt gewerbliche Nutzung, spart 225 €/Jahr | Sofortiger Wechsel ohne Diskussion |
+| 12 | Ausweiskopien werden **gelöscht**, nicht aufbewahrt | Keine steuerliche Aufbewahrungspflicht; Datenminimierung Art. 5 DSGVO | „Alles 10 Jahre aufheben" (war meine erste, falsche Darstellung) |
+
+---
+
+## 6. BEREITS ERLEDIGT
+
+### Phasen 1–6 (Meeting-Änderungsliste vom 31.08.)
+
+| Phase | Inhalt | Commit |
+|---|---|---|
+| 1 | Struktur-Migration: Rollen, Center-Beziehungen, Öffnungszeiten, Zeiträume, Karteneinnahmen, Bestellwesen, Audit-Trigger | `265d035` |
+| 2 | Center-Verwaltung, Regionalmanager-Rolle, Einladung mit Center-Zuordnung | `848fa14` |
+| 3 | Onboarding (O-1 bis O-16): AOK-Liste, Validierungen, Pflicht-Uploads je Status | `d688a91` |
+| 4 | Umsatz-Umbau: berechnete Einnahmen, Foto, Zeitfenster, Karteneinnahmen-Seite | `1567392` |
+| 5 | Ware bestellen (B-1 bis B-5) + Verfügbarkeit V-1/V-2 | `10efac5` |
+| 6 | PWA, Installations-Anleitung, Domain/Hosting-Empfehlung | `e8d2b55` |
+
+### Migrationen dieser Session (alle eingespielt)
+
+| Datei | Inhalt |
+|---|---|
+| `20260829120000_esska_view_security_invoker.sql` | Security-Advisor-Fund behoben |
+| `20260829160000_esska_karteneinnahmen.sql` | Feld (später durch eigene Tabelle ersetzt) |
+| `20260831120000_esska_struktur_enums.sql` | Enum-Werte `regionalmanager`, `in_absprache` |
+| `20260831121000_esska_struktur_phase1.sql` | Große Struktur-Migration |
+| `20260831122000_esska_rolle_schutz.sql` | Trigger gegen Selbst-Hochstufung |
+| `20260901090000_esska_onboarding_phase3.sql` | `selbststaendig`, `eu_staatsbuergerschaft` |
+| `20260902100000_esska_sales_fotos_manager.sql` | Foto-Leserecht für Manager |
+| `20260902110000_esska_bestell_sortiment.sql` | Echtes Sortiment aus Jannis' Vorlage |
+| `20260907100000_esska_kasse_einlagen.sql` | Einlagen-Feld |
+| `20260907140000_esska_sicherheit_review.sql` | Review-Blocker behoben |
+
+### Rechtstexte (komplett neu)
+
+**Öffentlich** (`nextjs/public/terms/`, erreichbar unter `/legal/...`):
+`impressum.md`, `datenschutz.md`, `datenschutz-beschaeftigte.md`, `nutzungsregeln.md`
+
+**Intern** (`docs/recht/`):
+`verarbeitungsverzeichnis.md` (Art. 30 inkl. TOM), `FRAGEBOGEN-Jannis.md` (23 Fragen),
+`README.md` (Platzhalter-Zuordnung)
+
+Die drei Template-Dateien (`privacy-notice.md`, `terms-of-service.md`,
+`refund-policy.md`) wurden **gelöscht** — sie enthielten „SupaSasS", „Shopify store
+analysis", „Paddle" und „Tax number: 1234567890".
+
+**27 Platzhalter** in eckigen Klammern, auffindbar per:
+```bash
+grep -rn "\[[A-Z_]*\]" nextjs/public/terms/ docs/recht/
+```
+
+### Dokumente für Jannis
+
+| Datei | Zweck |
+|---|---|
+| `docs/BRIEFING-Jannis-Launch.md` + `docs/Esska-App-Briefing.pdf` (6 Seiten) | Stand, offene Punkte, 4 Kostenvarianten |
+| `docs/recht/FRAGEBOGEN-Jannis.md` | 23 Fragen, Pflichtangaben markiert — **bereits verschickt** |
+| `docs/hosting-domain-empfehlung.md` | Domain/Hosting-Bewertung |
+| `docs/kassenbericht-hinweise-steuerberater.md` | Textbaustein für die CSV-Übergabe |
+| `docs/backup-wiederherstellen.md` | Backup-Einrichtung und Restore-Test |
+
+### Getestet & verifiziert
+
+| Was | Ergebnis |
+|---|---|
+| `npm run build` vor jedem Commit | ✅ durchgehend grün |
+| E-Mail-Versand über Gmail-SMTP | ✅ nach `535`-Fehlerbehebung |
+| Samstags-Erinnerung (manuell per curl ausgelöst) | ✅ `{"ok":true,"verschickt":1}` |
+| Deutsche E-Mail-Vorlagen in Supabase | ✅ vom Nutzer eingefügt und geprüft |
+| Supabase Security Advisor | ✅ nur noch WARN-Level |
+| `euroToCent`-Korrektur | ✅ alle 11 Testfälle korrekt |
+| Restore aus dem Backup | ❌ **noch nicht getestet — wichtigster offener Punkt** |
+| Kassenmeldung mit echten Nutzern | ❌ noch nicht |
+
+---
+
+## 7. NICHT FUNKTIONIERT / SACKGASSEN
+
+| Ansatz | Warum gescheitert | Fehlermeldung |
+|---|---|---|
+| Migration mit `manager_id` NACH den Helper-Funktionen | Postgres validiert SQL-Funktionskörper beim Anlegen | `ERROR: 42703: column c.manager_id does not exist` |
+| HTML5-`required` auf den Kassenfeldern | Safari blockiert den Submit stumm; auf dem Handy unsichtbar | keine — genau das war das Problem |
+| Erste Diagnose „Mietzeitraum-Sperre blockiert das Speichern" | Falsch. Das Test-Center läuft seit 01.09. Die echte Ursache war `required` | — |
+| `euroToCent` mit `replace(/\./g, "")` | Entfernte Punkte als Tausendertrenner: `890.40` → 89.040,00 € | — (still, deshalb gefährlich) |
+| Supabase-MCP in dieser Session | Verbindung riss mehrfach ab; Werkzeuge kamen zeitweise nicht an | — |
+| PDF-Kopf mit `margin: -16mm` + `padding: 24px` | Text ragte über den Seitenrand, „Die" wurde abgeschnitten | — |
+
+> **Nicht erneut versuchen:** `required` auf Feldern, die wir selbst validieren.
+> Enum-Werte und ihre Verwendung in derselben Migration.
+
+---
+
+## 8. OFFENE PUNKTE
+
+### Blockierend für den Live-Gang
+
+| # | Punkt | Wer |
+|---|---|---|
+| 1 | **Fragebogen-Antworten** → 27 Platzhalter in den Rechtstexten füllen | Jannis (verschickt, Antwort ausstehend) |
+| 2 | **Eigene Domain** kaufen und verbinden | Jannis / Bruno |
+| 3 | **Tarif-Entscheidung** (4 Varianten, 290–515 €/Jahr) | Jannis |
+| 4 | **Vercel-Account auf Esska** übertragen (läuft über Autolution) | Jannis / Bruno |
+| 5 | **Restore-Test** aus dem Backup | Bruno |
+| 6 | GitHub-Secrets `SUPABASE_DB_URL` und `BACKUP_PASSWORT` setzen | Bruno |
+| 7 | Testdaten löschen vor der ersten echten Einladung | Bruno |
+
+### Offene Entscheidungen
+
+| # | Frage | Tendenz |
+|---|---|---|
+| 1 | **Netlify statt Vercel?** Spart 225 €/Jahr, Umbau ~halber Tag | Nutzer hat gefragt, **kein Go gegeben**. Ich habe angeboten vorzubereiten. Empfehlung: jetzt oder gar nicht diese Saison |
+| 2 | Müssen Regionalmanager das Onboarding durchlaufen? | Hängt davon ab, ob sie angestellt sind — Frage 19 im Fragebogen |
+| 3 | Anwaltliche Prüfung der Rechtstexte? | Vom Nutzer **aus dem Briefing gestrichen** |
+| 4 | Ganzjährig oder saisonal? | Empfehlung Variante D (290 €): Netlify + Supabase ganzjährig |
+
+### Bekannte Lücken (nicht blockierend)
+
+| # | Punkt | Ort |
+|---|---|---|
+| 1 | **Storage-Backup fehlt** — Verkaufslisten-Fotos (10 Jahre Pflicht!) sind nicht im Datenbank-Export | `.github/workflows/backup.yml` |
+| 2 | Kein Aufräumlauf für abgelaufene Ausweiskopien | — |
+| 3 | Kenntnisnahme-Häkchen der Datenschutzhinweise im Onboarding fehlt | `nextjs/src/app/app/onboarding/page.tsx` |
+| 4 | `karteneinnahmen_cent` in `daily_sales` ist tot (0 Datensätze betroffen) | `daily_sales` |
+| 5 | Tages-CSV und Zeitraum-CSV erfassen unterschiedliche Center-Mengen | `nextjs/src/app/app/sales/page.tsx:~200` |
+| 6 | `center_zeitraeume`, `center_opening_hours`, `bestell_artikel` für alle Angemeldeten lesbar | Migration `20260831121000` |
+| 7 | Gmail erlaubt **keinen AVV** → Wechsel zu Resend nötig | — |
+| 8 | MFA für Admins nicht aktiviert, Leaked-Password-Schutz aus | Supabase-Dashboard |
+| 9 | Kaschmir-Farben, Mützen-Varianten, Lager-Mail, Logo fehlen | von Jannis |
+
+---
+
+## 9. NUTZER-PRÄFERENZEN & CONSTRAINTS
+
+**Arbeitsweise:**
+- Nutzt häufig **Spracheingabe** → Tippfehler in Nachrichten („Würzel"/„Wörsel" = Vercel,
+  „Janusz"/„Janis" = Jannis, „Netly Fine" = Netlify, „Rechtsextremismus" = Rechtstexte-Prüfung).
+  **Inhaltlich interpretieren**, bei echter Mehrdeutigkeit die Interpretation offenlegen.
+- Will **Fortschritt sehen**: umsetzen + erklären statt lange Rückfragen.
+- Erwartet nach jedem Push die Anleitung, was **er** tun muss.
+- Keine Entwicklererfahrung → Begriffe erklären, klar zwischen *Terminal auf dem Mac*
+  und *Supabase SQL-Editor im Browser* unterscheiden.
+
+**Sprache & Format:**
+- Alles auf **Deutsch** — UI, Fehlermeldungen, Commit-Messages, Doku.
+- Mitarbeiter-Formulare zusätzlich **englisch** (kursiv, grau darunter).
+- Commit-Messages: ausführlich mit Begründung, **ohne Umlaute** (ae/oe/ue).
+- Fehlermeldungen müssen konkret sagen, **welches Feld** fehlt.
+
+**Explizite Vorgaben aus dieser Session:**
+- „beim Schichtlimit arbeitet nur einen Hinweis hinmachen" → keine Sperre
+- „RV Befreiung soll bei allen auf jeden Fall bleiben"
+- Anwaltliche Prüfung und Logo aus dem Briefing entfernen
+- Kassendaten unveränderbar (GoBD) — gilt weiter
+- Keine Agent-Tools/Workflows ohne Aufforderung
+- Keine PRs ohne ausdrückliche Aufforderung
+- Kein Tracking/Analytics
+
+---
+
+## 10. FOKUS BEIM ABBRUCH
+
+**Zuletzt gearbeitet an:** `docs/BRIEFING-Jannis-Launch.md` und dem daraus erzeugten
+PDF `docs/Esska-App-Briefing.pdf` (6 Seiten).
+
+**Unterbrochen bei:** Nichts Halbfertiges. Commit `331a63b` ist gepusht, Arbeitsbaum
+sauber, Build grün.
+
+**Gedanklicher Stand:** Die letzte inhaltliche Frage des Nutzers war, ob man statt
+Vercel auch **Netlify** nehmen könnte (kostenlos, gewerbliche Nutzung erlaubt). Ich
+habe das bejaht, in Variante D ins Briefing aufgenommen (290 €/Jahr) und angeboten,
+den Umzug vorzubereiten — Konfiguration und umgebauter Erinnerungs-Job, ohne am
+laufenden System etwas zu ändern. **Auf dieses Angebot steht die Antwort noch aus.**
+
+Ebenfalls in dieser letzten Runde korrigiert: Ausweiskopien dürfen **nicht** dauerhaft
+aufbewahrt werden (keine Aufbewahrungspflicht, Datenminimierung) — nur die
+Verkaufslisten-Fotos müssen 10 Jahre bleiben. Diese Korrektur ist in
+`datenschutz-beschaeftigte.md`, `verarbeitungsverzeichnis.md` und
+`backup-wiederherstellen.md` eingearbeitet.
+
+---
+
+## 11. NÄCHSTE SCHRITTE (PRIORISIERT)
+
+1. **Auf Jannis' Fragebogen-Antwort warten.** Sobald da: die 27 Platzhalter in
+   `nextjs/public/terms/*.md` und `docs/recht/verarbeitungsverzeichnis.md` ersetzen
+   (Zuordnung Frage→Platzhalter steht in `docs/recht/README.md`).
+2. **Netlify-Umzug** — falls der Nutzer Go gibt. Konkret: `netlify.toml` anlegen,
+   `@netlify/plugin-nextjs` einbinden, den Cron aus `nextjs/vercel.json`
+   (`0 9 * * 6` auf `/api/cron/availability-reminder`) als Netlify Scheduled Function
+   nachbauen, Umgebungsvariablen übertragen, testen.
+3. **Storage-Backup ergänzen** in `.github/workflows/backup.yml`: Bucket
+   `sales-receipts` wöchentlich exportieren (steuerlich aufbewahrungspflichtig).
+   Bucket `employee-documents` braucht kein Langzeitarchiv.
+4. **GitHub-Secrets setzen** (`SUPABASE_DB_URL`, `BACKUP_PASSWORT`) und den
+   **Restore-Test** nach `docs/backup-wiederherstellen.md` durchführen.
+5. **Kenntnisnahme-Häkchen** für die Datenschutzhinweise im Onboarding einbauen
+   (`nextjs/src/app/app/onboarding/page.tsx`, beim Abschluss-Schritt).
+6. **Resend statt Gmail** einrichten, sobald die Domain steht — löst zugleich das
+   fehlende AVV-Problem. Code ist vorbereitet: `nextjs/src/lib/esska/mail.ts` spricht
+   generisches SMTP, nur `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` ändern.
+7. **In Supabase:** MFA für Admin-Konten, Leaked-Password-Schutz an,
+   Subprocessor-Benachrichtigungen abonnieren, Sicherheits-Mailadresse prüfen.
+8. **Testdaten löschen**, dann erste echte Gruppe (Leipzig oder Hamburg) einladen.
+
+---
+
+## 12. EMPFOHLENE SKILLS / TOOLS FÜR DIE NÄCHSTE SESSION
+
+- **Supabase-MCP** — hat sich bewährt, Migrationen direkt einspielen und Logs/Advisors
+  abfragen. Achtung: Verbindung riss in dieser Session mehrfach ab, dann auf den
+  `pbcopy`-Weg ausweichen.
+- **`code-review` Skill** — hat 13 echte Funde geliefert, darunter den
+  `euroToCent`-Bug. Vor dem Live-Gang nochmal laufen lassen.
+- Für PDFs: headless Chromium (Pfad siehe Abschnitt 3), **kein** pandoc/weasyprint.
+- Kein weiterer Skill zwingend nötig.
+
+---
+
+## 13. DATEIEN DIE ZUERST GELESEN WERDEN SOLLTEN
+
+| Priorität | Pfad | Warum |
+|---|---|---|
+| 1 | `docs/handoff/HANDOFF.md` | Session 1: Projektgrundlagen, CI, Template-Entscheidungen |
+| 2 | `docs/BRIEFING-Jannis-Launch.md` | Aktueller Stand in nicht-technischer Sprache, Kostenvarianten |
+| 3 | `docs/recht/README.md` | Welche Rechtstexte es gibt, welcher Platzhalter woher kommt |
+| 4 | `nextjs/src/lib/esska/types.ts` | Alle Domain-Typen, Geld-Helfer (`parseEuro`!), Status-Berechnung |
+| 5 | `supabase/migrations/20260831121000_esska_struktur_phase1.sql` | Das neue Datenmodell samt RLS |
+| 6 | `supabase/migrations/20260907140000_esska_sicherheit_review.sql` | Die Sicherheits-Härtung |
+| 7 | `nextjs/src/app/app/sales/new/page.tsx` | Kassenformular — die komplexeste Seite |
+| 8 | `docs/backup-wiederherstellen.md` | Backup-Konzept und die Aufbewahrungsregeln |
+
+
+---
+---
+
+# ═══ ÄLTERER EINTRAG (Session 1) ═══
+
 # HANDOFF — Esska-App (Saison-App für Esska Collection)
 
 **Erstellt:** 2026-08-06 (Session-Ende)
