@@ -13,16 +13,31 @@ Loeschfristen fuer Lohn und Kasse (gesetzlich 10 Jahre), Stand-Datum.
 - Der Abschnitt *Registereintrag* wurde aus dem Impressum **entfernt**.
   Frage 7 ist unbeantwortet; bei einem Einzelunternehmen wird kein Eintrag
   angenommen. Falls doch einer besteht, muss der Abschnitt zurueck.
-- Die USt-IdNr. steht als `wird ergaenzt` im Impressum. Das ist zulaessig,
-  solange keine vergeben ist - sobald sie da ist, eintragen.
+- Die USt-IdNr. `DE354922559` ist eingetragen.
 
 **Noch offen:**
 
 | Platzhalter | Fehlt aus | Datei |
 |---|---|---|
-| `[STEUERBERATER]` | Frage 13 | `datenschutz-beschaeftigte.md`, `verarbeitungsverzeichnis.md` |
-| `[DAUER_BEWERBUNG]`, `[DAUER_PLANUNG]`, `[DAUER_BESTELLUNGEN]`, `[DAUER_PROTOKOLL]` | Frage 11 | beide |
 | `[LAGER_EMAIL]` | Frage 20 | `verarbeitungsverzeichnis.md` |
+
+Ausserdem offen, ohne Platzhalter: Handelsregister (Frage 7), Logo (16),
+Sortiment (21-23) und der Name des Lohnbueros.
+
+## Abweichungen von den Wuenschen des Inhabers (Frage 11)
+
+Die gewuenschten Loeschfristen waren teilweise nicht umsetzbar. Eingesetzt ist:
+
+| Daten | Wunsch | Eingesetzt | Grund |
+|---|---|---|---|
+| Kassenaufzeichnungen | 2 Jahre | **10 Jahre** | Paragraf 147 AO, zwingend |
+| Lohnunterlagen | nicht nennen | **10 Jahre** | Art. 13 Abs. 2 lit. a DSGVO verlangt eine Angabe |
+| Schichtplaene | nicht nennen | **3 Jahre** | dieselbe Vorschrift; 3 Jahre = Verjaehrung nach Paragraf 195 BGB |
+| Stammdaten ohne Beschaeftigung | 3 Jahre | 3 Jahre | uebernommen |
+
+Eine Datenschutzerklaerung darf keine Frist nennen, die kuerzer ist als die
+gesetzliche Aufbewahrungspflicht - die Daten sind dann ja noch da. Und das
+Weglassen der Dauer ist keine Option, die Angabe ist Pflicht.
 
 **Blocker fuer den Live-Gang, der aus den Antworten folgt:** Die
 Datenschutzerklaerung nennt fuer alle drei Dienstleister einen AVV. Fuer das

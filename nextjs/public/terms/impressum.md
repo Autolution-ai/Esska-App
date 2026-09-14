@@ -19,7 +19,7 @@ E-Mail: esska.app@gmail.com
 ## Umsatzsteuer
 
 Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:
-wird ergänzt
+**DE354922559**
 
 ## Verantwortlich für den Inhalt
 

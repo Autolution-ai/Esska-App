@@ -71,7 +71,10 @@ gesetzlich erforderlichen hinausgehen.
 - **Andere Mitarbeiter** sehen deine Personaldaten nicht.
 
 **Außerhalb des Unternehmens:**
-- **[STEUERBERATER]** – Lohnabrechnung und Buchhaltung
+- **CSB Steuerberatung, Burkhard Schmeinck** – Buchhaltung und Lohnabrechnung
+- **Das Lohnbüro**, das die Abrechnung erstellt
+- **Das zuständige Jobcenter**, soweit dies im Einzelfall gesetzlich
+  vorgeschrieben ist
 - Sozialversicherungsträger, Minijob-Zentrale und Finanzbehörden, soweit
   gesetzlich vorgeschrieben
 - Unsere technischen Dienstleister als Auftragsverarbeiter nach Art. 28 DSGVO:
@@ -93,10 +96,10 @@ wurden.
 
 | Daten | Dauer |
 |---|---|
-| Lohn- und lohnsteuerrelevante Unterlagen | 10 Jahre, gesetzlich i. d. R. 10 Jahre |
-| Kassenaufzeichnungen | 10 Jahre, gesetzlich 10 Jahre (§ 147 AO) |
-| Stammdaten ohne zustande gekommene Beschäftigung | [DAUER_BEWERBUNG], Vorschlag 6 Monate |
-| Verfügbarkeiten und Schichtpläne | [DAUER_PLANUNG], Vorschlag 3 Jahre |
+| Lohn- und lohnsteuerrelevante Unterlagen | 10 Jahre nach Ablauf des Kalenderjahres (§ 147 AO) |
+| Kassenaufzeichnungen | 10 Jahre nach Ablauf des Kalenderjahres (§ 147 AO) |
+| Stammdaten ohne zustande gekommene Beschäftigung | 3 Jahre (Verjährungsfrist § 195 BGB) |
+| Verfügbarkeiten und Schichtpläne | 3 Jahre (Verjährungsfrist § 195 BGB) |
 | Fotos der Verkaufslisten (Kassenbelege) | 10 Jahre (§ 147 AO) |
 | Kopie des Aufenthaltstitels | Dauer der Beschäftigung (§ 4a AufenthG) |
 | **Ausweiskopien** | werden nach der Anmeldung **gelöscht**, spätestens nach Saisonende – es gibt dafür keine Aufbewahrungspflicht |

@@ -7,7 +7,9 @@ wir ein paar Angaben von dir. Die Texte sind bereits geschrieben – es fehlen n
 noch die Daten, die dort eingesetzt werden. Antworte einfach hinter den Punkten.
 
 > **Stand 12.09.2026:** Antworten eingetragen, in die Rechtstexte uebernommen.
-> Offen bleiben 6, 7, 11–13, 16, 18, 20–23.
+> Offen bleiben nur noch 7, 16, 20–23 sowie der Name des Lohnbüros. Frage 18 (Tresor) wurde gestrichen –
+> sie gehört an den Steuerberater, nicht an Jannis, und steht als offener Punkt
+> in `docs/kassenbericht-hinweise-steuerberater.md`.
 
 **Aufwand: ca. 10 Minuten.** Punkte mit ⚠️ sind Pflichtangaben, ohne die es
 nicht geht. Alles andere können wir notfalls später ergänzen.
@@ -32,11 +34,11 @@ nicht geht. Alles andere können wir notfalls später ergänzen.
    → **+49 1512 2544117**
 
 5. **Umsatzsteuer-Identifikationsnummer** (Format DE123456789), falls vorhanden:
-   → noch unbekannt – im Impressum steht vorerst „wird ergänzt“
+   → **DE354922559**
 
 6. **Steuernummer** – nur falls KEINE USt-IdNr. vorhanden ist
    (dann steht die Steuernummer im Impressum):
-   → offen (siehe 5.)
+   → entfällt, USt-IdNr. liegt vor
 
 7. Ist das Unternehmen im **Handelsregister** eingetragen?
    Falls ja: Registergericht und Registernummer:
@@ -66,18 +68,29 @@ nicht geht. Alles andere können wir notfalls später ergänzen.
     - Bewerbungs-/Stammdaten ohne Beschäftigung: **6 Monate**
     - Verfügbarkeiten und Schichtpläne: **3 Jahre**
     - Kassendaten: **10 Jahre**
-    → **offen** – die gesetzlichen 10 Jahre sind bereits eingesetzt,
-      die frei wählbaren Fristen (Bewerbung, Planung) fehlen noch
+    → Antwort: Lohn gar nicht nennen · Kasse 2 Jahre · Stammdaten ohne
+      Beschäftigung 3 Jahre · Schichtpläne nicht nennen.
+      **Teilweise nicht umsetzbar:**
+      - Kasse: § 147 AO schreibt **10 Jahre** vor, das ist keine freie Wahl.
+        Eingesetzt sind daher 10 Jahre.
+      - Lohn und Schichtpläne: Art. 13 Abs. 2 lit. a DSGVO verlangt eine
+        Angabe zur Dauer. „Nicht nennen“ ist keine zulässige Option.
+        Eingesetzt: Lohn 10 Jahre (§ 147 AO), Schichtpläne 3 Jahre (§ 195 BGB).
+      - Stammdaten ohne Beschäftigung: 3 Jahre wie gewünscht übernommen.
 
 12. ⚠️ **An wen gehen Personaldaten außerhalb des Unternehmens?**
     Wir wissen bisher: Steuerberater/Buchhaltung. Weitere?
     (z. B. Lohnbüro, Minijob-Zentrale, Krankenkassen, Berufsgenossenschaft)
     Bitte jeweils Name und Anschrift, die kommen in die Datenschutzerklärung:
-    → **offen**
+    → **Lohnbüro** (Stammdaten) und **ggf. das zuständige Jobcenter**.
+      Beide sind aufgenommen. Der Name des Lohnbüros fehlt noch – falls es
+      ein eigenes Unternehmen ist, bitte nachreichen.
 
 13. **Name und Anschrift des Steuerberaters/der Buchhaltung**
     (wird in der Datenschutzerklärung als Empfänger genannt):
-    → **offen**
+    → **CSB Steuerberatung, Burkhard Schmeinck** – eingesetzt.
+      Anschrift fehlt, ist aber nicht zwingend (Art. 13 verlangt den
+      Empfänger, nicht dessen Anschrift).
 
 ---
 
@@ -103,11 +116,6 @@ nicht geht. Alles andere können wir notfalls später ergänzen.
 17. Fallen im Verkauf **ausschließlich 19 % Umsatzsteuer** an, oder gibt es
     Artikel mit 7 %? (Wichtig für die Kassenaufzeichnung.)
     → **ausschließlich 19 %**
-
-18. Wird der **Tresor als eigene Kasse geführt** (mit Aufzeichnung, was
-    eingezahlt und entnommen wird)? Falls nein, sollten wir das mit dem
-    Steuerberater klären.
-    → **offen** – Rückfrage läuft
 
 19. Sollen **Regionalmanager** das Onboarding durchlaufen (Personalfragebogen
     etc.)? Das hängt davon ab, ob sie bei euch angestellt sind.

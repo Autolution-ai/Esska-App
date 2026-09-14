@@ -60,9 +60,11 @@ Startbestand (Folgetag) = Endbestand (Vortag) − In_Tresor
 
 ## Offene Punkte, die mit dem Steuerberater zu klären sind
 
-1. **Umsatzsteuersätze:** Die App erfasst keine Aufteilung nach
-   Steuersätzen (§ 22 UStG). Das ist unproblematisch, solange
-   ausschließlich 19 % anfallen – bitte einmal bestätigen lassen.
+1. **Umsatzsteuersaetze:** Die App erfasst keine Aufteilung nach
+   Steuersaetzen (§ 22 UStG). Der Inhaber hat am 12.09.2026 bestaetigt, dass
+   **ausschliesslich 19 %** anfallen. Damit ist die fehlende Aufteilung
+   unproblematisch. Kommen spaeter Artikel mit 7 % dazu, muss die Erfassung
+   erweitert werden.
 2. **Tresor-Bestandsnachweis:** Die App dokumentiert, was aus der
    Ladenkasse in den Tresor geht. Ob und wie der Tresor selbst als
    Hauptkasse geführt wird (Bank-Einzahlungen, Wechselgeld-Ausgabe),

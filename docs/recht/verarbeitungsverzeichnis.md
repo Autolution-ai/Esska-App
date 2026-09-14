@@ -32,11 +32,12 @@ Konfession); Ausweis- und Nachweisdokumente; Notfallkontakt.
 **Besondere Kategorien (Art. 9 DSGVO):** Konfession (für den Kirchensteuerabzug,
 § 26 Abs. 3 BDSG). Ausweisdokumente können weitere Angaben enthalten.
 
-**Empfänger:** [STEUERBERATER]; Sozialversicherungsträger, Minijob-Zentrale,
+**Empfänger:** CSB Steuerberatung, Burkhard Schmeinck; das beauftragte Lohnbüro;
+ggf. das zuständige Jobcenter; Sozialversicherungsträger, Minijob-Zentrale,
 Finanzbehörden; Auftragsverarbeiter (siehe unten).
 
-**Löschfristen:** Lohn-/Steuerunterlagen 10 Jahre; Stammdaten ohne
-Beschäftigung [DAUER_BEWERBUNG].
+**Löschfristen:** Lohn-/Steuerunterlagen 10 Jahre nach Ablauf des
+Kalenderjahres (§ 147 AO); Stammdaten ohne Beschäftigung 3 Jahre.
 
 Für die hochgeladenen Dokumente gelten unterschiedliche Regeln – das wird in
 der Praxis oft falsch gemacht:
@@ -67,7 +68,7 @@ Schichtzuweisungen, Center-Zuordnung, Wochenstunden-Limits.
 
 **Empfänger:** intern (Administration, zuständige Regionalleitung)
 
-**Löschfrist:** [DAUER_PLANUNG], Vorschlag 3 Jahre
+**Löschfrist:** 3 Jahre (Verjährungsfrist § 195 BGB)
 
 ---
 
@@ -103,7 +104,7 @@ schränkt das Löschrecht nach Art. 17 Abs. 3 lit. b DSGVO zulässig ein.
 
 **Empfänger:** zuständige Regionalleitung, Lager ([LAGER_EMAIL])
 
-**Löschfrist:** [DAUER_BESTELLUNGEN], Vorschlag 2 Jahre
+**Löschfrist:** 2 Jahre
 
 ---
 
@@ -117,8 +118,7 @@ automatische Erinnerungen an fehlende Verfügbarkeiten
 **Datenkategorien:** E-Mail-Adresse, verschlüsseltes Passwort, Zeitstempel,
 Änderungsprotokoll (Feld, alter Wert, neuer Wert, ändernde Person)
 
-**Löschfrist:** mit dem Konto; Änderungsprotokoll [DAUER_PROTOKOLL],
-Vorschlag 3 Jahre
+**Löschfrist:** mit dem Konto; Änderungsprotokoll 3 Jahre
 
 ---
 
