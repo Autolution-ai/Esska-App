@@ -38,7 +38,16 @@ gewuenscht. Jannis sollte das wissen, bevor er die Texte freigibt.
 **E6 Testlauf.** Welches Center zuerst, Datum Saisonstart, Datum der ersten
 Einladung (zwei Wochen vorher).
 
-**E7 Betreuung nach dem Praktikum.** Wer kuemmert sich, wenn waehrend der Saison
+**E7 Arbeitszeiterfassung.** Die App speichert den Schichtplan (Soll), nicht die
+tatsaechlich gearbeitete Zeit. Kein Stempeln, keine Bestaetigung hinterher.
+Paragraf 17 MiLoG verlangt fuer kurzfristig und geringfuegig Beschaeftigte die
+Aufzeichnung von Beginn, Ende und Dauer der tatsaechlichen taeglichen
+Arbeitszeit - binnen sieben Tagen, aufzubewahren zwei Jahre. Das prueft der Zoll.
+Vermutlich laeuft das bereits ueber Stundenzettel oder das Lohnbuero; die Frage
+ist, ob sich jemand faelschlich auf die App verlaesst. Einbau waere etwa ein Tag,
+aber nicht mehr vor dem Saisonstart.
+
+**E8 Betreuung nach dem Praktikum.** Wer kuemmert sich, wenn waehrend der Saison
 etwas klemmt? Muss nicht heute entschieden sein, aber besser jetzt als im November.
 
 ## Informationen, die noch fehlen
