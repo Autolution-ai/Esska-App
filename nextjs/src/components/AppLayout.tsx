@@ -239,9 +239,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
 
-                <main className="p-4 pb-24 lg:pb-4">
+                <main className="p-4">
                     {children}
                 </main>
+
+                {/* Rechtliches - muss von jeder Seite aus erreichbar sein.
+                    Die untere Polsterung haelt den Schnellzugriff auf dem Handy frei. */}
+                <footer className="px-4 pt-6 pb-24 lg:pb-6">
+                    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-gray-500">
+                        <Link href="/legal/impressum" className="hover:text-gray-900">Impressum</Link>
+                        <Link href="/legal/datenschutz-beschaeftigte" className="hover:text-gray-900">Datenschutz</Link>
+                        <Link href="/legal/nutzungsregeln" className="hover:text-gray-900">Nutzungsregeln</Link>
+                    </div>
+                </footer>
             </div>
 
             {/* Schnellzugriff unten - nur auf dem Handy, nur wenn angemeldet */}

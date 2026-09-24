@@ -28,6 +28,15 @@ export default function AuthLayout({
                 <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
                     {children}
                 </div>
+
+                {/* Pflichtangaben muessen auch ohne Anmeldung erreichbar sein. */}
+                <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
+                    <div className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-gray-500">
+                        <Link href="/legal/impressum" className="hover:text-gray-900">Impressum</Link>
+                        <Link href="/legal/datenschutz" className="hover:text-gray-900">Datenschutz</Link>
+                        <Link href="/legal/nutzungsregeln" className="hover:text-gray-900">Nutzungsregeln</Link>
+                    </div>
+                </div>
             </div>
 
             <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary-600 to-primary-800">
