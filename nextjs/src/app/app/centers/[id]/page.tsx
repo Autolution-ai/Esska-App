@@ -255,6 +255,7 @@ export default function CenterDetailPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                    <div className="overflow-x-auto">
                     <table className="min-w-full text-sm">
                         <thead className="bg-secondary-50 text-left">
                             <tr>
@@ -295,6 +296,7 @@ export default function CenterDetailPage() {
                             )}
                         </tbody>
                     </table>
+                    </div>
 
                     {darfBearbeiten && (
                         <form onSubmit={zeitraumAnlegen} className="flex flex-wrap items-end gap-3 border-t pt-4">

@@ -304,13 +304,13 @@ export default function StammdatenForm({
                         <input value={form.anschrift_strasse ?? ""} onChange={(e) => update("anschrift_strasse", e.target.value)} required className={inputCls} />
                     </Field>
                     <Field label="PLZ" required>
-                        <input value={form.anschrift_plz ?? ""} onChange={(e) => update("anschrift_plz", e.target.value)} required className={inputCls} />
+                        <input value={form.anschrift_plz ?? ""} onChange={(e) => update("anschrift_plz", e.target.value)} required inputMode="numeric" autoComplete="postal-code" className={inputCls} />
                     </Field>
                     <Field label="Ort" required>
                         <input value={form.anschrift_ort ?? ""} onChange={(e) => update("anschrift_ort", e.target.value)} required className={inputCls} />
                     </Field>
                     <Field label="Mobil-Telefon" required>
-                        <input value={form.telefon_mobil ?? ""} onChange={(e) => update("telefon_mobil", e.target.value)} required className={inputCls} />
+                        <input type="tel" value={form.telefon_mobil ?? ""} onChange={(e) => update("telefon_mobil", e.target.value)} required inputMode="tel" autoComplete="tel" className={inputCls} />
                     </Field>
                     <Field label="E-Mail">
                         <input value={profile.email ?? ""} disabled className={`${inputCls} bg-gray-50`} />
@@ -625,7 +625,7 @@ export default function StammdatenForm({
                         <input value={form.notfall_beziehung ?? ""} onChange={(e) => update("notfall_beziehung", e.target.value)} required={isPflichtSternchen} className={inputCls} />
                     </Field>
                     <Field label="Telefon" required={isPflichtSternchen}>
-                        <input value={form.notfall_telefon ?? ""} onChange={(e) => update("notfall_telefon", e.target.value)} required={isPflichtSternchen} className={inputCls} />
+                        <input type="tel" value={form.notfall_telefon ?? ""} onChange={(e) => update("notfall_telefon", e.target.value)} required={isPflichtSternchen} inputMode="tel" className={inputCls} />
                     </Field>
                 </Grid>
             </Section>
