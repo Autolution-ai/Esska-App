@@ -40,7 +40,6 @@ Esska-App unter **Umsätze → Export für die Buchhaltung**.
 | Karteneinnahmen | nur in `Karte`-Zeilen | ja |
 | Gueltig | `ja` = maßgeblich, `nein` = ersetzt | ja (Unveränderbarkeit) |
 | Erfasst_von | erfassende Person | nein (Prüfungspraxis) |
-| Erfasst_am | Zeitpunkt der Erfassung | ja (Zeitnähe) |
 | Korrektur / Korrektur_Grund | Storno-Kennzeichnung | ja |
 | Notiz | frei | nein |
 
@@ -57,6 +56,14 @@ zum Startbestand des Folgetags:
 ```
 Startbestand (Folgetag) = Endbestand (Vortag) − In_Tresor
 ```
+
+## Hinweis zum Erfassungszeitpunkt
+
+Der Zeitpunkt der Erfassung steht bewusst **nicht** in der CSV – er hätte in
+der täglichen Arbeit mit der Liste nur gestört. In der Datenbank wird er
+weiterhin bei jedem Eintrag unveränderbar festgehalten. Wird er für eine
+Prüfung gebraucht (Nachweis der zeitnahen Erfassung nach GoBD), lässt er sich
+jederzeit nachliefern – bitte in dem Fall kurz Bescheid geben.
 
 ## Offene Punkte, die mit dem Steuerberater zu klären sind
 

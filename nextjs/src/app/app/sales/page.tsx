@@ -169,7 +169,7 @@ export default function SalesAdminPage() {
             "Datum", "Center", "Kuerzel", "Stadt", "Saison", "Art", "Zeitfenster",
             "Startbestand", "Einnahmen", "Ausgaben", "Einlagen", "Endbestand",
             "In_Tresor", "Karteneinnahmen",
-            "Gueltig", "Erfasst_von", "Erfasst_am", "Korrektur", "Korrektur_Grund", "Notiz",
+            "Gueltig", "Erfasst_von", "Korrektur", "Korrektur_Grund", "Notiz",
         ];
         const rows: string[][] = [];
         for (const e of kassenzeilen) {
@@ -190,7 +190,6 @@ export default function SalesAdminPage() {
                 "",
                 e.gueltig ? "ja" : "nein",
                 erfasserName(e.sale),
-                new Date(e.sale.erfasst_am).toLocaleString("de-DE"),
                 e.sale.korrigiert_eintrag_id ? "ja" : "nein",
                 e.sale.korrektur_grund ?? "",
                 e.sale.notiz ?? "",
@@ -208,7 +207,6 @@ export default function SalesAdminPage() {
                 "", "", "", "", "", "",
                 bargeld(k.betrag_cent),
                 "ja",
-                "",
                 "",
                 "nein",
                 "",
