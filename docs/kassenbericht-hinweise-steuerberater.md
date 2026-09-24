@@ -18,7 +18,8 @@ Esska-App unter **Umsätze → Export für die Buchhaltung**.
 >    bleiben aus Gründen der Nachvollziehbarkeit enthalten; der Grund der
 >    Korrektur steht in der Spalte `Korrektur_Grund`.
 > 3. Pro Tag und Center kann es **mehrere Bargeld-Zeilen** geben – je
->    Schicht eine, erkennbar an der Spalte `Zeitfenster`.
+>    Schicht eine, in der Reihenfolge ihrer Erfassung. Alle diese Zeilen
+>    sind reguläre Einnahmen und werden addiert.
 >
 > Für Rückfragen zu einzelnen Einträgen können wir die zugehörige
 > fotografierte Verkaufsliste bereitstellen.
@@ -28,9 +29,8 @@ Esska-App unter **Umsätze → Export für die Buchhaltung**.
 | Spalte | Inhalt | Pflicht nach § 146 AO / GoBD |
 |---|---|---|
 | Datum | Tag der Vereinnahmung | ja |
-| Center / Kuerzel / Stadt / Saison | Betriebsstätte | nein (betrieblich) |
+| Center / Stadt / Saison | Betriebsstätte | nein (betrieblich) |
 | Art | `Bargeld` oder `Karte` | ja (Trennung der Zahlarten) |
-| Zeitfenster | Schicht von–bis | nein (betrieblich) |
 | Startbestand | Kassenbestand zu Schichtbeginn | ja |
 | Einnahmen | berechnet, s. u. | ja |
 | Ausgaben | aus der Kasse bezahlt | ja |
@@ -39,7 +39,6 @@ Esska-App unter **Umsätze → Export für die Buchhaltung**.
 | In_Tresor | Umlagerung Ladenkasse → Tresor | ja (Entnahme) |
 | Karteneinnahmen | nur in `Karte`-Zeilen | ja |
 | Gueltig | `ja` = maßgeblich, `nein` = ersetzt | ja (Unveränderbarkeit) |
-| Erfasst_von | erfassende Person | nein (Prüfungspraxis) |
 | Korrektur / Korrektur_Grund | Storno-Kennzeichnung | ja |
 | Notiz | frei | nein |
 
@@ -57,13 +56,25 @@ zum Startbestand des Folgetags:
 Startbestand (Folgetag) = Endbestand (Vortag) − In_Tresor
 ```
 
-## Hinweis zum Erfassungszeitpunkt
+## Was bewusst nicht in der CSV steht
 
-Der Zeitpunkt der Erfassung steht bewusst **nicht** in der CSV – er hätte in
-der täglichen Arbeit mit der Liste nur gestört. In der Datenbank wird er
-weiterhin bei jedem Eintrag unveränderbar festgehalten. Wird er für eine
-Prüfung gebraucht (Nachweis der zeitnahen Erfassung nach GoBD), lässt er sich
-jederzeit nachliefern – bitte in dem Fall kurz Bescheid geben.
+Drei Angaben werden in der App gespeichert, stehen aber nicht im Export, weil
+sie in der täglichen Arbeit mit der Liste nur gestört hätten:
+
+| Angabe | Wozu sie im Prüfungsfall dient |
+|---|---|
+| Zeitpunkt der Erfassung | Nachweis der zeitnahen Erfassung nach GoBD |
+| Erfassende Person | Zuordnung eines Eintrags zu einer Schicht |
+| Zeitfenster der Schicht | Unterscheidung mehrerer Meldungen am selben Tag |
+
+Alle drei werden bei jedem Eintrag **unveränderbar** in der Datenbank
+festgehalten und lassen sich jederzeit nachliefern – bitte in dem Fall kurz
+Bescheid geben.
+
+Gibt es an einem Tag mehrere Meldungen für dasselbe Center (zwei Schichten),
+stehen sie in der Reihenfolge ihrer Erfassung untereinander. Welche die
+frühere ist, zeigt auch der Rechenweg: Der Startbestand der zweiten Meldung
+entspricht dem Endbestand der ersten, abzüglich der Tresor-Umlagerung.
 
 ## Offene Punkte, die mit dem Steuerberater zu klären sind
 

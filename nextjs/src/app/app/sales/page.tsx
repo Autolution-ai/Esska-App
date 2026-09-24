@@ -166,21 +166,19 @@ export default function SalesAdminPage() {
         dateiname: string
     ) => {
         const header = [
-            "Datum", "Center", "Kuerzel", "Stadt", "Saison", "Art", "Zeitfenster",
+            "Datum", "Center", "Stadt", "Saison", "Art",
             "Startbestand", "Einnahmen", "Ausgaben", "Einlagen", "Endbestand",
             "In_Tresor", "Karteneinnahmen",
-            "Gueltig", "Erfasst_von", "Korrektur", "Korrektur_Grund", "Notiz",
+            "Gueltig", "Korrektur", "Korrektur_Grund", "Notiz",
         ];
         const rows: string[][] = [];
         for (const e of kassenzeilen) {
             rows.push([
                 e.datum,
                 e.center?.name ?? "?",
-                e.center?.kuerzel ?? "?",
                 e.center?.stadt ?? "?",
                 e.center?.saison ?? "?",
                 "Bargeld",
-                zeitfenster(e.sale),
                 bargeld(e.sale.startbestand_cent),
                 bargeld(e.sale.einnahmen_cent),
                 bargeld(e.sale.ausgaben_cent),
@@ -189,7 +187,6 @@ export default function SalesAdminPage() {
                 bargeld(e.sale.abschoepfung_cent),
                 "",
                 e.gueltig ? "ja" : "nein",
-                erfasserName(e.sale),
                 e.sale.korrigiert_eintrag_id ? "ja" : "nein",
                 e.sale.korrektur_grund ?? "",
                 e.sale.notiz ?? "",
@@ -199,21 +196,18 @@ export default function SalesAdminPage() {
             rows.push([
                 k.datum,
                 k.center?.name ?? "?",
-                k.center?.kuerzel ?? "?",
                 k.center?.stadt ?? "?",
                 k.center?.saison ?? "?",
                 "Karte",
-                "",
                 "", "", "", "", "", "",
                 bargeld(k.betrag_cent),
                 "ja",
-                "",
                 "nein",
                 "",
                 k.notiz ?? "",
             ]);
         }
-        rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1], "de") || a[5].localeCompare(b[5]));
+        rows.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1], "de") || a[4].localeCompare(b[4]));
         const csv = [header, ...rows].map((r) => r.map(csvFeld).join(";")).join("\n");
         const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
         const url = URL.createObjectURL(blob);
