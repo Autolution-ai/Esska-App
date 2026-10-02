@@ -89,7 +89,32 @@ type Props = {
     /** Wenn der Admin den Mitarbeiter editiert: zusaetzliche Felder freischalten
      *  (arbeitszeit_modell, eintrittsdatum). */
     adminMode?: boolean;
+    /** Rueckkehrer aus der Vorsaison: Steuer-, Sozialversicherungs- und
+     *  Geburtsdaten liegen dem Lohnbuero vor und werden nicht erneut abgefragt.
+     *  Was sich jede Saison aendern kann (Anschrift, Status, Nachweise),
+     *  bleibt Pflicht. */
+    kurz?: boolean;
 };
+
+// Im Kurz-Modus werden nur diese Felder gespeichert - alles andere bleibt
+// unangetastet, damit ein vom Admin vorbelegter Wert nicht mit null
+// ueberschrieben wird.
+const KURZ_FELDER = new Set([
+    "vorname",
+    "nachname",
+    "eu_staatsbuergerschaft",
+    "anschrift_strasse",
+    "anschrift_plz",
+    "anschrift_ort",
+    "telefon_mobil",
+    "aktueller_status",
+    "aktueller_status_sonstiges",
+    "berufstaetig_art",
+    "sozialleistungen_bezug",
+    "weitere_beschaeftigungen",
+    "stammdaten_bestaetigt_am",
+    "onboarding_abgeschlossen",
+]);
 
 type Form = Omit<
     EsskaProfile,
@@ -118,6 +143,7 @@ export default function StammdatenForm({
     onSaved,
     onboardingMode = false,
     adminMode = false,
+    kurz = false,
 }: Props) {
     const [form, setForm] = useState<Form>(profileToForm(profile));
     const [saving, setSaving] = useState(false);
@@ -223,6 +249,7 @@ export default function StammdatenForm({
                 notfall_name: form.notfall_name || null,
                 notfall_beziehung: form.notfall_beziehung || null,
                 notfall_telefon: form.notfall_telefon || null,
+                ...(adminMode ? { rueckkehrer: form.rueckkehrer === true } : {}),
                 ...(form.bestaetigt
                     ? {
                           stammdaten_bestaetigt_am: new Date().toISOString(),
@@ -230,9 +257,12 @@ export default function StammdatenForm({
                       }
                     : {}),
             };
+            const gesendet = kurz
+                ? Object.fromEntries(Object.entries(payload).filter(([k]) => KURZ_FELDER.has(k)))
+                : payload;
             const { data, error: e } = await client
                 .from("profiles")
-                .update(payload)
+                .update(gesendet)
                 .eq("id", profile.id)
                 .select("*")
                 .single();
@@ -251,6 +281,20 @@ export default function StammdatenForm({
         <form onSubmit={handleSubmit} className="space-y-6">
             {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
 
+            {kurz && (
+                <div className="p-3 bg-primary-50 border border-primary-200 rounded-md text-sm text-primary-900">
+                    Du warst letzte Saison schon dabei – Steuer-, Sozialversicherungs- und Geburtsdaten
+                    liegen uns vor. Bitte prüfe nur, ob Anschrift, Handynummer und dein aktueller Status
+                    noch stimmen.
+                    <br />
+                    <span className="italic text-xs">
+                        You worked with us last season – we already have your tax, social security and birth
+                        details. Please just check that your address, phone number and current status are
+                        still correct.
+                    </span>
+                </div>
+            )}
+
             <Section titel="Persönliche Daten">
                 <Grid>
                     <Field label="Vorname" required>
@@ -259,6 +303,7 @@ export default function StammdatenForm({
                     <Field label="Nachname" required>
                         <input value={form.nachname ?? ""} onChange={(e) => update("nachname", e.target.value)} required className={inputCls} />
                     </Field>
+                    {!kurz && (<>
                     <Field label="Geburtsdatum" required>
                         <input type="date" value={form.geburtsdatum ?? ""} onChange={(e) => update("geburtsdatum", e.target.value)} required className={inputCls} />
                     </Field>
@@ -271,6 +316,7 @@ export default function StammdatenForm({
                     <Field label="Staatsangehörigkeit" required>
                         <input value={form.staatsangehoerigkeit ?? ""} onChange={(e) => update("staatsangehoerigkeit", e.target.value)} required className={inputCls} />
                     </Field>
+                    </>)}
                     <Field
                         label="Staatsbürgerschaft eines EU-Landes?"
                         required
@@ -287,6 +333,7 @@ export default function StammdatenForm({
                             <option value="nein">Nein</option>
                         </select>
                     </Field>
+                    {!kurz && (
                     <Field label="Familienstand" required>
                         <select value={form.familienstand ?? ""} onChange={(e) => update("familienstand", (e.target.value || null) as EsskaFamilienstand | null)} required className={inputCls}>
                             <option value="">– wählen –</option>
@@ -295,6 +342,7 @@ export default function StammdatenForm({
                             <option value="geschieden">geschieden</option>
                         </select>
                     </Field>
+                    )}
                 </Grid>
             </Section>
 
@@ -396,6 +444,20 @@ export default function StammdatenForm({
             {adminMode && (
                 <Section titel="Beschäftigung (nur durch Admin pflegbar)">
                     <Grid>
+                        <Field
+                            label="Rückkehrer aus der Vorsaison"
+                            full
+                            hint="Verkürzter Personalfragebogen im Onboarding: Steuer-, Sozialversicherungs- und Geburtsdaten werden nicht erneut abgefragt."
+                        >
+                            <label className="flex items-center gap-2 border rounded-md px-3 py-2 text-sm cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={form.rueckkehrer === true}
+                                    onChange={(e) => update("rueckkehrer", e.target.checked)}
+                                />
+                                War letzte Saison schon dabei
+                            </label>
+                        </Field>
                         <Field label="Arbeitszeit-Modell">
                             <select
                                 value={form.arbeitszeit_modell ?? ""}
@@ -446,6 +508,7 @@ export default function StammdatenForm({
                 </Section>
             )}
 
+            {!kurz && (<>
             <Section titel="Sozialversicherung">
                 <Grid>
                     <Field
@@ -629,6 +692,7 @@ export default function StammdatenForm({
                     </Field>
                 </Grid>
             </Section>
+            </>)}
 
             <Section titel="Bestätigung">
                 <label className="flex items-start gap-2 text-sm">

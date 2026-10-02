@@ -100,7 +100,6 @@ wurden.
 | Kassenaufzeichnungen | 10 Jahre nach Ablauf des Kalenderjahres (§ 147 AO) |
 | Stammdaten ohne zustande gekommene Beschäftigung | 3 Jahre (Verjährungsfrist § 195 BGB) |
 | Verfügbarkeiten und Schichtpläne | 3 Jahre (Verjährungsfrist § 195 BGB) |
-| Fotos der Verkaufslisten (Kassenbelege) | 10 Jahre (§ 147 AO) |
 | Kopie des Aufenthaltstitels | Dauer der Beschäftigung (§ 4a AufenthG) |
 | **Ausweiskopien** | werden nach der Anmeldung **gelöscht**, spätestens nach Saisonende – es gibt dafür keine Aufbewahrungspflicht |
 | Immatrikulations-, Schul- und Rentenbescheinigungen | bis zum Ende der Beschäftigung |

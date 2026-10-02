@@ -84,6 +84,7 @@ function uebersichtsCsv(profile: EsskaProfile[]): string {
         "Eintrittsdatum", "Arbeitszeit-Modell", "Stunden_pro_Woche", "Verdienst_Monat_EUR",
         "Weitere_Beschaeftigungen", "RV-Nummer", "Krankenkasse", "KV-Status",
         "RV-Befreiung_beantragt", "Steuer-ID", "Steuerklasse", "Kinderfreibetrag", "Konfession",
+        "Rueckkehrer_Vorsaison",
     ];
     const rows = profile.map((p) => [
         p.nachname, p.vorname, p.geburtsdatum, p.geburtsort, p.staatsangehoerigkeit,
@@ -95,6 +96,9 @@ function uebersichtsCsv(profile: EsskaProfile[]): string {
         p.krankenversicherung_name, p.krankenversicherung_status,
         p.rentenversicherung_befreit ? "ja" : "nein",
         p.steuer_id, p.steuerklasse, p.kinderfreibetrag, p.konfession,
+        // Bei Rueckkehrern sind Steuer-/SV-/Geburtsdaten bewusst leer: sie
+        // liegen aus der Vorsaison bereits vor und wurden nicht neu erfragt.
+        p.rueckkehrer ? "ja - Steuer-/SV-Daten aus Vorsaison" : "nein",
     ]);
     return [header.map(csvFeld).join(";"), ...rows.map((r) => r.map(csvFeld).join(";"))].join("\n");
 }
@@ -196,6 +200,12 @@ export async function POST(request: Request) {
                 `anbei die Personalstammdaten der folgenden Mitarbeiter von Esska Collection ` +
                 `(je ein PDF pro Person plus eine Übersichts-CSV):\n\n` +
                 namen.map((n) => `  - ${n}`).join("\n") +
+                (profile.some((p) => p.rueckkehrer)
+                    ? `\n\nHinweis: Bei Mitarbeitern, die bereits in der Vorsaison bei uns waren ` +
+                      `(Spalte „Rueckkehrer_Vorsaison“ in der CSV), wurden Steuer-, ` +
+                      `Sozialversicherungs- und Geburtsdaten nicht erneut abgefragt – sie liegen ` +
+                      `Ihnen aus der letzten Saison vor. Die leeren Felder sind daher beabsichtigt.`
+                    : "") +
                 `\n\nDiese E-Mail wurde automatisch aus der Esska-App verschickt.\n\n` +
                 `Mit freundlichen Grüßen\nEsska Collection\nDornblüthstraße 22, 01277 Dresden`,
             attachments: anhaenge,

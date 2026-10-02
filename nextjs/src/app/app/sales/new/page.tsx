@@ -3,11 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Camera, ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaCenterZeitraum, EsskaDailySale } from "@/lib/esska/types";
-import { centToEuro, euroToCent, isoDatum, parseEuro, zeitKurz } from "@/lib/esska/types";
+import { centToEuro, euroToCent, isoDatum, parseEuro, parseIsoDatum, zeitKurz } from "@/lib/esska/types";
 
 // Zeitauswahl in 15-Minuten-Schritten fuer das Arbeits-Zeitfenster (U-9)
 const ZEIT_OPTIONEN: string[] = (() => {
@@ -21,9 +21,6 @@ const ZEIT_OPTIONEN: string[] = (() => {
     return arr;
 })();
 
-const FOTO_MAX_BYTES = 20 * 1024 * 1024;
-const FOTO_TYPEN = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", "application/pdf"];
-const FOTO_ENDUNGEN = ["jpg", "jpeg", "png", "webp", "heic", "heif", "pdf"];
 
 export default function SalesEntryPage() {
     const router = useRouter();
@@ -37,15 +34,19 @@ export default function SalesEntryPage() {
     const [zeitVon, setZeitVon] = useState("");
     const [zeitBis, setZeitBis] = useState("");
     // Bargeld (U-3: Einnahmen werden berechnet, nicht eingegeben)
+    // Startbestand wird uebernommen, nicht eingetippt (Oktober 2026):
+    // Endbestand der letzten Meldung minus Tresor. Der Server setzt denselben
+    // Wert beim Speichern noch einmal fest - was hier steht, ist nur Anzeige.
     const [startbestand, setStartbestand] = useState("");
+    const [startQuelle, setStartQuelle] = useState<
+        { status: "warten" | "laden" | "fehlt" | "fehler" } | { status: "ok"; text: string }
+    >({ status: "warten" });
     const [endbestand, setEndbestand] = useState("");
     const [ausgaben, setAusgaben] = useState("");
     const [einlagen, setEinlagen] = useState("");
     const [ausgabenOffen, setAusgabenOffen] = useState(false);
     const [abschoepfung, setAbschoepfung] = useState("");
     const [einnahmenBestaetigt, setEinnahmenBestaetigt] = useState(false);
-    // U-7: Foto der Verkaufsliste
-    const [foto, setFoto] = useState<File | null>(null);
     // Bestehende Eintraege fuer Center+Datum (mehrere Zeitfenster moeglich!)
     const [tagesEintraege, setTagesEintraege] = useState<EsskaDailySale[]>([]);
     const [modus, setModus] = useState<"neu" | "korrektur">("neu");
@@ -123,6 +124,74 @@ export default function SalesEntryPage() {
         pruefe();
     }, [centerId, datum]);
 
+    // Startbestand ermitteln. Haengt am Zeitfenster, weil bei zwei Schichten
+    // am Tag die spaetere von der frueheren uebernimmt. Nach dem Speichern
+    // aendert sich tagesEintraege - dann wird fuer die naechste Meldung neu
+    // gerechnet.
+    useEffect(() => {
+        const korrekturZiel =
+            modus === "korrektur" ? tagesEintraege.find((e) => e.id === korrekturVonId) : undefined;
+        if (modus === "korrektur" && !korrekturZiel) {
+            setStartbestand("");
+            setStartQuelle({ status: "warten" });
+            return;
+        }
+        // Eine Korrektur betrifft dieselbe Schicht: gleicher Startbestand.
+        if (korrekturZiel && korrekturZiel.startbestand_cent !== null) {
+            setStartbestand(centToEuro(korrekturZiel.startbestand_cent));
+            setStartQuelle({ status: "ok", text: "wie in der Meldung, die korrigiert wird" });
+            return;
+        }
+        if (!centerId || !datum || !zeitVon) {
+            setStartbestand("");
+            setStartQuelle({ status: "warten" });
+            return;
+        }
+        let abgebrochen = false;
+        setStartQuelle({ status: "laden" });
+        (async () => {
+            try {
+                const client = await getEsskaClient();
+                const { data, error: rpcErr } = await client.rpc("kasse_vorgaenger", {
+                    cid: centerId,
+                    d: datum,
+                    von: zeitVon,
+                    ausser: korrekturZiel?.id ?? null,
+                });
+                if (abgebrochen) return;
+                if (rpcErr) throw rpcErr;
+                const zeile = (data as Array<{
+                    betrag_cent: number;
+                    quelle: string;
+                    vom_datum: string | null;
+                    vom_zeit: string | null;
+                }> | null)?.[0];
+                if (!zeile) {
+                    setStartbestand("");
+                    setStartQuelle({ status: "fehlt" });
+                    return;
+                }
+                setStartbestand(centToEuro(zeile.betrag_cent));
+                setStartQuelle({
+                    status: "ok",
+                    text:
+                        zeile.quelle === "anfangsbestand" || !zeile.vom_datum
+                            ? "Anfangsbestand des Centers"
+                            : `aus der Meldung vom ${parseIsoDatum(zeile.vom_datum).toLocaleDateString("de-DE")}` +
+                              (zeile.vom_zeit ? `, ${zeitKurz(zeile.vom_zeit)} Uhr` : ""),
+                });
+            } catch {
+                if (!abgebrochen) {
+                    setStartbestand("");
+                    setStartQuelle({ status: "fehler" });
+                }
+            }
+        })();
+        return () => {
+            abgebrochen = true;
+        };
+    }, [centerId, datum, zeitVon, modus, korrekturVonId, tagesEintraege]);
+
     // UA-4: Liegt das Datum im Miet-/Verlaengerungszeitraum des Centers?
     const imZeitraum = (cid: string, tag: string) => {
         const relevant = zeitraeume.filter(
@@ -189,8 +258,23 @@ export default function SalesEntryPage() {
         }
         // Jeden eingegebenen Betrag einzeln pruefen, damit der Fehler das
         // konkrete Feld benennt (statt spaeter beim Speichern zu scheitern).
+        if (startQuelle.status === "fehlt") {
+            zeigeFehler(
+                "Für dieses Center ist noch kein Anfangsbestand hinterlegt. Bitte wende dich an die Verwaltung.",
+                "bestand"
+            );
+            return;
+        }
+        if (startQuelle.status !== "ok") {
+            zeigeFehler(
+                startQuelle.status === "fehler"
+                    ? "Der Startbestand konnte nicht geladen werden. Bitte Seite neu laden und noch einmal versuchen."
+                    : "Der Startbestand wird noch ermittelt – bitte einen Moment warten.",
+                "bestand"
+            );
+            return;
+        }
         const betragsFelder: Array<[string, string, string]> = [
-            ["Startbestand", startbestand, "bestand"],
             ["Endbestand", endbestand, "bestand"],
             ["Ausgaben", ausgaben, "bestand"],
             ["Einlagen", einlagen, "bestand"],
@@ -203,13 +287,13 @@ export default function SalesEntryPage() {
             }
         }
         if (einnahmenCent === null) {
-            zeigeFehler("Bitte Startbestand und Endbestand eintragen – die Einnahmen berechnen sich daraus.", "bestand");
+            zeigeFehler("Bitte den Endbestand eintragen – die Einnahmen berechnen sich daraus.", "bestand");
             return;
         }
         if (einnahmenCent < 0) {
             zeigeFehler(
                 "Die berechneten Einnahmen wären negativ – das kann nicht stimmen. " +
-                "Bitte Startbestand und Endbestand noch einmal prüfen.",
+                "Bitte Endbestand, Ausgaben und Einlagen noch einmal prüfen.",
                 "bestand"
             );
             return;
@@ -238,17 +322,6 @@ export default function SalesEntryPage() {
             const { data: { user } } = await client.auth.getUser();
             if (!user) throw new Error("Nicht angemeldet");
 
-            // U-7: Foto der Verkaufsliste zuerst hochladen
-            let fotoPath: string | null = null;
-            if (foto) {
-                const ext = (foto.name.split(".").pop() ?? "jpg").toLowerCase();
-                fotoPath = `${centerId}/${datum}/${Date.now()}.${ext}`;
-                const { error: upErr } = await client.storage
-                    .from("sales-receipts")
-                    .upload(fotoPath, foto, { cacheControl: "3600", upsert: false });
-                if (upErr) throw upErr;
-            }
-
             // Immer INSERT, nie UPDATE: Eintraege sind unveraenderbar (GoBD).
             const { error: insErr } = await client.from("daily_sales").insert({
                 center_id: centerId,
@@ -262,7 +335,6 @@ export default function SalesEntryPage() {
                 einlagen_cent: einlagen ? euroToCent(einlagen) : null,
                 endbestand_cent: euroToCent(endbestand),
                 abschoepfung_cent: abschoepfung ? euroToCent(abschoepfung) : null,
-                beleg_foto_path: fotoPath,
                 korrigiert_eintrag_id: modus === "korrektur" ? korrekturVonId : null,
                 korrektur_grund: modus === "korrektur" ? korrekturGrund.trim() : null,
                 erfasst_von: user.id,
@@ -284,7 +356,6 @@ export default function SalesEntryPage() {
             setAusgabenOffen(false);
             setAbschoepfung("");
             setEinnahmenBestaetigt(false);
-            setFoto(null);
             setKorrekturGrund("");
             setModus("neu");
             setKorrekturVonId("");
@@ -503,22 +574,47 @@ export default function SalesEntryPage() {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium mb-1">
-                                1. Startbestand (€) <span className="text-red-600">*</span>
+                                1. Startbestand (€)
                             </label>
                             <p className="text-xs text-gray-500 mb-1.5">
-                                Zähle zu Beginn deiner Schicht das gesamte Bargeld in der Kasse und trage es ein.
+                                Wird automatisch übernommen: Endbestand der letzten Meldung minus das, was in
+                                den Tresor gelegt wurde. Kann nicht geändert werden.
                                 <br />
                                 <span className="italic">
-                                    Count all cash in the register at the start of your shift and enter it.
+                                    Taken over automatically: closing balance of the last report minus what went
+                                    into the safe. Cannot be changed.
                                 </span>
                             </p>
-                            <input
-                                value={startbestand}
-                                onChange={(e) => setStartbestand(e.target.value)}
-                                inputMode="decimal"
-                                placeholder="z. B. 150,00"
-                                className={`w-full border rounded-md px-3 py-2 text-sm ${fehlerFeld === "bestand" ? "border-red-500 bg-red-50" : ""}`}
-                            />
+                            {startQuelle.status === "fehlt" ? (
+                                <div className="w-full border border-red-300 bg-red-50 rounded-md px-3 py-2 text-sm text-red-800">
+                                    Für dieses Center ist noch kein Anfangsbestand hinterlegt. Bitte wende dich an
+                                    die Verwaltung.
+                                    <br />
+                                    <span className="italic text-xs">
+                                        No opening balance has been set for this center yet. Please contact the office.
+                                    </span>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 w-full border rounded-md px-3 py-2 text-sm bg-gray-50">
+                                    <Lock className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                    {startQuelle.status === "ok" ? (
+                                        <span>
+                                            <span className="font-medium tabular-nums">{startbestand} €</span>
+                                            <span className="text-xs text-gray-500"> · {startQuelle.text}</span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-gray-500">
+                                            {startQuelle.status === "laden"
+                                                ? "wird ermittelt …"
+                                                : startQuelle.status === "fehler"
+                                                  ? "konnte nicht geladen werden – bitte Seite neu laden"
+                                                  : modus === "korrektur"
+                                                    ? "erscheint, sobald der zu korrigierende Eintrag gewählt ist"
+                                                    : "erscheint, sobald Center, Datum und Zeitfenster angegeben sind"}
+                                        </span>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div>
@@ -656,54 +752,6 @@ export default function SalesEntryPage() {
                                 className="w-full border rounded-md px-3 py-2 text-sm"
                             />
                         </div>
-                    </div>
-                </div>
-
-                {/* U-7: Foto der Verkaufsliste */}
-                <div className="border-t pt-5">
-                    <h2 className="text-base font-semibold">Foto der Verkaufsliste / Photo of the sales list</h2>
-                    <p className="text-xs text-gray-600 mt-1 mb-3">
-                        Fotografiere die ausgefüllte Verkaufsliste gut lesbar ab – das ersetzt das
-                        Schicken per WhatsApp. Das Bild bleibt sicher in der App gespeichert.
-                        <br />
-                        <span className="italic">
-                            Take a clearly readable photo of the completed sales list – this replaces
-                            sending it via WhatsApp. The picture is stored safely in the app.
-                        </span>
-                    </p>
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <label className="inline-flex items-center justify-center px-3 py-2 rounded-md cursor-pointer text-sm bg-primary-600 text-white hover:bg-primary-700">
-                            <Camera className="h-4 w-4 mr-2" />
-                            {foto ? "Anderes Foto wählen" : "Foto aufnehmen / auswählen"}
-                            <input
-                                type="file"
-                                accept="image/*,application/pdf"
-                                capture="environment"
-                                className="hidden"
-                                onChange={(e) => {
-                                    const f = e.target.files?.[0] ?? null;
-                                    e.target.value = "";
-                                    if (!f) return;
-                                    if (f.size > FOTO_MAX_BYTES) {
-                                        setError(`Das Foto ist zu groß (${(f.size / 1024 / 1024).toFixed(1)} MB, erlaubt sind 20 MB).`);
-                                        return;
-                                    }
-                                    const endung = (f.name.split(".").pop() ?? "").toLowerCase();
-                                    const ok = f.type ? FOTO_TYPEN.includes(f.type) : FOTO_ENDUNGEN.includes(endung);
-                                    if (!ok) {
-                                        setError("Nur Fotos (JPG, PNG, WebP, HEIC) oder PDF erlaubt.");
-                                        return;
-                                    }
-                                    setError(null);
-                                    setFoto(f);
-                                }}
-                            />
-                        </label>
-                        {foto && (
-                            <span className="text-sm text-green-700">
-                                ✓ {foto.name} ({(foto.size / 1024 / 1024).toFixed(1)} MB)
-                            </span>
-                        )}
                     </div>
                 </div>
 

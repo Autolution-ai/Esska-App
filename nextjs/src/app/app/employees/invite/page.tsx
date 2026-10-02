@@ -13,6 +13,7 @@ export default function InvitePage() {
     // M-1: optionale Center-Zuordnung schon beim Einladen
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
     const [centerId, setCenterId] = useState("");
+    const [rueckkehrer, setRueckkehrer] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -41,7 +42,7 @@ export default function InvitePage() {
             const res = await fetch("/api/employees/invite", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({ email, centerId: centerId || undefined }),
+                body: JSON.stringify({ email, centerId: centerId || undefined, rueckkehrer }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -52,6 +53,7 @@ export default function InvitePage() {
                     message: data.hinweis ?? `Einladung an ${email} verschickt.`,
                 });
                 setEmail("");
+                setRueckkehrer(false);
             }
         } catch (err) {
             setResult({ ok: false, message: err instanceof Error ? err.message : "Netzwerkfehler" });
@@ -106,6 +108,22 @@ export default function InvitePage() {
                         Kann jederzeit über die Mitarbeiter-Detailseite geändert oder ergänzt werden.
                     </p>
                 </div>
+                <label className="flex items-start gap-2 text-sm cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={rueckkehrer}
+                        onChange={(e) => setRueckkehrer(e.target.checked)}
+                        className="mt-1"
+                    />
+                    <span>
+                        <span className="font-medium">War letzte Saison schon dabei</span>
+                        <span className="block text-xs text-gray-500">
+                            Verkürzter Personalfragebogen: Steuer-, Sozialversicherungs- und Geburtsdaten
+                            werden nicht erneut abgefragt. RV-Befreiung, KuBe-Erklärung und aktuelle
+                            Nachweise bleiben Pflicht.
+                        </span>
+                    </span>
+                </label>
                 {result && (
                     <div
                         className={`p-3 rounded-md text-sm ${

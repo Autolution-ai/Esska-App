@@ -13,6 +13,9 @@ export async function POST(request: Request) {
         const email: string | undefined = body?.email;
         // M-1: optionale Center-Zuordnung direkt beim Einladen
         const centerId: string | undefined = body?.centerId || undefined;
+        // Rueckkehrer aus der Vorsaison: verkuerzter Personalfragebogen.
+        // Nur hier setzbar - der Mitarbeiter selbst kann es nicht (Trigger).
+        const rueckkehrer = body?.rueckkehrer === true;
         if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
             return NextResponse.json({ error: "Ungültige E-Mail-Adresse." }, { status: 400 });
         }
@@ -29,8 +32,17 @@ export async function POST(request: Request) {
         // Profil) existiert. Ein Fehler hier soll die Einladung nicht
         // zuruecknehmen - er wird der Antwort als Hinweis mitgegeben.
         let zuordnungHinweis: string | null = null;
+        const db = (await createServerAdminClient()) as unknown as SupabaseClient;
+        if (rueckkehrer && data.user?.id) {
+            const { error: rErr } = await db
+                .from("profiles")
+                .update({ rueckkehrer: true })
+                .eq("id", data.user.id);
+            if (rErr) {
+                zuordnungHinweis = `Einladung verschickt, aber die Markierung als Rückkehrer schlug fehl: ${rErr.message}`;
+            }
+        }
         if (centerId && data.user?.id) {
-            const db = (await createServerAdminClient()) as unknown as SupabaseClient;
             const { error: aErr } = await db
                 .from("center_assignments")
                 .insert({ center_id: centerId, profile_id: data.user.id });

@@ -259,6 +259,9 @@ export default function EmployeesPage() {
                                 {!p.onboarding_abgeschlossen && (
                                     <span className="text-red-700"> — Achtung: Onboarding offen, Stammdaten vermutlich unvollständig</span>
                                 )}
+                                {p.rueckkehrer && (
+                                    <span className="text-gray-600"> — Rückkehrer: Steuer- und SV-Daten liegen dem Lohnbüro aus der Vorsaison vor</span>
+                                )}
                             </li>
                         ))}
                     </ul>
@@ -461,6 +464,9 @@ function MitarbeiterTabelle({
                                         <span className="text-green-700 text-xs">✓ am {formatDate(p.stammdaten_bestaetigt_am)}</span>
                                     ) : (
                                         <span className="text-amber-700 text-xs">offen</span>
+                                    )}
+                                    {p.rueckkehrer && (
+                                        <span className="block text-xs text-gray-500">Rückkehrer</span>
                                     )}
                                 </Td>
                                 <Td>

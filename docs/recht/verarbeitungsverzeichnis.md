@@ -47,7 +47,6 @@ der Praxis oft falsch gemacht:
 | Ausweiskopien (deutsch/EU) | **löschen, sobald die Anmeldung erfolgt ist**, spätestens nach Saisonende | keine Aufbewahrungspflicht; Datenminimierung nach Art. 5 Abs. 1 lit. c DSGVO |
 | Aufenthaltstitel | Dauer der Beschäftigung | § 4a Abs. 5 AufenthG |
 | Immatrikulations-, Schul-, Rentenbescheinigung | bis Ende der Beschäftigung | Nachweiszweck |
-| Fotos der Verkaufslisten | 10 Jahre | § 147 Abs. 1 Nr. 4 AO (Buchungsbelege) |
 
 **Offener Punkt:** Ein jährlicher Aufräumlauf, der abgelaufene
 Ausweiskopien löscht, ist noch nicht eingerichtet.
@@ -75,14 +74,18 @@ Schichtzuweisungen, Center-Zuordnung, Wochenstunden-Limits.
 ## Verarbeitungstätigkeit 3: Kassenaufzeichnung
 
 **Zweck:** Tägliche Kassenberichte je Standort (offene Ladenkasse),
-Karteneinnahmen, Belege der Verkaufslisten.
+Karteneinnahmen.
 
 **Rechtsgrundlage:** Art. 6 Abs. 1 lit. c DSGVO i. V. m. §§ 146, 147 AO,
 § 22 UStG
 
 **Datenkategorien:** Bargeldbestände, Einnahmen, Ausgaben, Einlagen,
-Tresor-Umlagerungen, Zeitfenster, erfassende Person, Fotos der Verkaufsliste,
-Korrekturbegründungen.
+Tresor-Umlagerungen, Zeitfenster, erfassende Person, Korrekturbegründungen.
+
+**Nicht in der App:** Die Verkaufslisten (Kassenbelege) werden seit Oktober 2026
+nicht mehr in der App fotografiert, sondern außerhalb übermittelt. Ihre
+Aufbewahrung (10 Jahre, § 147 Abs. 1 Nr. 4 AO) erfolgt als Papier-Original
+bzw. gesicherte Kopie bei Esska.
 
 **Besonderheit:** Einträge sind technisch unveränderbar (Trigger in der
 Datenbank). Korrekturen erfolgen als neue Einträge mit Verweis und Begründung;

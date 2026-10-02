@@ -36,18 +36,13 @@ Regionalleitung), verwende sie ausschließlich dienstlich. Weitergabe an
 Dritte, Fotografieren von Bildschirmen oder Speichern auf privaten Geräten
 sind nicht erlaubt.
 
-## 5. Fotos der Verkaufsliste
-
-Fotografiere nur die Verkaufsliste selbst – keine Personen, keine anderen
-Unterlagen. Die Bilder bleiben in der App gespeichert und dienen als Beleg.
-
-## 6. Wenn etwas nicht funktioniert
+## 5. Wenn etwas nicht funktioniert
 
 Melde technische Probleme deiner Ansprechperson, statt Umwege zu suchen.
 Erfundene oder geschätzte Eingaben, nur damit ein Formular durchgeht,
 richten mehr Schaden an als eine verspätete Meldung.
 
-## 7. Ende der Beschäftigung
+## 6. Ende der Beschäftigung
 
 Mit dem Ende deiner Beschäftigung wird dein Zugang deaktiviert. Deine Daten
 werden im Rahmen der gesetzlichen Aufbewahrungsfristen weiter gespeichert

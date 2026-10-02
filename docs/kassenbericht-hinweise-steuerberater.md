@@ -22,7 +22,7 @@ Esska-App unter **Umsätze → Export für die Buchhaltung**.
 >    sind reguläre Einnahmen und werden addiert.
 >
 > Für Rückfragen zu einzelnen Einträgen können wir die zugehörige
-> fotografierte Verkaufsliste bereitstellen.
+> Verkaufsliste bereitstellen. Sie wird außerhalb der App aufbewahrt.
 
 ## Aufbau der Datei (20 Spalten)
 
@@ -55,6 +55,17 @@ zum Startbestand des Folgetags:
 ```
 Startbestand (Folgetag) = Endbestand (Vortag) − In_Tresor
 ```
+
+**Seit Oktober 2026 wird diese Gleichung nicht mehr nur geprüft, sondern
+erzwungen:** Der Startbestand wird nicht eingetippt, sondern vom System aus der
+letzten gültigen Meldung desselben Centers übernommen und lässt sich nicht
+ändern. Die Kette ist damit lückenlos. Nur die allererste Meldung eines
+Centers startet mit einem Anfangsbestand, den die Verwaltung hinterlegt.
+
+Folge für die Auswertung: Eine echte Kassendifferenz (z. B. 2 € fehlen beim
+nächsten Zählen) wird nicht als eigene Position ausgewiesen, sondern mindert
+die Einnahmen der Schicht, in der sie auffällt. Wer eine Differenz bemerkt,
+vermerkt das in der Spalte `Notiz`.
 
 ## Was bewusst nicht in der CSV steht
 

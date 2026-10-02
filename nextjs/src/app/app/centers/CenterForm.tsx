@@ -21,6 +21,7 @@ type FormState = {
     flaeche_qm_override: string;
     mietdauer_tage_override: string;
     miete_euro: string;
+    anfangsbestand_euro: string;
     // C-5: Status wird berechnet - manuell bleibt nur "In Absprache"
     in_absprache: boolean;
     manager_id: string;
@@ -41,6 +42,7 @@ const leereForm: FormState = {
     flaeche_qm_override: "",
     mietdauer_tage_override: "",
     miete_euro: "",
+    anfangsbestand_euro: "",
     in_absprache: false,
     manager_id: "",
     notiz: "",
@@ -82,6 +84,10 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
         flaeche_qm_override: center?.flaeche_qm?.toString() ?? "",
         mietdauer_tage_override: center?.mietdauer_tage?.toString() ?? "",
         miete_euro: center?.miete_eur_cent ? centToEuro(center.miete_eur_cent) : "",
+        anfangsbestand_euro:
+            center?.anfangsbestand_cent !== null && center?.anfangsbestand_cent !== undefined
+                ? centToEuro(center.anfangsbestand_cent)
+                : "",
         in_absprache: center?.status === "in_absprache",
         manager_id: center?.manager_id ?? "",
         notiz: center?.notiz ?? "",
@@ -204,6 +210,9 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                     ? parseInt(form.mietdauer_tage_override, 10)
                     : null,
                 miete_eur_cent: euroToCent(form.miete_euro),
+                anfangsbestand_cent: form.anfangsbestand_euro.trim()
+                    ? euroToCent(form.anfangsbestand_euro)
+                    : null,
                 status,
                 manager_id: form.manager_id || null,
                 notiz: form.notiz.trim() || null,
@@ -486,7 +495,7 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                 </div>
             </Section>
 
-            <Section titel="Miete & Notiz">
+            <Section titel="Miete, Kasse & Notiz">
                 <Grid>
                     <Field label="Saisonmiete (€)" required hint="Gesamtbetrag, z. B. 18052,30">
                         <input
@@ -494,6 +503,18 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                             onChange={(e) => update("miete_euro", e.target.value)}
                             required
                             inputMode="decimal"
+                            className={inputCls}
+                        />
+                    </Field>
+                    <Field
+                        label="Anfangsbestand Kasse (€)"
+                        hint="Bargeld in der Kasse zur allerersten Meldung. Danach übernimmt jede Meldung den Bestand der vorherigen – eine spätere Änderung hier wirkt nicht mehr."
+                    >
+                        <input
+                            value={form.anfangsbestand_euro}
+                            onChange={(e) => update("anfangsbestand_euro", e.target.value)}
+                            inputMode="decimal"
+                            placeholder="z. B. 150,00"
                             className={inputCls}
                         />
                     </Field>

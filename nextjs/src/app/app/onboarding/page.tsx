@@ -217,6 +217,7 @@ export default function OnboardingPage() {
             {schritt === "stammdaten" && (
                 <StammdatenForm
                     profile={profile}
+                    kurz={profile.rueckkehrer === true}
                     onSaved={(p) => {
                         setProfile(p);
                         naechsterSchritt();

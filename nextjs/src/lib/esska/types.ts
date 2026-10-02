@@ -104,6 +104,10 @@ export interface EsskaProfile {
     stammdaten_bestaetigt_am: string | null;
     stammdaten_bestaetigt_ip: string | null;
     onboarding_abgeschlossen: boolean;
+    // War in der Vorsaison dabei: verkuerzter Personalfragebogen, weil
+    // Steuer- und Sozialversicherungsdaten dem Lohnbuero vorliegen.
+    // Wird nur beim Einladen durch den Admin gesetzt.
+    rueckkehrer: boolean;
     aktiv: boolean;
     created_at: string;
     updated_at: string;
@@ -124,6 +128,9 @@ export interface EsskaCenter {
     flaeche_qm: number | null;
     mietdauer_tage: number | null;
     miete_eur_cent: number;
+    // Kassenbestand zur allerersten Meldung; danach wird der Startbestand
+    // immer aus der Vormeldung uebernommen (Oktober 2026).
+    anfangsbestand_cent: number | null;
     // S-2: zustaendiger Regionalmanager (profiles.id) oder null
     manager_id: string | null;
     status: EsskaCenterStatus;
