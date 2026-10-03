@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { createSPASassClientAuthenticated as createSPASassClient } from "@/lib/supabase/client";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import { Key, CheckCircle } from "lucide-react";
+import { BookOpen, CheckCircle, ChevronRight, FileText, Key, Scale, Shield, Users } from "lucide-react";
 import { MFASetup } from "@/components/MFASetup";
 import StammdatenForm from "@/components/esska/StammdatenForm";
 import type { EsskaProfile } from "@/lib/esska/types";
@@ -168,6 +169,39 @@ export default function UserSettingsPage() {
                     setSuccess("Zwei-Faktor-Authentifizierung aktualisiert.");
                 }}
             />
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Scale className="h-5 w-5" />
+                        Rechtliches
+                    </CardTitle>
+                    <CardDescription>Impressum, Datenschutz und Nutzungsregeln der Esska-App.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                    <ul className="divide-y">
+                        {RECHTSTEXTE.map((r) => (
+                            <li key={r.href}>
+                                <Link
+                                    href={r.href}
+                                    className="flex items-center gap-3 px-6 py-3 text-sm hover:bg-gray-50"
+                                >
+                                    <r.icon className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                                    <span className="flex-1">{r.titel}</span>
+                                    <ChevronRight className="h-4 w-4 text-gray-300" />
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </CardContent>
+            </Card>
         </div>
     );
 }
+
+const RECHTSTEXTE = [
+    { href: "/legal/impressum", titel: "Impressum", icon: FileText },
+    { href: "/legal/datenschutz-beschaeftigte", titel: "Datenschutz für Beschäftigte", icon: Users },
+    { href: "/legal/datenschutz", titel: "Datenschutzerklärung", icon: Shield },
+    { href: "/legal/nutzungsregeln", titel: "Nutzungsregeln", icon: BookOpen },
+];

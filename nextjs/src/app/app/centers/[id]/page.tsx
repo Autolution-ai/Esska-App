@@ -11,6 +11,7 @@ import type {
     EsskaCenterOpeningHour,
     EsskaCenterZeitraum,
     EsskaProfile,
+    EsskaSonderoeffnung,
     EsskaZeitraumTyp,
 } from "@/lib/esska/types";
 import {
@@ -20,6 +21,7 @@ import {
     berechneCenterStatus,
     formatDate,
     formatMoney,
+    sonderoeffnungLabel,
 } from "@/lib/esska/types";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
@@ -36,6 +38,12 @@ export default function CenterDetailPage() {
     const [managerProfil, setManagerProfil] = useState<MiniProfil | null>(null);
     const [zeitraeume, setZeitraeume] = useState<EsskaCenterZeitraum[]>([]);
     const [oeffnung, setOeffnung] = useState<EsskaCenterOpeningHour[]>([]);
+    const [sonder, setSonder] = useState<EsskaSonderoeffnung[]>([]);
+    // Neue Sonderoeffnung (verkaufsoffener Sonntag)
+    const [soDatum, setSoDatum] = useState("");
+    const [soVon, setSoVon] = useState("");
+    const [soBis, setSoBis] = useState("");
+    const [soNotiz, setSoNotiz] = useState("");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +57,7 @@ export default function CenterDetailPage() {
     const load = async () => {
         try {
             const client = await getEsskaClient();
-            const [cRes, aRes, zRes, oRes] = await Promise.all([
+            const [cRes, aRes, zRes, oRes, sRes] = await Promise.all([
                 client.from("centers").select("*").eq("id", params.id).single(),
                 client
                     .from("center_assignments")
@@ -57,6 +65,7 @@ export default function CenterDetailPage() {
                     .eq("center_id", params.id),
                 client.from("center_zeitraeume").select("*").eq("center_id", params.id).order("von"),
                 client.from("center_opening_hours").select("*").eq("center_id", params.id).order("wochentag"),
+                client.from("center_sonderoeffnungen").select("*").eq("center_id", params.id).order("datum"),
             ]);
             if (cRes.error) throw cRes.error;
             const c = cRes.data as EsskaCenter;
@@ -68,6 +77,7 @@ export default function CenterDetailPage() {
             );
             setZeitraeume((zRes.data as EsskaCenterZeitraum[]) ?? []);
             setOeffnung((oRes.data as EsskaCenterOpeningHour[]) ?? []);
+            setSonder((sRes.data as EsskaSonderoeffnung[]) ?? []);
 
             if (c.manager_id) {
                 const { data: mData } = await client
@@ -148,6 +158,70 @@ export default function CenterDetailPage() {
             await statusSynchronisieren(neueListe);
         } catch (err) {
             setError(friendlyError(err, { aktion: "Zeitraum löschen" }));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const sonderAnlegen = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!soDatum) {
+            setError("Bitte ein Datum für die Sonderöffnung angeben.");
+            return;
+        }
+        if (sonder.some((x) => x.datum === soDatum)) {
+            setError(`Für den ${formatDate(soDatum)} ist bereits eine Sonderöffnung eingetragen.`);
+            return;
+        }
+        if ((soVon && !soBis) || (!soVon && soBis)) {
+            setError("Bitte beide Zeiten angeben (von und bis) – oder beide leer lassen für die Standardzeiten.");
+            return;
+        }
+        if (soVon && soBis && soBis <= soVon) {
+            setError("Die Schließzeit muss nach der Öffnungszeit liegen.");
+            return;
+        }
+        setBusy(true);
+        setError(null);
+        try {
+            const client = await getEsskaClient();
+            const { data, error: e2 } = await client
+                .from("center_sonderoeffnungen")
+                .insert({
+                    center_id: params.id,
+                    datum: soDatum,
+                    oeffnet: soVon || null,
+                    schliesst: soBis || null,
+                    notiz: soNotiz.trim() || null,
+                })
+                .select("*")
+                .single();
+            if (e2) throw e2;
+            setSonder((prev) =>
+                [...prev, data as EsskaSonderoeffnung].sort((a, b) => a.datum.localeCompare(b.datum))
+            );
+            setSoDatum("");
+            setSoVon("");
+            setSoBis("");
+            setSoNotiz("");
+        } catch (err) {
+            setError(friendlyError(err, { aktion: "Sonderöffnung anlegen" }));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const sonderLoeschen = async (so: EsskaSonderoeffnung) => {
+        if (!window.confirm(`${sonderoeffnungLabel(so.datum)} am ${formatDate(so.datum)} entfernen?`)) return;
+        setBusy(true);
+        setError(null);
+        try {
+            const client = await getEsskaClient();
+            const { error: e2 } = await client.from("center_sonderoeffnungen").delete().eq("id", so.id);
+            if (e2) throw e2;
+            setSonder((prev) => prev.filter((x) => x.id !== so.id));
+        } catch (err) {
+            setError(friendlyError(err, { aktion: "Sonderöffnung entfernen" }));
         } finally {
             setBusy(false);
         }
@@ -375,6 +449,108 @@ export default function CenterDetailPage() {
                                         : "geschlossen",
                                 ])}
                             />
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Verkaufsoffene Sonntage und andere Sonderoeffnungen */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Verkaufsoffene Sonntage</CardTitle>
+                        <CardDescription>
+                            Einzelne zusätzliche Öffnungstage. Sie erscheinen in der Schichtplanung als geöffnet,
+                            und die Mitarbeiter können dafür ihre Verfügbarkeit melden.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {sonder.length === 0 ? (
+                            <p className="text-sm text-gray-500">Keine eingetragen.</p>
+                        ) : (
+                            <ul className="divide-y text-sm">
+                                {sonder.map((so) => (
+                                    <li key={so.id} className="flex items-start justify-between gap-3 py-2">
+                                        <div>
+                                            <div className="font-medium">
+                                                {formatDate(so.datum)} · {sonderoeffnungLabel(so.datum)}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                {so.oeffnet && so.schliesst
+                                                    ? `${so.oeffnet.slice(0, 5)} – ${so.schliesst.slice(0, 5)} Uhr`
+                                                    : "Standardzeiten"}
+                                                {so.notiz ? ` · ${so.notiz}` : ""}
+                                            </div>
+                                        </div>
+                                        {darfBearbeiten && (
+                                            <button
+                                                onClick={() => sonderLoeschen(so)}
+                                                disabled={busy}
+                                                className="text-red-600 hover:text-red-800 disabled:opacity-50"
+                                                title="Entfernen"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {darfBearbeiten && (
+                            <form onSubmit={sonderAnlegen} className="flex flex-wrap items-end gap-3 border-t pt-4">
+                                <div>
+                                    <label htmlFor="so-datum" className="block text-xs text-gray-500 mb-1">Datum</label>
+                                    <input
+                                        id="so-datum"
+                                        type="date"
+                                        value={soDatum}
+                                        onChange={(e) => setSoDatum(e.target.value)}
+                                        className="border rounded-md px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="so-von" className="block text-xs text-gray-500 mb-1">Von (optional)</label>
+                                    <input
+                                        id="so-von"
+                                        type="time"
+                                        step={900}
+                                        value={soVon}
+                                        onChange={(e) => setSoVon(e.target.value)}
+                                        className="border rounded-md px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="so-bis" className="block text-xs text-gray-500 mb-1">Bis (optional)</label>
+                                    <input
+                                        id="so-bis"
+                                        type="time"
+                                        step={900}
+                                        value={soBis}
+                                        onChange={(e) => setSoBis(e.target.value)}
+                                        className="border rounded-md px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <div className="flex-1 min-w-40">
+                                    <label htmlFor="so-notiz" className="block text-xs text-gray-500 mb-1">Notiz</label>
+                                    <input
+                                        id="so-notiz"
+                                        value={soNotiz}
+                                        onChange={(e) => setSoNotiz(e.target.value)}
+                                        placeholder="z. B. Adventssonntag"
+                                        className="w-full border rounded-md px-3 py-2 text-sm"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={busy}
+                                    className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Hinzufügen
+                                </button>
+                            </form>
+                        )}
+                        {darfBearbeiten && error && (
+                            <p className="text-sm text-red-700">{error}</p>
                         )}
                     </CardContent>
                 </Card>

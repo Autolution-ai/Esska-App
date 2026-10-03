@@ -152,6 +152,40 @@ export interface EsskaCenterOpeningHour {
 
 export const WOCHENTAG_LABELS = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"] as const;
 
+// Einzelner zusaetzlicher Oeffnungstag, v. a. verkaufsoffener Sonntag.
+// Gilt vorrangig vor dem, was fuer den Wochentag hinterlegt ist.
+export interface EsskaSonderoeffnung {
+    id: string;
+    center_id: string;
+    datum: string;
+    oeffnet: string | null;
+    schliesst: string | null;
+    notiz: string | null;
+}
+
+// Hat ein Center an einem Datum geoeffnet? Eine Sonderoeffnung schlaegt
+// den Wochentag; ohne Eintrag fuer den Wochentag gilt der Tag als offen
+// (so wie bisher, damit Center ohne gepflegte Zeiten nicht ploetzlich
+// geschlossen wirken).
+export function centerTagStatus(
+    centerId: string,
+    datum: string,
+    oeffnungen: EsskaCenterOpeningHour[],
+    sonder: EsskaSonderoeffnung[]
+): { offen: boolean; sonder: EsskaSonderoeffnung | null } {
+    const so = sonder.find((x) => x.center_id === centerId && x.datum === datum) ?? null;
+    if (so) return { offen: true, sonder: so };
+    const wochentag = (parseIsoDatum(datum).getDay() + 6) % 7;
+    const regel = oeffnungen.find((o) => o.center_id === centerId && o.wochentag === wochentag);
+    return { offen: regel ? regel.geoeffnet : true, sonder: null };
+}
+
+// Bezeichnung fuer die Anzeige: am Sonntag "Verkaufsoffener Sonntag",
+// sonst allgemein "Sonderöffnung".
+export function sonderoeffnungLabel(datum: string): string {
+    return parseIsoDatum(datum).getDay() === 0 ? "Verkaufsoffener Sonntag" : "Sonderöffnung";
+}
+
 // S-5: Zeitraeume je Center als Historie
 export type EsskaZeitraumTyp = "miete" | "betrieb" | "verlaengerung";
 

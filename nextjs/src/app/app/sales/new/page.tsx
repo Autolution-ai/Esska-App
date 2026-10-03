@@ -512,21 +512,29 @@ export default function SalesEntryPage() {
                             ))}
                         </ul>
                         <div className="space-y-1 text-amber-900">
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-start gap-2 cursor-pointer">
                                 <input
                                     type="radio"
                                     checked={modus === "neu"}
                                     onChange={() => setModus("neu")}
+                                    className="mt-0.5 flex-shrink-0"
                                 />
-                                Neuer Eintrag für ein <strong>anderes Zeitfenster</strong> (z. B. Nachmittagsschicht)
+                                {/* Text in EINEM Element: sonst macht flex aus jedem
+                                    Textstueck eine eigene Spalte (auf dem Handy zerrissen). */}
+                                <span>
+                                    Neuer Eintrag für ein <strong>anderes Zeitfenster</strong> (z. B. Nachmittagsschicht)
+                                </span>
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
+                            <label className="flex items-start gap-2 cursor-pointer">
                                 <input
                                     type="radio"
                                     checked={modus === "korrektur"}
                                     onChange={() => setModus("korrektur")}
+                                    className="mt-0.5 flex-shrink-0"
                                 />
-                                <strong>Korrektur</strong> eines der Einträge oben (Fehler passiert)
+                                <span>
+                                    <strong>Korrektur</strong> eines der Einträge oben (Fehler passiert)
+                                </span>
                             </label>
                         </div>
                         {modus === "korrektur" && (

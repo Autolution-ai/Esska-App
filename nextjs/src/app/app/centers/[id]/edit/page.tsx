@@ -44,7 +44,7 @@ export default function EditCenterPage() {
             `Damit werden auch alle zugehörigen Daten unwiderruflich entfernt:\n` +
             `– Mitarbeiter-Zuordnungen\n` +
             `– Wochenpläne und Schichten\n` +
-            `– Umsatz-Einträge und Verkaufslisten-Fotos\n\n` +
+            `– Umsatz-Einträge\n\n` +
             `Dieser Schritt kann nicht rückgängig gemacht werden.`
         );
         if (!bestaetigt) return;

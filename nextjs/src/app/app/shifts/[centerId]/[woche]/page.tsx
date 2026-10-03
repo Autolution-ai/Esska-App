@@ -10,10 +10,12 @@ import { useGlobal } from "@/lib/context/GlobalContext";
 import type {
     EsskaAvailabilityRow,
     EsskaCenter,
+    EsskaCenterOpeningHour,
     EsskaProfile,
     EsskaShift,
     EsskaShiftSlot,
     EsskaShiftWeek,
+    EsskaSonderoeffnung,
     EsskaWunsch,
 } from "@/lib/esska/types";
 import {
@@ -21,10 +23,12 @@ import {
     SLOT_LABELS,
     WUNSCH_ICON,
     addTage,
+    centerTagStatus,
     isoDatum,
     montagDerWoche,
     nettoStunden,
     parseIsoDatum,
+    sonderoeffnungLabel,
     tagKurz,
     zeitKurz,
 } from "@/lib/esska/types";
@@ -89,6 +93,9 @@ export default function WocheEditorPage() {
     const [shiftsWeekAll, setShiftsWeekAll] = useState<EsskaShift[]>([]);
     const [people, setPeople] = useState<AssignedProfile[]>([]);
     const [availability, setAvailability] = useState<EsskaAvailabilityRow[]>([]);
+    // Oeffnungstage: geschlossene Tage ausgrauen, verkaufsoffene Sonntage markieren
+    const [oeffnungen, setOeffnungen] = useState<EsskaCenterOpeningHour[]>([]);
+    const [sonder, setSonder] = useState<EsskaSonderoeffnung[]>([]);
     // true, wenn die Schichten anderer Center nicht sichtbar sind
     const [limitUnvollstaendig, setLimitUnvollstaendig] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -106,7 +113,7 @@ export default function WocheEditorPage() {
             const von = isoDatum(wochenStart);
             const bis = isoDatum(addTage(wochenStart, 6));
 
-            const [cRes, aRes] = await Promise.all([
+            const [cRes, aRes, oRes, soRes] = await Promise.all([
                 client.from("centers").select("*").eq("id", params.centerId).single(),
                 client
                     .from("center_assignments")
@@ -114,8 +121,17 @@ export default function WocheEditorPage() {
                         "rolle_im_center, profiles(id, vorname, nachname, email, arbeitszeit_modell, stunden_pro_woche, max_schichten_pro_woche)"
                     )
                     .eq("center_id", params.centerId),
+                client.from("center_opening_hours").select("*").eq("center_id", params.centerId),
+                client
+                    .from("center_sonderoeffnungen")
+                    .select("*")
+                    .eq("center_id", params.centerId)
+                    .gte("datum", von)
+                    .lte("datum", bis),
             ]);
             if (cRes.error) throw cRes.error;
+            setOeffnungen((oRes.data as EsskaCenterOpeningHour[]) ?? []);
+            setSonder((soRes.data as EsskaSonderoeffnung[]) ?? []);
             if (aRes.error) throw aRes.error;
             setCenter(cRes.data as EsskaCenter);
             const peeps = ((aRes.data as unknown) as Array<{ profiles: AssignedProfile | null }> ?? [])
@@ -455,15 +471,40 @@ export default function WocheEditorPage() {
                                 <tbody>
                                     {tage.map((t) => {
                                         const datum = isoDatum(t);
+                                        const tag = centerTagStatus(params.centerId, datum, oeffnungen, sonder);
                                         return (
-                                            <tr key={datum} className="border-t">
+                                            <tr key={datum} className={`border-t ${tag.offen ? "" : "bg-secondary-50/60"}`}>
                                                 <td className="px-3 py-2 border font-medium">
                                                     {t.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}.
                                                 </td>
-                                                <td className="px-3 py-2 border">{tagKurz(t)}</td>
+                                                <td className="px-3 py-2 border">
+                                                    {tagKurz(t)}
+                                                    {tag.sonder && (
+                                                        <div className="text-xs font-medium text-primary-700 mt-0.5">
+                                                            {sonderoeffnungLabel(datum)}
+                                                            {tag.sonder.oeffnet && tag.sonder.schliesst && (
+                                                                <span className="block font-normal text-gray-500">
+                                                                    {zeitKurz(tag.sonder.oeffnet)}–{zeitKurz(tag.sonder.schliesst)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    {!tag.offen && (
+                                                        <div className="text-xs text-gray-500 mt-0.5">geschlossen</div>
+                                                    )}
+                                                </td>
                                                 {SLOTS.map((s) => {
                                                     const current = shifts.find((sh) => sh.datum === datum && sh.slot === s);
                                                     const ckey = cellKey(datum, s);
+                                                    // Geschlossene Tage nicht planbar - es sei denn, dort
+                                                    // steht schon eine Schicht; die wird nicht versteckt.
+                                                    if (!tag.offen && !current) {
+                                                        return (
+                                                            <td key={s} className="px-2 py-2 border text-center text-xs text-gray-400">
+                                                                geschlossen
+                                                            </td>
+                                                        );
+                                                    }
                                                     return (
                                                         <SlotCell
                                                             key={s}

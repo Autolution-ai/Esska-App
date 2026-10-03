@@ -4,15 +4,23 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
-import type { EsskaAvailabilityRow, EsskaCenterOpeningHour, EsskaShiftSlot, EsskaWunsch } from "@/lib/esska/types";
+import type {
+    EsskaAvailabilityRow,
+    EsskaCenterOpeningHour,
+    EsskaShiftSlot,
+    EsskaSonderoeffnung,
+    EsskaWunsch,
+} from "@/lib/esska/types";
 import {
     SLOT_DEFAULT_ZEITEN,
     SLOT_LABELS,
     WUNSCH_ICON,
     WUNSCH_LABELS,
     addTage,
+    centerTagStatus,
     isoDatum,
     montagDerWoche,
+    sonderoeffnungLabel,
     tagKurz,
     zeitKurz,
 } from "@/lib/esska/types";
@@ -71,6 +79,7 @@ export default function AvailabilityPage() {
     // V-2: Oeffnungstage der zugeordneten Center - an Tagen, an denen ALLE
     // eigenen Center geschlossen sind, ist keine Eingabe noetig/moeglich.
     const [oeffnungen, setOeffnungen] = useState<EsskaCenterOpeningHour[]>([]);
+    const [sonder, setSonder] = useState<EsskaSonderoeffnung[]>([]);
     const [eigeneCenterIds, setEigeneCenterIds] = useState<string[]>([]);
     const [wochenStart, setWochenStart] = useState<Date>(montagDerWoche(new Date()));
     const [state, setState] = useState<WocheState>({});
@@ -104,6 +113,13 @@ export default function AvailabilityPage() {
                         .select("*")
                         .in("center_id", ids);
                     setOeffnungen((oData as EsskaCenterOpeningHour[]) ?? []);
+                    // Verkaufsoffene Sonntage der eigenen Center (kleine Tabelle,
+                    // daher ohne Datumsfilter - so passt es fuer jede Woche).
+                    const { data: soData } = await client
+                        .from("center_sonderoeffnungen")
+                        .select("*")
+                        .in("center_id", ids);
+                    setSonder((soData as EsskaSonderoeffnung[]) ?? []);
                 }
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Anmeldung pruefen" }));
@@ -154,15 +170,15 @@ export default function AvailabilityPage() {
         load();
     }, [profileId, wochenStart.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // V-2: geschlossen, wenn fuer JEDES zugeordnete Center ein Eintrag
-    // "geoeffnet = false" fuer diesen Wochentag existiert. Ohne Center oder
-    // ohne Eintraege bleibt der Tag offen.
-    const tagGeschlossen = (wochentag: number): boolean => {
+    // V-2: geschlossen, wenn JEDES zugeordnete Center an diesem Datum zu hat.
+    // Ein verkaufsoffener Sonntag oeffnet den Tag, auch wenn der Wochentag
+    // sonst geschlossen ist. Ohne Center oder ohne Eintraege bleibt der Tag offen.
+    const tagGeschlossen = (datum: string): boolean => {
         if (eigeneCenterIds.length === 0) return false;
-        return eigeneCenterIds.every((cid) =>
-            oeffnungen.some((o) => o.center_id === cid && o.wochentag === wochentag && !o.geoeffnet)
-        );
+        return eigeneCenterIds.every((cid) => !centerTagStatus(cid, datum, oeffnungen, sonder).offen);
     };
+    const sonderoeffnungAm = (datum: string): boolean =>
+        eigeneCenterIds.some((cid) => !!centerTagStatus(cid, datum, oeffnungen, sonder).sonder);
 
     const setzeWunsch = (datum: string, slot: EsskaShiftSlot, w: EsskaWunsch) => {
         const k = key(datum, slot);
@@ -312,8 +328,9 @@ export default function AvailabilityPage() {
                                         const datum = isoDatum(t);
                                         const feiertag = feiertagFuer(datum);
                                         const sonntag = istSonntag(datum);
-                                        const geschlossen = tagGeschlossen((t.getDay() + 6) % 7);
-                                        const istFreierTag = !!feiertag || sonntag || geschlossen;
+                                        const geschlossen = tagGeschlossen(datum);
+                                        const sonderoeffnung = sonderoeffnungAm(datum);
+                                        const istFreierTag = geschlossen || ((!!feiertag || sonntag) && !sonderoeffnung);
                                         return (
                                             <tr
                                                 key={datum}
@@ -327,7 +344,12 @@ export default function AvailabilityPage() {
                                                     {feiertag && (
                                                         <div className="text-xs text-amber-700 mt-0.5">{feiertag}</div>
                                                     )}
-                                                    {!feiertag && sonntag && (
+                                                    {sonderoeffnung && (
+                                                        <div className="text-xs font-medium text-primary-700 mt-0.5">
+                                                            {sonderoeffnungLabel(datum)}
+                                                        </div>
+                                                    )}
+                                                    {!feiertag && sonntag && !sonderoeffnung && (
                                                         <div className="text-xs text-gray-500 mt-0.5">Sonntag</div>
                                                     )}
                                                     {geschlossen && (

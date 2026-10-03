@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Circle } from "lucide-react";
@@ -180,6 +181,15 @@ export default function OnboardingPage() {
                 <p className="text-gray-600">
                     Bevor es losgeht, brauchen wir ein paar Angaben für die Personalakte. Das dauert
                     etwa 10–15 Minuten. Du kannst jederzeit unterbrechen – deine Eingaben bleiben gespeichert.
+                </p>
+                {/* Art. 13 DSGVO: die Information muss bei der Erhebung erreichbar sein.
+                    Im Onboarding ist das Menue noch gesperrt, daher der Link hier. */}
+                <p className="text-sm text-gray-500 mt-2">
+                    Wie wir mit deinen Daten umgehen, steht in den{" "}
+                    <Link href="/legal/datenschutz-beschaeftigte" className="text-primary-600 hover:underline">
+                        Datenschutzhinweisen für Beschäftigte
+                    </Link>
+                    .
                 </p>
             </div>
 

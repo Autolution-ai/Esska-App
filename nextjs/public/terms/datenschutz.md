@@ -10,10 +10,10 @@ Beschäftigungsverhältnis im Detail beschreiben.
 **Esska Collection**
 Dornblüthstraße 22
 01277 Dresden
-Telefon: +49 1512 2544117
+Telefon: +49 1515 6545223
 E-Mail: esska.app@gmail.com
 
-Ansprechpartner für Datenschutzfragen: Jannis Alekhanov, esska.app@gmail.com
+Ansprechpartner für Datenschutzfragen: J. Alekhanov, esska.app@gmail.com
 
 ## 2. Was beim reinen Aufruf der Seite passiert
 
@@ -96,4 +96,4 @@ ist die jeweils hier veröffentlichte Fassung.
 
 ---
 
-*Stand: 12. September 2026*
+*Stand: 3. Oktober 2026*

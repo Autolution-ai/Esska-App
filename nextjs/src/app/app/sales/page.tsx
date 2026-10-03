@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, CreditCard, Download, History, ImageIcon, MinusCircle, Plus } from "lucide-react";
+import { AlertCircle, CheckCircle2, CreditCard, Download, History, MinusCircle, Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCardRevenue, EsskaCenter, EsskaCenterZeitraum, EsskaDailySale } from "@/lib/esska/types";
@@ -493,23 +493,6 @@ function Kennzahl({ titel, wert, farbe = "text-primary-700" }: { titel: string; 
     );
 }
 
-function FotoLink({ pfad }: { pfad: string }) {
-    const oeffnen = async () => {
-        try {
-            const client = await getEsskaClient();
-            const { data, error } = await client.storage.from("sales-receipts").createSignedUrl(pfad, 60);
-            if (error) throw error;
-            window.open(data.signedUrl, "_blank");
-        } catch {
-            alert("Foto konnte nicht geöffnet werden.");
-        }
-    };
-    return (
-        <button onClick={oeffnen} className="text-primary-600 hover:text-primary-800" title="Verkaufsliste ansehen">
-            <ImageIcon className="h-4 w-4" />
-        </button>
-    );
-}
 
 function CenterTable({
     rows,
@@ -534,7 +517,6 @@ function CenterTable({
                         <th className="px-3 py-2 font-medium text-right">Endbestand</th>
                         <th className="px-3 py-2 font-medium text-right">In Tresor</th>
                         <th className="px-3 py-2 font-medium text-right">Karte</th>
-                        <th className="px-3 py-2 font-medium">Foto</th>
                         <th className="px-3 py-2 font-medium">Erfasst von</th>
                         <th className="px-3 py-2 font-medium">Notiz</th>
                     </tr>
@@ -577,9 +559,6 @@ function CenterTable({
                                         <td className="px-3 py-2 text-right">
                                             {idx === 0 ? bargeld(r.karte?.betrag_cent) : ""}
                                         </td>
-                                        <td className="px-3 py-2">
-                                            {e?.beleg_foto_path ? <FotoLink pfad={e.beleg_foto_path} /> : ""}
-                                        </td>
                                         <td className="px-3 py-2 text-gray-600 text-xs">{e ? erfasserName(e) : ""}</td>
                                         <td className="px-3 py-2 text-gray-600">{e?.notiz ?? ""}</td>
                                     </tr>
@@ -598,9 +577,6 @@ function CenterTable({
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.endbestand_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.abschoepfung_cent)}</td>
                                             <td className="px-3 py-1.5"></td>
-                                            <td className="px-3 py-1.5">
-                                                {h.beleg_foto_path ? <FotoLink pfad={h.beleg_foto_path} /> : ""}
-                                            </td>
                                             <td className="px-3 py-1.5">{erfasserName(h)}</td>
                                             <td className="px-3 py-1.5">{h.notiz ?? ""}</td>
                                         </tr>

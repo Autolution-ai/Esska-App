@@ -7,8 +7,8 @@ aktualisieren.
 ## Verantwortlicher
 
 **Esska Collection**, Dornblüthstraße 22, 01277 Dresden
-Vertreten durch: Jannis Alekhanov
-Kontakt Datenschutz: Jannis Alekhanov, esska.app@gmail.com
+Vertreten durch: J. Alekhanov
+Kontakt Datenschutz: J. Alekhanov, esska.app@gmail.com
 Datenschutzbeauftragter: nicht bestellt, da die Voraussetzungen des § 38 BDSG nicht vorliegen
 
 ---
@@ -216,4 +216,4 @@ Testumgebung ist nicht eingerichtet.
 
 ---
 
-*Stand: 12. September 2026 · Verantwortlich für die Pflege dieses Verzeichnisses: Jannis Alekhanov*
+*Stand: 12. September 2026 · Verantwortlich für die Pflege dieses Verzeichnisses: J. Alekhanov*

@@ -11,10 +11,10 @@ brauchen, wie lange wir sie behalten und welche Rechte du hast.
 **Esska Collection**
 Dornblüthstraße 22
 01277 Dresden
-Telefon: +49 1512 2544117
+Telefon: +49 1515 6545223
 E-Mail: esska.app@gmail.com
 
-Bei Fragen zum Datenschutz wende dich an: Jannis Alekhanov, esska.app@gmail.com
+Bei Fragen zum Datenschutz wende dich an: J. Alekhanov, esska.app@gmail.com
 
 ## 2. Welche Daten verarbeiten wir?
 
@@ -94,17 +94,10 @@ wurden.
 
 ## 5. Wie lange werden die Daten gespeichert?
 
-| Daten | Dauer |
-|---|---|
-| Lohn- und lohnsteuerrelevante Unterlagen | 10 Jahre nach Ablauf des Kalenderjahres (§ 147 AO) |
-| Kassenaufzeichnungen | 10 Jahre nach Ablauf des Kalenderjahres (§ 147 AO) |
-| Stammdaten ohne zustande gekommene Beschäftigung | 3 Jahre (Verjährungsfrist § 195 BGB) |
-| Verfügbarkeiten und Schichtpläne | 3 Jahre (Verjährungsfrist § 195 BGB) |
-| Kopie des Aufenthaltstitels | Dauer der Beschäftigung (§ 4a AufenthG) |
-| **Ausweiskopien** | werden nach der Anmeldung **gelöscht**, spätestens nach Saisonende – es gibt dafür keine Aufbewahrungspflicht |
-| Immatrikulations-, Schul- und Rentenbescheinigungen | bis zum Ende der Beschäftigung |
-
-Nach Ablauf der Fristen werden die Daten gelöscht.
+Wir speichern deine Daten, solange es für deine Beschäftigung erforderlich ist,
+und darüber hinaus nur, soweit gesetzliche Aufbewahrungspflichten bestehen –
+für lohn- und kassenrelevante Unterlagen in der Regel 10 Jahre (§ 147 AO).
+Danach werden sie gelöscht.
 
 ## 6. Deine Rechte
 
@@ -140,4 +133,4 @@ Zuordnungen vor, die Entscheidung trifft aber immer ein Mensch.
 
 ---
 
-*Stand: 12. September 2026 · Bei Änderungen informieren wir dich rechtzeitig.*
+*Stand: 3. Oktober 2026 · Bei Änderungen informieren wir dich rechtzeitig.*

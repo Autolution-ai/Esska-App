@@ -17,7 +17,7 @@ bestellen. Eine private Nutzung ist nicht vorgesehen.
   deiner Ansprechperson.
 - Nutzt du die App auf einem geteilten Gerät, melde dich nach der Nutzung ab.
 
-## 3. Kassenmeldungen sind verbindlich
+## 3. Kassenmeldungen
 
 Kassenmeldungen sind steuerlich relevante Aufzeichnungen. Deshalb gilt:
 
@@ -27,7 +27,6 @@ Kassenmeldungen sind steuerlich relevante Aufzeichnungen. Deshalb gilt:
 - Ist doch ein Fehler passiert, melde ihn und erfasse eine Korrektur mit
   Begründung. Die ursprüngliche Fassung bleibt sichtbar; das ist gesetzlich so
   vorgeschrieben und kein Misstrauen dir gegenüber.
-- Erfasse nur Meldungen für Schichten, die du selbst gearbeitet hast.
 
 ## 4. Umgang mit Daten anderer
 
@@ -44,10 +43,8 @@ richten mehr Schaden an als eine verspätete Meldung.
 
 ## 6. Ende der Beschäftigung
 
-Mit dem Ende deiner Beschäftigung wird dein Zugang deaktiviert. Deine Daten
-werden im Rahmen der gesetzlichen Aufbewahrungsfristen weiter gespeichert
-(siehe Datenschutzhinweise für Beschäftigte) und danach gelöscht.
+Mit dem Ende deiner Beschäftigung wird dein Zugang deaktiviert.
 
 ---
 
-*Stand: 12. September 2026 · Esska Collection*
+*Stand: 3. Oktober 2026 · Esska Collection*

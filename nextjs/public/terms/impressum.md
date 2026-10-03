@@ -13,7 +13,7 @@ Inhaber: Jannis Alekhanov
 
 ## Kontakt
 
-Telefon: +49 1512 2544117
+Telefon: +49 1515 6545223
 E-Mail: esska.app@gmail.com
 
 ## Umsatzsteuer
@@ -23,7 +23,7 @@ Umsatzsteuer-Identifikationsnummer gemäß § 27 a Umsatzsteuergesetz:
 
 ## Verantwortlich für den Inhalt
 
-Jannis Alekhanov, Anschrift wie oben.
+J. Alekhanov, Anschrift wie oben.
 
 ## Hinweis zu dieser Anwendung
 
@@ -46,4 +46,4 @@ Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.
 
 ---
 
-*Stand: 12. September 2026*
+*Stand: 3. Oktober 2026*
