@@ -21,6 +21,15 @@ type AdminAuthClient = {
                 email: string,
                 options?: { redirectTo?: string }
             ) => Promise<{ data: { user: { id: string } | null }; error: { message: string } | null }>;
+            createUser: (attrs: {
+                email: string;
+                password: string;
+                email_confirm?: boolean;
+            }) => Promise<{ data: { user: { id: string } | null }; error: { message: string } | null }>;
+            updateUserById: (
+                id: string,
+                attrs: { password: string }
+            ) => Promise<{ data: unknown; error: { message: string } | null }>;
             deleteUser: (
                 id: string
             ) => Promise<{ data: unknown; error: { message: string } | null }>;
@@ -38,7 +47,7 @@ type AdminAuthClient = {
 
 /** Prueft, ob der aktuelle User Admin ist. Liefert entweder den Admin-Client
  *  oder eine NextResponse mit passendem Fehlercode (401 / 403). */
-export async function requireAdmin(): Promise<NextResponse | { adminClient: AdminAuthClient }> {
+export async function requireAdmin(): Promise<NextResponse | { adminClient: AdminAuthClient; userId: string }> {
     const userClient = await createSSRClient();
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) {
@@ -56,7 +65,7 @@ export async function requireAdmin(): Promise<NextResponse | { adminClient: Admi
         return NextResponse.json({ error: "Diese Aktion ist nur für Admins erlaubt." }, { status: 403 });
     }
     const admin = await createServerAdminClient();
-    return { adminClient: admin as unknown as AdminAuthClient };
+    return { adminClient: admin as unknown as AdminAuthClient, userId: user.id };
 }
 
 export function origin(request: Request): string {
@@ -65,3 +74,15 @@ export function origin(request: Request): string {
         `${request.headers.get("x-forwarded-proto") ?? "http"}://${request.headers.get("host")}`
     );
 }
+
+/** Gemeinsames Startpasswort aller Mitarbeiterkonten (Vorgabe Oktober 2026).
+ *  Steht ausschliesslich in der Vercel-Umgebungsvariable MITARBEITER_PASSWORT,
+ *  nie im Code. Fehlt sie oder ist sie zu kurz, wird kein Konto angelegt. */
+export function startpasswort(): string | null {
+    const wert = process.env.MITARBEITER_PASSWORT?.trim();
+    if (!wert || wert.length < 12) return null;
+    return wert;
+}
+
+export const STARTPASSWORT_FEHLT =
+    "Das Startpasswort ist nicht hinterlegt (Vercel-Umgebungsvariable MITARBEITER_PASSWORT, mindestens 12 Zeichen).";

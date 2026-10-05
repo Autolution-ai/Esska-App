@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Edit, FileDown, Mail, Plus, Trash2, UserX } from "lucide-react";
+import { Edit, FileDown, KeyRound, Plus, Trash2, UserX } from "lucide-react";
+import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaKubeDeclaration, EsskaProfile, EsskaRole } from "@/lib/esska/types";
@@ -32,6 +33,7 @@ export default function EmployeeDetailPage() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [info, setInfo] = useState<string | null>(null);
+    const [zugang, setZugang] = useState<Zugang | null>(null);
     const [editStammdaten, setEditStammdaten] = useState(false);
 
     const reload = async () => {
@@ -146,18 +148,20 @@ export default function EmployeeDetailPage() {
         }
     };
 
-    const handleReinvite = async () => {
+    const handlePasswortZuruecksetzen = async () => {
         if (!profile) return;
+        if (!window.confirm("Passwort dieses Mitarbeiters auf das gemeinsame Startpasswort zurücksetzen?")) return;
         setBusy(true);
         setError(null);
         setInfo(null);
+        setZugang(null);
         try {
-            const res = await fetch(`/api/employees/${profile.id}/reinvite`, { method: "POST" });
+            const res = await fetch(`/api/employees/${profile.id}/passwort-zuruecksetzen`, { method: "POST" });
             const data = await res.json();
             if (!res.ok) {
-                setError(data.error ?? "Erneutes Einladen fehlgeschlagen");
-            } else {
-                setInfo(`Neue Einladung an ${data.email ?? profile.email} verschickt. Der alte Link ist jetzt ungültig.`);
+                setError(data.error ?? "Zurücksetzen fehlgeschlagen");
+            } else if (data.zugang) {
+                setZugang(data.zugang as Zugang);
             }
         } catch (err) {
             setError(err instanceof Error ? err.message : "Netzwerkfehler");
@@ -231,15 +235,15 @@ export default function EmployeeDetailPage() {
                         <Edit className="h-4 w-4 mr-2" />
                         {editStammdaten ? "Bearbeitung schließen" : "Stammdaten bearbeiten"}
                     </button>
-                    {!profile.onboarding_abgeschlossen && (
+                    {profile.role !== "admin" && (
                         <button
-                            onClick={handleReinvite}
+                            onClick={handlePasswortZuruecksetzen}
                             disabled={busy}
                             className="inline-flex items-center px-3 py-2 border rounded-md text-sm hover:bg-secondary-100 disabled:opacity-50"
-                            title="Frische Einladungsmail verschicken, alter Link wird ungültig"
+                            title="Passwort auf das gemeinsame Startpasswort setzen und Zugangsdaten anzeigen"
                         >
-                            <Mail className="h-4 w-4 mr-2" />
-                            Erneut einladen
+                            <KeyRound className="h-4 w-4 mr-2" />
+                            Passwort zurücksetzen
                         </button>
                     )}
                     <button
@@ -256,6 +260,12 @@ export default function EmployeeDetailPage() {
 
             {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
             {info && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{info}</div>}
+            {zugang && (
+                <Zugangsdaten
+                    zugang={zugang}
+                    titel="Passwort zurückgesetzt – diesen Text an den Mitarbeiter schicken:"
+                />
+            )}
 
             {editStammdaten && (
                 <Card>

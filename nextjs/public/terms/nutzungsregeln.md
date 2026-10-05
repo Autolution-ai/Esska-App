@@ -11,8 +11,10 @@ bestellen. Eine private Nutzung ist nicht vorgesehen.
 
 ## 2. Dein Zugang gehört dir allein
 
-- Gib dein Passwort **niemandem** weiter – auch nicht Kolleginnen und Kollegen.
-- Melde dich nicht mit dem Konto einer anderen Person an.
+- Gib dein Passwort **niemandem außerhalb von Esska** weiter.
+- Melde dich **nur mit deiner eigenen E-Mail-Adresse** an – niemals mit dem
+  Konto einer anderen Person, auch wenn dir deren Zugangsdaten bekannt sind.
+  Jede Meldung in der App wird dem angemeldeten Konto zugeordnet.
 - Wenn du den Verdacht hast, dass jemand dein Konto benutzt, melde das sofort
   deiner Ansprechperson.
 - Nutzt du die App auf einem geteilten Gerät, melde dich nach der Nutzung ab.
@@ -47,4 +49,4 @@ Mit dem Ende deiner Beschäftigung wird dein Zugang deaktiviert.
 
 ---
 
-*Stand: 3. Oktober 2026 · Esska Collection*
+*Stand: 5. Oktober 2026 · Esska Collection*

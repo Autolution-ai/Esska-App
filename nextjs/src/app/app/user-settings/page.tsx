@@ -14,7 +14,11 @@ import StammdatenForm from "@/components/esska/StammdatenForm";
 import type { EsskaProfile } from "@/lib/esska/types";
 
 export default function UserSettingsPage() {
-    const { user } = useGlobal();
+    const { user, role } = useGlobal();
+    // Mitarbeiter nutzen das gemeinsame Startpasswort (Vorgabe Oktober 2026)
+    // und legen kein eigenes fest. Admins und Regionalmanager behalten ein
+    // eigenes Passwort und die Zwei-Faktor-Anmeldung.
+    const eigenesPasswort = role === "admin" || role === "regionalmanager";
     const [profile, setProfile] = useState<EsskaProfile | null>(null);
     const [profileLoading, setProfileLoading] = useState(true);
     const [profileError, setProfileError] = useState<string | null>(null);
@@ -121,6 +125,7 @@ export default function UserSettingsPage() {
                 </CardContent>
             </Card>
 
+            {eigenesPasswort && (
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -163,12 +168,15 @@ export default function UserSettingsPage() {
                     </form>
                 </CardContent>
             </Card>
+            )}
 
-            <MFASetup
-                onStatusChange={() => {
-                    setSuccess("Zwei-Faktor-Authentifizierung aktualisiert.");
-                }}
-            />
+            {eigenesPasswort && (
+                <MFASetup
+                    onStatusChange={() => {
+                        setSuccess("Zwei-Faktor-Authentifizierung aktualisiert.");
+                    }}
+                />
+            )}
 
             <Card>
                 <CardHeader>

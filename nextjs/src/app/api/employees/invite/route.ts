@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { origin, requireAdmin } from "@/lib/esska/server";
+import { STARTPASSWORT_FEHLT, origin, requireAdmin, startpasswort } from "@/lib/esska/server";
 import { createServerAdminClient } from "@/lib/supabase/serverAdminClient";
 
 export async function POST(request: Request) {
@@ -20,12 +20,24 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Ungültige E-Mail-Adresse." }, { status: 400 });
         }
 
-        const { data, error } = await adminClient.auth.admin.inviteUserByEmail(email, {
-            redirectTo: `${origin(request)}/auth/accept-invite`,
+        // Kein Einladungslink mehr (Vorgabe Oktober 2026): Das Konto wird
+        // direkt mit dem gemeinsamen Startpasswort angelegt und ist sofort
+        // nutzbar. Die Zugangsdaten gibt der Admin selbst weiter.
+        const passwort = startpasswort();
+        if (!passwort) {
+            return NextResponse.json({ error: STARTPASSWORT_FEHLT }, { status: 500 });
+        }
+        const { data, error } = await adminClient.auth.admin.createUser({
+            email,
+            password: passwort,
+            email_confirm: true,
         });
 
         if (error) {
-            return NextResponse.json({ error: error.message }, { status: 400 });
+            const msg = /already|registered|exists/i.test(error.message)
+                ? "Für diese E-Mail-Adresse gibt es bereits einen Zugang."
+                : error.message;
+            return NextResponse.json({ error: msg }, { status: 400 });
         }
 
         // Zuordnung anlegen, sobald der Auth-User (und damit per Trigger das
@@ -51,7 +63,13 @@ export async function POST(request: Request) {
             }
         }
 
-        return NextResponse.json({ ok: true, user_id: data.user?.id ?? null, hinweis: zuordnungHinweis });
+        // Zugangsdaten fuer die Weitergabe (nur an Admins, s. requireAdmin)
+        return NextResponse.json({
+            ok: true,
+            user_id: data.user?.id ?? null,
+            hinweis: zuordnungHinweis,
+            zugang: { url: origin(request), email, passwort },
+        });
     } catch (err) {
         const message = err instanceof Error ? err.message : "Einladung fehlgeschlagen";
         return NextResponse.json({ error: message }, { status: 500 });

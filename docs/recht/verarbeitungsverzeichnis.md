@@ -186,8 +186,16 @@ die Kenntnisnahme. **Mit dem Steuerberater/Anwalt abstimmen.**
 **Zutrittskontrolle:** Serverbetrieb ausschließlich in zertifizierten
 Rechenzentren der Auftragsverarbeiter innerhalb der EU.
 
-**Zugangskontrolle:** Zugang nur auf Einladung, keine Selbstregistrierung.
-Passwortanmeldung mit serverseitiger Verschlüsselung. Zwei-Faktor-
+**Zugangskontrolle:** Zugang nur durch Anlage seitens der Verwaltung, keine
+Selbstregistrierung. Passwortanmeldung; Passwörter werden nur als Prüfsumme
+gespeichert.
+**Mitarbeiterkonten erhalten auf Entscheidung des Inhabers (Oktober 2026) ein
+gemeinsames Startpasswort** und legen kein eigenes fest. Bekanntes Restrisiko:
+Wer die E-Mail-Adresse eines Kollegen kennt, kann sich als dieser anmelden.
+Gegenmaßnahmen: ausdrückliches Verbot in den Nutzungsregeln; das Passwort
+steht nur in der Server-Konfiguration, nicht im Code; Zurücksetzungen durch
+die Verwaltung werden protokolliert. Admin- und Regionalleitungskonten haben
+eigene Passwörter. Zwei-
 Authentifizierung für Administrationskonten ist derzeit **nicht aktiviert**
 (offener Punkt, vor dem Produktivbetrieb einzurichten).
 
@@ -216,4 +224,4 @@ Testumgebung ist nicht eingerichtet.
 
 ---
 
-*Stand: 12. September 2026 · Verantwortlich für die Pflege dieses Verzeichnisses: J. Alekhanov*
+*Stand: 5. Oktober 2026 · Verantwortlich für die Pflege dieses Verzeichnisses: J. Alekhanov*

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import type { EsskaCenter } from "@/lib/esska/types";
+import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
 
 export default function InvitePage() {
     const router = useRouter();
@@ -33,11 +34,13 @@ export default function InvitePage() {
     }, []);
     const [sending, setSending] = useState(false);
     const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+    const [zugang, setZugang] = useState<Zugang | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setSending(true);
         setResult(null);
+        setZugang(null);
         try {
             const res = await fetch("/api/employees/invite", {
                 method: "POST",
@@ -46,12 +49,11 @@ export default function InvitePage() {
             });
             const data = await res.json();
             if (!res.ok) {
-                setResult({ ok: false, message: data.error ?? "Einladung fehlgeschlagen" });
+                setResult({ ok: false, message: data.error ?? "Zugang konnte nicht angelegt werden." });
             } else {
-                setResult({
-                    ok: true,
-                    message: data.hinweis ?? `Einladung an ${email} verschickt.`,
-                });
+                // Hinweis nur zeigen, wenn etwas schiefging (z. B. Center-Zuordnung)
+                setResult(data.hinweis ? { ok: false, message: data.hinweis } : null);
+                if (data.zugang) setZugang(data.zugang as Zugang);
                 setEmail("");
                 setRueckkehrer(false);
             }
@@ -67,10 +69,11 @@ export default function InvitePage() {
             <Link href="/app/employees" className="text-sm text-primary-600 hover:underline">
                 ← Zurück zur Mitarbeiterliste
             </Link>
-            <h1 className="text-2xl font-bold">Mitarbeiter einladen</h1>
+            <h1 className="text-2xl font-bold">Mitarbeiter anlegen</h1>
             <p className="text-gray-600 text-sm">
-                Der Mitarbeiter erhält eine E-Mail mit einem Link zum Setzen seines Passworts. Nach dem ersten
-                Login durchläuft er das Onboarding (Stammdaten ausfüllen, ggf. KuBe-Bogen, Ausweis hochladen).
+                Der Zugang wird sofort angelegt – es wird keine E-Mail verschickt. Danach erscheinen die
+                Zugangsdaten zum Kopieren; schick sie dem Mitarbeiter z. B. per WhatsApp. Nach dem ersten Login
+                durchläuft er das Onboarding (Stammdaten, ggf. KuBe-Bogen, Ausweis hochladen).
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4 bg-white border rounded-lg p-4">
@@ -124,6 +127,7 @@ export default function InvitePage() {
                         </span>
                     </span>
                 </label>
+                {zugang && <Zugangsdaten zugang={zugang} titel="Zugang angelegt – diesen Text an den Mitarbeiter schicken:" />}
                 {result && (
                     <div
                         className={`p-3 rounded-md text-sm ${
@@ -139,7 +143,7 @@ export default function InvitePage() {
                         disabled={sending}
                         className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
                     >
-                        {sending ? "Senden…" : "Einladung senden"}
+                        {sending ? "Wird angelegt…" : "Zugang anlegen"}
                     </button>
                     <button type="button" onClick={() => router.push("/app/employees")} className="px-4 py-2 border rounded-md hover:bg-gray-50">
                         Abbrechen

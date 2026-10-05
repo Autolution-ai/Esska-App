@@ -4,7 +4,6 @@
 import { createSPASassClient } from '@/lib/supabase/client';
 import {useEffect, useState} from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import SSOButtons from '@/components/SSOButtons';
 
 export default function LoginPage() {
@@ -103,11 +102,11 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex items-center justify-between">
-                    <div className="text-sm">
-                        <Link href="/auth/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
-                            Passwort vergessen?
-                        </Link>
-                    </div>
+                    {/* Mitarbeiter haben ein gemeinsames Startpasswort, das die
+                        Verwaltung zuruecksetzt - kein Selbstbedienungs-Link mehr. */}
+                    <p className="text-sm text-gray-500">
+                        Passwort vergessen? Wende dich an die Verwaltung.
+                    </p>
                 </div>
 
                 <div>

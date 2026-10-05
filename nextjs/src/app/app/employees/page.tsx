@@ -223,7 +223,7 @@ export default function EmployeesPage() {
                             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
                         >
                             <UserPlus className="h-4 w-4 mr-2" />
-                            Mitarbeiter einladen
+                            Mitarbeiter anlegen
                         </Link>
                         <button
                             onClick={versandOeffnen}
