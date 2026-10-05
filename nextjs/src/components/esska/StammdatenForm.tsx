@@ -474,6 +474,7 @@ export default function StammdatenForm({
                                 <option value="teilzeit">Teilzeit</option>
                                 <option value="minijob">Minijob</option>
                                 <option value="kurzfristig">Kurzfristig beschäftigt</option>
+                                <option value="werkstudent">Werkstudent</option>
                             </select>
                         </Field>
                         <Field label="Stunden / Woche">

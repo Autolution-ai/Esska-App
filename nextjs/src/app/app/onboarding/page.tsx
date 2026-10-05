@@ -13,6 +13,7 @@ import type {
     EsskaPensionExemption,
     EsskaProfile,
 } from "@/lib/esska/types";
+import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import StammdatenForm from "@/components/esska/StammdatenForm";
 import KubeForm from "@/components/esska/KubeForm";
 import DokumenteUpload from "@/components/esska/DokumenteUpload";
@@ -24,7 +25,7 @@ function aktuelleSaison(): string {
     return `${jahr % 100}/${((jahr + 1) % 100).toString().padStart(2, "0")}`;
 }
 
-type Schritt = "stammdaten" | "rv_befreiung" | "kube" | "dokumente";
+type Schritt = "stammdaten" | "arbeitsvertrag" | "rv_befreiung" | "kube" | "dokumente";
 
 export default function OnboardingPage() {
     const router = useRouter();
@@ -32,6 +33,9 @@ export default function OnboardingPage() {
     const [kube, setKube] = useState<EsskaKubeDeclaration | null>(null);
     const [pension, setPension] = useState<EsskaPensionExemption | null>(null);
     const [docs, setDocs] = useState<EsskaEmployeeDocument[]>([]);
+    // Arbeitsvertrag erledigt = bestaetigt ODER fuer die Beschaeftigungsart
+    // (noch) keine Vorlage hinterlegt. Die Box meldet Aenderungen zurueck.
+    const [vertragErledigt, setVertragErledigt] = useState(false);
     const [schritt, setSchritt] = useState<Schritt>("stammdaten");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -78,6 +82,32 @@ export default function OnboardingPage() {
                 if (kRes.data) setKube(kRes.data as EsskaKubeDeclaration);
                 if (eRes.data) setPension(eRes.data as EsskaPensionExemption);
                 if (dRes.data) setDocs(dRes.data as EsskaEmployeeDocument[]);
+
+                // Vertragsstatus schon beim Laden ermitteln, damit der Haken
+                // im Fortschritt stimmt, ohne dass der Schritt geoeffnet wurde.
+                const modell = (pRes.data as EsskaProfile).arbeitszeit_modell;
+                if (!modell) {
+                    setVertragErledigt(true);
+                } else {
+                    const { data: vData } = await client
+                        .from("vertragsvorlagen")
+                        .select("id")
+                        .eq("art", modell)
+                        .eq("aktiv", true)
+                        .maybeSingle();
+                    const vorlageId = (vData as { id: string } | null)?.id;
+                    if (!vorlageId) {
+                        setVertragErledigt(true);
+                    } else {
+                        const { data: bData } = await client
+                            .from("vertragsbestaetigungen")
+                            .select("id")
+                            .eq("profile_id", user.id)
+                            .eq("vorlage_id", vorlageId)
+                            .maybeSingle();
+                        setVertragErledigt(!!bData);
+                    }
+                }
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -127,6 +157,7 @@ export default function OnboardingPage() {
 
     const schritte: { key: Schritt; titel: string; erledigt: boolean }[] = [
         { key: "stammdaten", titel: "Stammdaten", erledigt: !!profile.stammdaten_bestaetigt_am },
+        { key: "arbeitsvertrag", titel: "Arbeitsvertrag", erledigt: vertragErledigt },
         { key: "rv_befreiung", titel: "Rentenversicherungs-Befreiung", erledigt: rvBefreiungErledigt },
         ...(brauchtKube
             ? [{ key: "kube" as Schritt, titel: "KuBe-Statuserklärung", erledigt: !!kube?.unterzeichnet_am }]
@@ -233,6 +264,36 @@ export default function OnboardingPage() {
                         naechsterSchritt();
                     }}
                 />
+            )}
+
+            {schritt === "arbeitsvertrag" && (
+                <div className="space-y-3">
+                    <div className="bg-white border rounded-lg p-4">
+                        <h3 className="text-base font-semibold mb-1">Arbeitsvertrag</h3>
+                        <p className="text-sm text-gray-600">
+                            Bitte lies deinen Arbeitsvertrag und bestätige ihn. Du findest ihn danach jederzeit
+                            unter &bdquo;Stammdaten&ldquo; zum Ansehen und Herunterladen.
+                            <span className="block italic text-xs mt-1">
+                                Please read your employment contract and confirm it. You can view and download
+                                it any time under &bdquo;Stammdaten&ldquo;.
+                            </span>
+                        </p>
+                    </div>
+                    <ArbeitsvertragBox
+                        profileId={profile.id}
+                        modell={profile.arbeitszeit_modell}
+                        onStatus={(erledigt) => setVertragErledigt(erledigt)}
+                    />
+                    {vertragErledigt && (
+                        <button
+                            type="button"
+                            onClick={naechsterSchritt}
+                            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                        >
+                            Weiter
+                        </button>
+                    )}
+                </div>
             )}
 
             {schritt === "rv_befreiung" && (

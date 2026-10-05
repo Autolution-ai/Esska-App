@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Edit, FileDown, KeyRound, Plus, Trash2, UserX } from "lucide-react";
 import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
+import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaKubeDeclaration, EsskaProfile, EsskaRole } from "@/lib/esska/types";
@@ -372,6 +373,20 @@ export default function EmployeeDetailPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {profile.role !== "admin" && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Arbeitsvertrag</CardTitle>
+                        <CardDescription>
+                            Vorlage zur eingetragenen Beschäftigungsart. Bestätigen kann nur der Mitarbeiter selbst.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <ArbeitsvertragBox profileId={profile.id} modell={profile.arbeitszeit_modell} nurLesen />
+                    </CardContent>
+                </Card>
+            )}
 
             <Card>
                 <CardHeader>

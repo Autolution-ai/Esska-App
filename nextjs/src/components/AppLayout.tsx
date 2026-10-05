@@ -16,6 +16,7 @@ import {
     TrendingUp,
     ClipboardList,
     ShoppingCart,
+    FileSignature,
 } from 'lucide-react';
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { ROLE_LABELS } from "@/lib/esska/types";
@@ -34,6 +35,7 @@ const adminNavigation: NavItem[] = [
     { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
     { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
     { name: 'Ware bestellen', href: '/app/orders', icon: ShoppingCart },
+    { name: 'Arbeitsverträge', href: '/app/vertraege', icon: FileSignature },
     { name: 'Einstellungen', href: '/app/user-settings', icon: User },
 ];
 

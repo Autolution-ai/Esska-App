@@ -11,6 +11,7 @@ import { friendlyError } from "@/lib/esska/errors";
 import { BookOpen, CheckCircle, ChevronRight, FileText, Key, Scale, Shield, Users } from "lucide-react";
 import { MFASetup } from "@/components/MFASetup";
 import StammdatenForm from "@/components/esska/StammdatenForm";
+import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import type { EsskaProfile } from "@/lib/esska/types";
 
 export default function UserSettingsPage() {
@@ -99,6 +100,21 @@ export default function UserSettingsPage() {
                     <CheckCircle className="h-4 w-4" />
                     <AlertDescription>{success}</AlertDescription>
                 </Alert>
+            )}
+
+            {/* Arbeitsvertrag ansehen, herunterladen und - falls noch offen - bestaetigen */}
+            {profile && role !== "admin" && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FileText className="h-5 w-5" />
+                            Mein Arbeitsvertrag
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <ArbeitsvertragBox profileId={profile.id} modell={profile.arbeitszeit_modell} />
+                    </CardContent>
+                </Card>
             )}
 
             <Card>

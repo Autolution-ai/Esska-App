@@ -15,7 +15,35 @@ export type EsskaArbeitszeitModell =
     | "vollzeit"
     | "teilzeit"
     | "minijob"
-    | "kurzfristig";
+    | "kurzfristig"
+    | "werkstudent";
+
+export const ARBEITSZEIT_MODELL_LABELS: Record<EsskaArbeitszeitModell, string> = {
+    minijob: "Minijob",
+    kurzfristig: "Kurzfristig beschäftigt",
+    werkstudent: "Werkstudent",
+    teilzeit: "Teilzeit",
+    vollzeit: "Vollzeit",
+};
+
+// Arbeitsvertrag: eine aktive PDF-Vorlage je Beschaeftigungsart
+export interface EsskaVertragsvorlage {
+    id: string;
+    art: EsskaArbeitszeitModell;
+    titel: string;
+    datei_pfad: string;
+    hochgeladen_von: string | null;
+    hochgeladen_am: string;
+    aktiv: boolean;
+}
+
+// Bestaetigung durch den Mitarbeiter (nur einfuegen, nie aendern)
+export interface EsskaVertragsbestaetigung {
+    id: string;
+    profile_id: string;
+    vorlage_id: string;
+    bestaetigt_am: string;
+}
 
 // Aktueller Lebens-/Erwerbsstatus des Mitarbeiters – wird vom Mitarbeiter
 // im Onboarding angegeben (unabhaengig vom arbeitszeit_modell, das der

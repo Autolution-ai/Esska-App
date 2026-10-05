@@ -25,7 +25,8 @@ verhältnissen; Lohnabrechnung; Meldungen an Sozialversicherung und Finanzamt.
 **Datenkategorien:** Stammdaten (Name, Geburtsdatum, Geburtsort/-land,
 Staatsangehörigkeit, Familienstand, Anschrift, Kontakt); Beschäftigungsdaten
 (Eintritt, Modell, Stunden, Verdienst, weitere Beschäftigungen, Status,
-Sozialleistungsbezug); Sozialversicherungs- und Steuerdaten
+Sozialleistungsbezug, Bestätigung des Arbeitsvertrags mit Zeitpunkt und
+Fassung); Sozialversicherungs- und Steuerdaten
 (RV-Nummer, Krankenkasse, Steuer-ID, Steuerklasse, Kinderfreibetrag,
 Konfession); Ausweis- und Nachweisdokumente; Notfallkontakt.
 
