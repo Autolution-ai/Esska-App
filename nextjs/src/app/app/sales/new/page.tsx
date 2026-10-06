@@ -497,20 +497,36 @@ export default function SalesEntryPage() {
                 {/* Bereits gemeldete Eintraege des Tages */}
                 {aktuelleEintraege.length > 0 && (
                     <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-sm space-y-3">
-                        <p className="font-medium text-amber-900">
-                            Für diesen Tag wurde bereits gemeldet:
-                        </p>
-                        <ul className="list-disc pl-5 text-amber-900 text-xs space-y-0.5">
-                            {aktuelleEintraege.map((e) => (
-                                <li key={e.id}>
-                                    {e.umsatz_start && e.umsatz_ende
-                                        ? `${zeitKurz(e.umsatz_start)}–${zeitKurz(e.umsatz_ende)} Uhr`
-                                        : "ohne Zeitfenster"}
-                                    {" · Einnahmen "}
-                                    {e.einnahmen_cent !== null ? `${centToEuro(e.einnahmen_cent)} €` : "—"}
-                                </li>
-                            ))}
-                        </ul>
+                        {/* Mitarbeiter sehen keine Betraege anderer Meldungen - nur den
+                            Hinweis, das Datum zu pruefen. Leitung sieht die Einzelheiten. */}
+                        {istAdmin ? (
+                            <>
+                                <p className="font-medium text-amber-900">
+                                    Für diesen Tag wurde bereits gemeldet:
+                                </p>
+                                <ul className="list-disc pl-5 text-amber-900 text-xs space-y-0.5">
+                                    {aktuelleEintraege.map((e) => (
+                                        <li key={e.id}>
+                                            {e.umsatz_start && e.umsatz_ende
+                                                ? `${zeitKurz(e.umsatz_start)}–${zeitKurz(e.umsatz_ende)} Uhr`
+                                                : "ohne Zeitfenster"}
+                                            {" · Einnahmen "}
+                                            {e.einnahmen_cent !== null ? `${centToEuro(e.einnahmen_cent)} €` : "—"}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </>
+                        ) : (
+                            <p className="text-amber-900">
+                                <span className="font-medium">
+                                    Für diesen Tag wurde bereits Umsatz gemeldet. Bitte prüfe, ob das Datum stimmt.
+                                </span>
+                                <span className="block italic text-xs mt-0.5">
+                                    Sales have already been reported for this day. Please check that the date is
+                                    correct.
+                                </span>
+                            </p>
+                        )}
                         <div className="space-y-1 text-amber-900">
                             <label className="flex items-start gap-2 cursor-pointer">
                                 <input
@@ -533,7 +549,7 @@ export default function SalesEntryPage() {
                                     className="mt-0.5 flex-shrink-0"
                                 />
                                 <span>
-                                    <strong>Korrektur</strong> eines der Einträge oben (Fehler passiert)
+                                    <strong>Korrektur</strong> {istAdmin ? "eines der Einträge oben" : "einer bereits gespeicherten Meldung"} (Fehler passiert)
                                 </span>
                             </label>
                         </div>
@@ -550,8 +566,9 @@ export default function SalesEntryPage() {
                                             {e.umsatz_start && e.umsatz_ende
                                                 ? `${zeitKurz(e.umsatz_start)}–${zeitKurz(e.umsatz_ende)} Uhr`
                                                 : "Eintrag ohne Zeitfenster"}
-                                            {" · Einnahmen "}
-                                            {e.einnahmen_cent !== null ? `${centToEuro(e.einnahmen_cent)} €` : "—"}
+                                            {istAdmin
+                                                ? ` · Einnahmen ${e.einnahmen_cent !== null ? `${centToEuro(e.einnahmen_cent)} €` : "—"}`
+                                                : ""}
                                         </option>
                                     ))}
                                 </select>
