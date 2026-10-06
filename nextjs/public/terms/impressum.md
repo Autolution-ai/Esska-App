@@ -9,7 +9,7 @@ Dornblüthstraße 22
 01277 Dresden
 Deutschland
 
-Inhaber: Jannis Alekhanov
+Inhaber: J. Alekhanov
 
 ## Kontakt
 
@@ -46,4 +46,4 @@ Umständen zu forschen, die auf eine rechtswidrige Tätigkeit hinweisen.
 
 ---
 
-*Stand: 3. Oktober 2026*
+*Stand: 6. Oktober 2026*

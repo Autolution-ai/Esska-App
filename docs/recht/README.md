@@ -3,7 +3,8 @@
 ## Stand der Platzhalter (12.09.2026)
 
 **Eingesetzt** (Antworten von Jannis, siehe `FRAGEBOGEN-Jannis.md`):
-Firmierung `Esska Collection`, Inhaber `Jannis Alekhanov`,
+Firmierung `Esska Collection`, Inhaber `J. Alekhanov` (auf ausdruecklichen
+Wunsch abgekuerzt, auch im Impressum - siehe Hinweis unten),
 Anschrift `Dornbluethstrasse 22, 01277 Dresden`, Telefon `+49 1512 2544117`,
 E-Mail `esska.app@gmail.com` (zugleich Datenschutz-Kontakt),
 Aufsichtsbehoerde Sachsen, Mailanbieter Google Ireland,
@@ -23,6 +24,16 @@ Loeschfristen fuer Lohn und Kasse (gesetzlich 10 Jahre), Stand-Datum.
 
 Ausserdem offen, ohne Platzhalter: Handelsregister (Frage 7), Logo (16),
 Sortiment (21-23) und der Name des Lohnbueros.
+
+## Entscheidungen des Inhabers gegen die Empfehlung
+
+- **Impressum mit abgekuerztem Vornamen** ("J. Alekhanov", Oktober 2026).
+  Paragraf 5 DDG verlangt bei natuerlichen Personen nach ueberwiegender
+  Auffassung den vollstaendigen Namen; ein abgekuerzter Vorname ist ein
+  typischer Abmahngrund. Auf Hinweis hin ausdruecklich so entschieden.
+- **Steuerberater in der Beschaeftigten-Information nur als Kategorie**
+  ("Unser Steuerberatungsbuero"). Das ist nach Art. 13 Abs. 1 lit. e DSGVO
+  zulaessig. Im internen Verarbeitungsverzeichnis bleibt der Name stehen.
 
 ## Abweichungen von den Wuenschen des Inhabers (Frage 11)
 

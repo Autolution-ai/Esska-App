@@ -71,7 +71,7 @@ gesetzlich erforderlichen hinausgehen.
 - **Andere Mitarbeiter** sehen deine Personaldaten nicht.
 
 **Außerhalb des Unternehmens:**
-- **CSB Steuerberatung, Burkhard Schmeinck** – Buchhaltung und Lohnabrechnung
+- **Unser Steuerberatungsbüro** – Buchhaltung und Lohnabrechnung
 - **Das Lohnbüro**, das die Abrechnung erstellt
 - **Das zuständige Jobcenter**, soweit dies im Einzelfall gesetzlich
   vorgeschrieben ist
@@ -133,4 +133,4 @@ Zuordnungen vor, die Entscheidung trifft aber immer ein Mensch.
 
 ---
 
-*Stand: 3. Oktober 2026 · Bei Änderungen informieren wir dich rechtzeitig.*
+*Stand: 6. Oktober 2026 · Bei Änderungen informieren wir dich rechtzeitig.*
