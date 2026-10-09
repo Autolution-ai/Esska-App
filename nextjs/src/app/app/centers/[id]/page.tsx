@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import StundenAuswahl from "@/components/esska/StundenAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaCenter,
@@ -509,23 +510,21 @@ export default function CenterDetailPage() {
                                 </div>
                                 <div>
                                     <label htmlFor="so-von" className="block text-xs text-gray-500 mb-1">Von (optional)</label>
-                                    <input
+                                    <StundenAuswahl
                                         id="so-von"
-                                        type="time"
-                                        step={900}
                                         value={soVon}
-                                        onChange={(e) => setSoVon(e.target.value)}
+                                        onChange={setSoVon}
+                                        leerText="Standard"
                                         className="border rounded-md px-3 py-2 text-sm"
                                     />
                                 </div>
                                 <div>
                                     <label htmlFor="so-bis" className="block text-xs text-gray-500 mb-1">Bis (optional)</label>
-                                    <input
+                                    <StundenAuswahl
                                         id="so-bis"
-                                        type="time"
-                                        step={900}
                                         value={soBis}
-                                        onChange={(e) => setSoBis(e.target.value)}
+                                        onChange={setSoBis}
+                                        leerText="Standard"
                                         className="border rounded-md px-3 py-2 text-sm"
                                     />
                                 </div>

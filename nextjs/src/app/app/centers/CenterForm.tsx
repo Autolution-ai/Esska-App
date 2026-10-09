@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaCenterKategorie, EsskaCenterOpeningHour, EsskaCenterZeitraum, EsskaProfile } from "@/lib/esska/types";
+import StundenAuswahl from "@/components/esska/StundenAuswahl";
 import { WOCHENTAG_LABELS, berechneCenterStatus, centToEuro, euroToCent } from "@/lib/esska/types";
 
 type FormState = {
@@ -460,28 +461,22 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                             </label>
                             {o.geoeffnet ? (
                                 <div className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="time"
-                                        step={900}
+                                    <StundenAuswahl
                                         value={o.oeffnet}
-                                        onChange={(e) =>
+                                        onChange={(w) =>
                                             setOeffnung((prev) =>
-                                                prev.map((x, j) => (j === i ? { ...x, oeffnet: e.target.value } : x))
+                                                prev.map((x, j) => (j === i ? { ...x, oeffnet: w } : x))
                                             )
                                         }
-                                        className="border rounded px-2 py-1 text-sm"
                                     />
                                     <span>–</span>
-                                    <input
-                                        type="time"
-                                        step={900}
+                                    <StundenAuswahl
                                         value={o.schliesst}
-                                        onChange={(e) =>
+                                        onChange={(w) =>
                                             setOeffnung((prev) =>
-                                                prev.map((x, j) => (j === i ? { ...x, schliesst: e.target.value } : x))
+                                                prev.map((x, j) => (j === i ? { ...x, schliesst: w } : x))
                                             )
                                         }
-                                        className="border rounded px-2 py-1 text-sm"
                                     />
                                     {!o.oeffnet && !o.schliesst && (
                                         <span className="text-xs text-gray-400">Standardzeiten</span>
