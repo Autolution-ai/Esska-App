@@ -39,17 +39,25 @@ const adminNavigation: NavItem[] = [
     { name: 'Einstellungen', href: '/app/user-settings', icon: User },
 ];
 
-// R-2: Regionalmanager arbeiten wie ein Admin, sehen durch die
-// Datenbank-Zugriffsregeln aber nur ihre eigenen Center samt Mitarbeitern,
-// Plaenen und Umsaetzen.
+// Regionalmanager (Vorgabe Oktober 2026), jeweils nur fuer die Center, an
+// denen sie als Regionalmanager eingetragen sind: Schichtplan inkl.
+// Verfuegbarkeiten, Mitarbeiteruebersicht, Ware bestellen und Umsatz
+// selbst melden (wenn sie eine Schicht uebernehmen). KEINE Umsatzuebersicht,
+// keine Center-Pflege.
 const regionalmanagerNavigation: NavItem[] = [
     { name: 'Übersicht', href: '/app', icon: Home },
-    { name: 'Center', href: '/app/centers', icon: Store },
-    { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
     { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
-    { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
+    { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
+    { name: 'Umsatz melden', href: '/app/sales/new', icon: TrendingUp },
     { name: 'Ware bestellen', href: '/app/orders', icon: ShoppingCart },
     { name: 'Einstellungen', href: '/app/user-settings', icon: User },
+];
+
+const schnellzugriffRegional: NavItem[] = [
+    { name: 'Start', href: '/app', icon: Home },
+    { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
+    { name: 'Team', href: '/app/employees', icon: Users },
+    { name: 'Umsatz', href: '/app/sales/new', icon: TrendingUp },
 ];
 
 // Untere Schnellzugriff-Leiste auf dem Handy (max. 4 Eintraege, damit die
@@ -125,7 +133,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         ? []
         : role === 'mitarbeiter'
             ? schnellzugriffMitarbeiter
-            : schnellzugriffLeitung;
+            : role === 'regionalmanager'
+                ? schnellzugriffRegional
+                : schnellzugriffLeitung;
 
     const toggleSidebar = () => setSidebarOpen(!isSidebarOpen);
 

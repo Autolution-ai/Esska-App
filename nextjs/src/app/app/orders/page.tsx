@@ -46,22 +46,29 @@ export default function OrdersPage() {
 
     const ladeBestellungen = async () => {
         const client = await getEsskaClient();
-        const { data } = await client
-            .from("bestellungen")
-            .select("*, bestellung_positionen(*, bestell_artikel(*)), centers(*), profiles(id, vorname, nachname, email)")
-            .order("erstellt_am", { ascending: false })
-            .limit(50);
+        // Besteller-Namen ueber planungsprofile(): Regionalmanager duerfen die
+        // Profiltabelle nicht direkt lesen.
+        const [{ data }, { data: ppData }] = await Promise.all([
+            client
+                .from("bestellungen")
+                .select("*, bestellung_positionen(*, bestell_artikel(*)), centers(*)")
+                .order("erstellt_am", { ascending: false })
+                .limit(50),
+            client.rpc("planungsprofile"),
+        ]);
+        const personen = new Map(
+            ((ppData as NonNullable<BestellungMitDetails["besteller"]>[]) ?? []).map((p) => [p.id, p])
+        );
         const rows = (((data as unknown) as Array<
             EsskaBestellung & {
                 bestellung_positionen: (EsskaBestellungPosition & { bestell_artikel: EsskaBestellArtikel | null })[];
                 centers: EsskaCenter | null;
-                profiles: BestellungMitDetails["besteller"];
             }
         >) ?? []).map((b) => ({
             ...b,
             positionen: (b.bestellung_positionen ?? []).map((p) => ({ ...p, artikel: p.bestell_artikel })),
             center: b.centers,
-            besteller: b.profiles,
+            besteller: personen.get(b.besteller_id) ?? null,
         }));
         setBestellungen(rows);
     };

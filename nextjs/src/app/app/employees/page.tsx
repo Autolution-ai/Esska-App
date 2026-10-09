@@ -58,13 +58,14 @@ export default function EmployeesPage() {
                 const bis = isoDatum(addTage(wochenStarts[2], 6));
                 // Regionalmanager sehen die reduzierte Sicht ohne Steuer-ID,
                 // Rentenversicherungsnummer, Geburtsdatum, Adresse und
-                // Verdienst - fuer die Einsatzplanung sind die nicht noetig.
-                const quelle = role === "admin" ? "profiles" : "profiles_planung";
+                // Verdienst - und nur die Mitarbeiter ihrer Center. Die
+                // Datenbank liefert ihnen die Profiltabelle nicht mehr direkt.
+                const profilAbfrage =
+                    role === "admin"
+                        ? client.from("profiles").select("*").order("nachname", { ascending: true, nullsFirst: false })
+                        : client.rpc("planungsprofile").order("nachname", { ascending: true, nullsFirst: false });
                 const [pRes, cRes, aRes, vRes] = await Promise.all([
-                    client
-                        .from(quelle)
-                        .select("*")
-                        .order("nachname", { ascending: true, nullsFirst: false }),
+                    profilAbfrage,
                     client.from("centers").select("*").order("saison", { ascending: false }).order("name"),
                     client.from("center_assignments").select("center_id, profile_id"),
                     client

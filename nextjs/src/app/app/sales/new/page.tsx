@@ -76,7 +76,9 @@ export default function SalesEntryPage() {
 
                 const { data: profile } = await client.from("profiles").select("role").eq("id", user.id).single();
                 const rolle = (profile as { role?: string } | null)?.role;
-                setIstAdmin(rolle === "admin" || rolle === "regionalmanager");
+                // Betraege anderer Meldungen sieht nur der Admin. Regionalmanager
+                // melden wie Mitarbeiter (Vorgabe Oktober 2026: keine Umsatzeinsicht).
+                setIstAdmin(rolle === "admin");
 
                 // RLS liefert jedem seine Center (U-1: bei Mitarbeitern damit
                 // automatisch vorausgewaehlt)

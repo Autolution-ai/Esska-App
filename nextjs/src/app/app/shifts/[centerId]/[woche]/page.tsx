@@ -113,14 +113,12 @@ export default function WocheEditorPage() {
             const von = isoDatum(wochenStart);
             const bis = isoDatum(addTage(wochenStart, 6));
 
-            const [cRes, aRes, oRes, soRes] = await Promise.all([
+            // Profile kommen ueber planungsprofile(): Regionalmanager duerfen
+            // die Profiltabelle nicht mehr direkt lesen (Steuer-ID etc.).
+            const [cRes, aRes, ppRes, oRes, soRes] = await Promise.all([
                 client.from("centers").select("*").eq("id", params.centerId).single(),
-                client
-                    .from("center_assignments")
-                    .select(
-                        "rolle_im_center, profiles(id, vorname, nachname, email, arbeitszeit_modell, stunden_pro_woche, max_schichten_pro_woche)"
-                    )
-                    .eq("center_id", params.centerId),
+                client.from("center_assignments").select("profile_id").eq("center_id", params.centerId),
+                client.rpc("planungsprofile"),
                 client.from("center_opening_hours").select("*").eq("center_id", params.centerId),
                 client
                     .from("center_sonderoeffnungen")
@@ -134,8 +132,9 @@ export default function WocheEditorPage() {
             setSonder((soRes.data as EsskaSonderoeffnung[]) ?? []);
             if (aRes.error) throw aRes.error;
             setCenter(cRes.data as EsskaCenter);
-            const peeps = ((aRes.data as unknown) as Array<{ profiles: AssignedProfile | null }> ?? [])
-                .flatMap((r) => (r.profiles ? [r.profiles] : []));
+            if (ppRes.error) throw ppRes.error;
+            const zugeordnet = new Set(((aRes.data as Array<{ profile_id: string }>) ?? []).map((r) => r.profile_id));
+            const peeps = ((ppRes.data as AssignedProfile[]) ?? []).filter((p) => zugeordnet.has(p.id));
             setPeople(peeps);
 
             const { data: wkData, error: wkErr } = await client
@@ -446,10 +445,16 @@ export default function WocheEditorPage() {
                     {people.length === 0 ? (
                         <div className="p-3 bg-amber-50 text-amber-800 rounded-md text-sm">
                             Diesem Center sind noch keine Mitarbeiter zugeordnet.{" "}
-                            <Link href={`/app/centers/${center.id}`} className="underline">
-                                Center öffnen
-                            </Link>{" "}
-                            und Mitarbeiter über die Mitarbeiterliste zuordnen.
+                            {rolle === "admin" ? (
+                                <>
+                                    <Link href={`/app/centers/${center.id}`} className="underline">
+                                        Center öffnen
+                                    </Link>{" "}
+                                    und Mitarbeiter über die Mitarbeiterliste zuordnen.
+                                </>
+                            ) : (
+                                "Die Zuordnung nimmt die Verwaltung vor."
+                            )}
                         </div>
                     ) : (
                         <div className="overflow-x-auto bg-white border rounded-lg">

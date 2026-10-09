@@ -18,7 +18,13 @@ const adminKacheln: Kachel[] = [
     { href: '/app/orders', icon: ShoppingCart, title: 'Bestellungen', text: 'Warenbestellungen der Center' },
 ];
 
-const managerKacheln: Kachel[] = adminKacheln.filter((k) => k.href !== '/app/sales/cards');
+// Regionalmanager: nur Planung, Team, eigene Umsatzmeldung und Bestellungen
+const managerKacheln: Kachel[] = [
+    { href: '/app/shifts', icon: CalendarDays, title: 'Schichtplan', text: 'Wochenpläne deiner Center erstellen' },
+    { href: '/app/employees', icon: Users, title: 'Mitarbeiter', text: 'Team und Verfügbarkeiten deiner Center' },
+    { href: '/app/sales/new', icon: TrendingUp, title: 'Umsatz melden', text: 'Wenn du selbst eine Schicht übernimmst' },
+    { href: '/app/orders', icon: ShoppingCart, title: 'Ware bestellen', text: 'Nachschub für deine Center' },
+];
 
 const mitarbeiterKacheln: Kachel[] = [
     { href: '/app/availability', icon: CalendarDays, title: 'Verfügbarkeit', text: 'Wann kannst du arbeiten?' },

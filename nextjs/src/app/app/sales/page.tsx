@@ -298,13 +298,13 @@ export default function SalesAdminPage() {
         return parseIsoDatum(datum).toLocaleDateString("de-DE");
     })();
 
-    // Mitarbeiter sollen keine Umsaetze anderer Schichten oder Tage sehen.
-    // Der Menuepunkt ist fuer sie ausgeblendet; das hier sperrt auch den
-    // direkten Aufruf der Adresse.
-    if (role === "mitarbeiter") {
+    // Die Umsatzuebersicht ist dem Admin vorbehalten - Mitarbeiter und
+    // Regionalmanager melden nur (Vorgabe Oktober 2026). Der Menuepunkt ist
+    // fuer sie ausgeblendet; das hier sperrt auch den direkten Aufruf.
+    if (role !== null && role !== "admin") {
         return (
             <div className="p-6 text-sm text-gray-600 space-y-2">
-                <p>Die Umsatzübersicht ist der Leitung vorbehalten.</p>
+                <p>Die Umsatzübersicht ist der Verwaltung vorbehalten.</p>
                 <Link href="/app/sales/new" className="text-primary-600 hover:underline">
                     Zu &bdquo;Umsatz melden&ldquo;
                 </Link>
