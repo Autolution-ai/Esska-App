@@ -249,7 +249,7 @@ export default function SalesEntryPage() {
         }
         if (!zeitVon || !zeitBis) {
             zeigeFehler(
-                "Bitte das Zeitfenster angeben: von wann bis wann warst du an der Kasse? (Feld weiter oben)",
+                "Bitte das Zeitfenster angeben (Feld weiter oben).",
                 "zeit"
             );
             return;
@@ -387,19 +387,19 @@ export default function SalesEntryPage() {
             <div>
                 <h1 className="text-2xl font-bold">Umsatz melden</h1>
                 <p className="text-gray-600 text-sm mt-1">
-                    Trage den Bargeldbestand deiner Schicht ein. Pro Schicht (Zeitfenster) ein Eintrag.
+                    Trage den Bargeldbestand ein. Pro Schicht (Zeitfenster) ein Eintrag.
                 </p>
             </div>
 
             <div className="flex items-start gap-2 p-3 bg-secondary-50 border border-secondary-200 rounded-md text-xs text-gray-700">
                 <Lock className="h-4 w-4 mt-0.5 shrink-0 text-secondary-600" />
                 <div>
-                    Gespeicherte Einträge sind aus steuerlichen Gründen <strong>unveränderbar</strong>.
+                    Gespeicherte Einträge sind <strong>unveränderbar</strong>.
                     Bitte vor dem Speichern prüfen. Eine Korrektur ist möglich, wird aber als
                     zusätzlicher Eintrag mit Begründung festgehalten.
                     <br />
                     <span className="italic">
-                        Saved entries are <strong>final</strong> for tax reasons. Please check before
+                        Saved entries are <strong>final</strong>. Please check before
                         saving. Corrections are possible but recorded as an additional entry with a reason.
                     </span>
                 </div>
@@ -460,17 +460,8 @@ export default function SalesEntryPage() {
                 {/* U-9: Zeitfenster */}
                 <div>
                     <label className="block text-sm font-medium mb-1">
-                        Zeitfenster deiner Schicht <span className="text-red-600">*</span>
+                        Zeitfenster <span className="text-red-600">*</span>
                     </label>
-                    <p className="text-xs text-gray-500 mb-1.5">
-                        Von wann bis wann warst du an der Kasse? Wichtig, wenn an einem Tag mehrere
-                        Personen melden – oder eine Person den ganzen Tag übernommen hat.
-                        <br />
-                        <span className="italic">
-                            From when to when were you at the register? Important when several people
-                            report on the same day – or one person covered the whole day.
-                        </span>
-                    </p>
                     <div className="flex items-center gap-2">
                         <select
                             value={zeitVon}
@@ -590,11 +581,11 @@ export default function SalesEntryPage() {
                     <h2 className="text-base font-semibold">Bargeld / Cash</h2>
                     <p className="text-xs text-gray-600 mt-1 mb-4">
                         Hier geht es <strong>ausschließlich um Bargeld</strong>. Kartenzahlungen werden
-                        separat erfasst – nicht von dir.
+                        separat erfasst.
                         <br />
                         <span className="italic">
                             This section is about <strong>cash only</strong>. Card payments are recorded
-                            separately – not by you.
+                            separately.
                         </span>
                     </p>
 
@@ -649,13 +640,9 @@ export default function SalesEntryPage() {
                                 2. Endbestand (€) <span className="text-red-600">*</span>
                             </label>
                             <p className="text-xs text-gray-500 mb-1.5">
-                                Zähle am Ende deiner Schicht wieder das gesamte Bargeld – bevor etwas
-                                entnommen wird. Nichts abziehen.
+                                Gesamtes Bargeld, nichts abziehen.
                                 <br />
-                                <span className="italic">
-                                    Count all cash again at the end of your shift – before anything is
-                                    removed. Do not subtract anything.
-                                </span>
+                                <span className="italic">Total cash, do not subtract anything.</span>
                             </p>
                             <input
                                 value={endbestand}
@@ -733,13 +720,11 @@ export default function SalesEntryPage() {
                             </p>
                             <p className="text-xs text-gray-600 mt-1">
                                 Endbestand − Startbestand{ausgaben ? " + Ausgaben" : ""}
-                                {einlagen ? " − Einlagen" : ""}. Bitte prüfen, ob das zu deinem
-                                Verkaufstag passt.
+                                {einlagen ? " − Einlagen" : ""}.
                                 <br />
                                 <span className="italic">
                                     End balance − start balance{ausgaben ? " + expenses" : ""}
-                                    {einlagen ? " − cash added" : ""}. Please check that this matches
-                                    your sales day.
+                                    {einlagen ? " − cash added" : ""}.
                                 </span>
                             </p>
                             <label className={`flex items-start gap-2 mt-2 cursor-pointer text-sm rounded p-1 ${fehlerFeld === "bestaetigung" ? "bg-red-50 ring-1 ring-red-400" : ""}`}>
