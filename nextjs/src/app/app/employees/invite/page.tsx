@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { useGlobal } from "@/lib/context/GlobalContext";
 import type { EsskaCenter } from "@/lib/esska/types";
 import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
 
@@ -15,6 +16,10 @@ export default function InvitePage() {
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
     const [centerId, setCenterId] = useState("");
     const [rueckkehrer, setRueckkehrer] = useState(false);
+    const { role, user } = useGlobal();
+    // Regionalmanager: nur eigene Center, Zuordnung ist Pflicht
+    const istRegional = role === "regionalmanager";
+    const [mailAn, setMailAn] = useState<string | null>(null);
 
     useEffect(() => {
         const load = async () => {
@@ -25,22 +30,28 @@ export default function InvitePage() {
                     .select("*")
                     .in("status", ["aktiv", "geplant", "in_absprache"])
                     .order("name");
-                setCenters((data as EsskaCenter[]) ?? []);
+                const alle = (data as EsskaCenter[]) ?? [];
+                setCenters(istRegional ? alle.filter((c) => c.manager_id === user?.id) : alle);
             } catch {
                 // Dropdown bleibt leer - Einladen funktioniert trotzdem
             }
         };
         load();
-    }, []);
+    }, [istRegional, user?.id]);
     const [sending, setSending] = useState(false);
     const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
     const [zugang, setZugang] = useState<Zugang | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (istRegional && !centerId) {
+            setResult({ ok: false, message: "Bitte ein Center auswählen." });
+            return;
+        }
         setSending(true);
         setResult(null);
         setZugang(null);
+        setMailAn(null);
         try {
             const res = await fetch("/api/employees/invite", {
                 method: "POST",
@@ -53,6 +64,7 @@ export default function InvitePage() {
             } else {
                 // Hinweis nur zeigen, wenn etwas schiefging (z. B. Center-Zuordnung)
                 setResult(data.hinweis ? { ok: false, message: data.hinweis } : null);
+                setMailAn(data.mail_verschickt ? (data.zugang?.email ?? null) : null);
                 if (data.zugang) setZugang(data.zugang as Zugang);
                 setEmail("");
                 setRueckkehrer(false);
@@ -71,9 +83,9 @@ export default function InvitePage() {
             </Link>
             <h1 className="text-2xl font-bold">Mitarbeiter anlegen</h1>
             <p className="text-gray-600 text-sm">
-                Der Zugang wird sofort angelegt – es wird keine E-Mail verschickt. Danach erscheinen die
-                Zugangsdaten zum Kopieren; schick sie dem Mitarbeiter z. B. per WhatsApp. Nach dem ersten Login
-                durchläuft er das Onboarding (Stammdaten, ggf. KuBe-Bogen, Ausweis hochladen).
+                Der Zugang wird sofort angelegt, und die Person bekommt ihre Zugangsdaten per E-Mail.
+                Zusätzlich erscheinen sie hier zum Kopieren, z. B. für WhatsApp. Nach dem ersten Login
+                durchläuft sie das Onboarding (Stammdaten, ggf. KuBe-Bogen, Ausweis hochladen).
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-4 bg-white border rounded-lg p-4">
@@ -93,14 +105,14 @@ export default function InvitePage() {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Center zuordnen (optional)
+                        {istRegional ? "Center" : "Center zuordnen (optional)"}
                     </label>
                     <select
                         value={centerId}
                         onChange={(e) => setCenterId(e.target.value)}
                         className="w-full border rounded-md px-3 py-2 text-sm"
                     >
-                        <option value="">– später zuordnen –</option>
+                        <option value="">{istRegional ? "– bitte wählen –" : "– später zuordnen –"}</option>
                         {centers.map((c) => (
                             <option key={c.id} value={c.id}>
                                 {c.name} ({c.kuerzel}) · {c.stadt} · {c.saison}
@@ -108,7 +120,9 @@ export default function InvitePage() {
                         ))}
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                        Kann jederzeit über die Mitarbeiter-Detailseite geändert oder ergänzt werden.
+                        {istRegional
+                            ? "Du kannst Mitarbeiter nur für deine eigenen Center anlegen."
+                            : "Kann jederzeit über die Mitarbeiter-Detailseite geändert oder ergänzt werden."}
                     </p>
                 </div>
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
@@ -127,7 +141,21 @@ export default function InvitePage() {
                         </span>
                     </span>
                 </label>
-                {zugang && <Zugangsdaten zugang={zugang} titel="Zugang angelegt – diesen Text an den Mitarbeiter schicken:" />}
+                {mailAn && (
+                    <div className="p-3 rounded-md text-sm bg-green-50 text-green-700">
+                        Zugang angelegt. Die Zugangsdaten wurden per E-Mail an {mailAn} geschickt.
+                    </div>
+                )}
+                {zugang && (
+                    <Zugangsdaten
+                        zugang={zugang}
+                        titel={
+                            mailAn
+                                ? "Falls die Mail nicht ankommt (Spam-Ordner?), diesen Text weiterleiten:"
+                                : "Zugang angelegt – diesen Text an den Mitarbeiter schicken:"
+                        }
+                    />
+                )}
                 {result && (
                     <div
                         className={`p-3 rounded-md text-sm ${

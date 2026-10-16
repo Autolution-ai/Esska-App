@@ -12,14 +12,17 @@ export default function NurAdmin({
     children,
     hinweis,
     zurueck,
+    rollen = ["admin"],
 }: {
     children: React.ReactNode;
     hinweis: string;
     zurueck: { href: string; text: string };
+    /** Wer die Seite sehen darf; Standard: nur Admins. */
+    rollen?: string[];
 }) {
     const { role, loading } = useGlobal();
     if (loading || role === null) return null;
-    if (role !== "admin") {
+    if (!rollen.includes(role)) {
         return (
             <div className="p-6 text-sm text-gray-600 space-y-2">
                 <p>{hinweis}</p>

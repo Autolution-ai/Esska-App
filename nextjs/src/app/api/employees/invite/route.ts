@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { STARTPASSWORT_FEHLT, origin, requireAdmin, startpasswort } from "@/lib/esska/server";
+import { STARTPASSWORT_FEHLT, origin, requireAdminOderRegional, startpasswort } from "@/lib/esska/server";
+import { sendeMail, smtpKonfiguriert } from "@/lib/esska/mail";
+import { zugangsMailBetreff, zugangsMailHtml, zugangsMailText } from "@/lib/esska/zugangsmail";
 import { createServerAdminClient } from "@/lib/supabase/serverAdminClient";
 
 export async function POST(request: Request) {
     try {
-        const guard = await requireAdmin();
+        const guard = await requireAdminOderRegional();
         if (guard instanceof NextResponse) return guard;
-        const { adminClient } = guard;
+        const { adminClient, userId, rolle } = guard;
 
         const body = await request.json();
         const email: string | undefined = body?.email;
@@ -18,6 +20,29 @@ export async function POST(request: Request) {
         const rueckkehrer = body?.rueckkehrer === true;
         if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
             return NextResponse.json({ error: "Ungültige E-Mail-Adresse." }, { status: 400 });
+        }
+
+        const db = (await createServerAdminClient()) as unknown as SupabaseClient;
+
+        // Regionalmanager legen nur fuer ihre eigenen Center an - die
+        // Zuordnung ist fuer sie Pflicht, sonst laege die Person ausserhalb
+        // ihres Bereichs und sie koennten sie danach nicht mehr sehen.
+        if (rolle === "regionalmanager") {
+            if (!centerId) {
+                return NextResponse.json({ error: "Bitte ein Center auswählen." }, { status: 400 });
+            }
+            const { data: c } = await db
+                .from("centers")
+                .select("id")
+                .eq("id", centerId)
+                .eq("manager_id", userId)
+                .maybeSingle();
+            if (!c) {
+                return NextResponse.json(
+                    { error: "Du kannst nur Mitarbeiter für Center anlegen, bei denen du als Regionalmanager eingetragen bist." },
+                    { status: 403 }
+                );
+            }
         }
 
         // Kein Einladungslink mehr (Vorgabe Oktober 2026): Das Konto wird
@@ -44,7 +69,6 @@ export async function POST(request: Request) {
         // Profil) existiert. Ein Fehler hier soll die Einladung nicht
         // zuruecknehmen - er wird der Antwort als Hinweis mitgegeben.
         let zuordnungHinweis: string | null = null;
-        const db = (await createServerAdminClient()) as unknown as SupabaseClient;
         if (rueckkehrer && data.user?.id) {
             const { error: rErr } = await db
                 .from("profiles")
@@ -63,12 +87,37 @@ export async function POST(request: Request) {
             }
         }
 
-        // Zugangsdaten fuer die Weitergabe (nur an Admins, s. requireAdmin)
+        // Zugangsdaten per E-Mail an die neue Person. Scheitert der Versand,
+        // bleibt das Konto bestehen - die Daten werden dann zum Kopieren
+        // angezeigt (z. B. fuer WhatsApp).
+        const zugang = { url: origin(request), email, passwort };
+        let mailVerschickt = false;
+        let mailHinweis: string | null = null;
+        if (smtpKonfiguriert()) {
+            try {
+                await sendeMail({
+                    an: email,
+                    betreff: zugangsMailBetreff(),
+                    text: zugangsMailText(zugang),
+                    html: zugangsMailHtml(zugang),
+                });
+                mailVerschickt = true;
+            } catch (mErr) {
+                mailHinweis = `Die E-Mail mit den Zugangsdaten konnte nicht verschickt werden (${
+                    mErr instanceof Error ? mErr.message : "unbekannter Fehler"
+                }). Bitte die Daten unten selbst weitergeben.`;
+            }
+        } else {
+            mailHinweis = "E-Mail-Versand ist nicht eingerichtet – bitte die Zugangsdaten unten selbst weitergeben.";
+        }
+
+        // Zugangsdaten fuer die Weitergabe (nur an Admins/Regionalmanager)
         return NextResponse.json({
             ok: true,
             user_id: data.user?.id ?? null,
-            hinweis: zuordnungHinweis,
-            zugang: { url: origin(request), email, passwort },
+            hinweis: [zuordnungHinweis, mailHinweis].filter(Boolean).join(" ") || null,
+            mail_verschickt: mailVerschickt,
+            zugang,
         });
     } catch (err) {
         const message = err instanceof Error ? err.message : "Einladung fehlgeschlagen";

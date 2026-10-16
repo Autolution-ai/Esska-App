@@ -68,6 +68,32 @@ export async function requireAdmin(): Promise<NextResponse | { adminClient: Admi
     return { adminClient: admin as unknown as AdminAuthClient, userId: user.id };
 }
 
+/** Wie requireAdmin, laesst aber auch Regionalmanager durch. Welche
+ *  Center ein Regionalmanager betreffen darf, prueft die jeweilige Route. */
+export async function requireAdminOderRegional(): Promise<
+    NextResponse | { adminClient: AdminAuthClient; userId: string; rolle: "admin" | "regionalmanager" }
+> {
+    const userClient = await createSSRClient();
+    const { data: { user } } = await userClient.auth.getUser();
+    if (!user) {
+        return NextResponse.json({ error: "Nicht angemeldet" }, { status: 401 });
+    }
+    const { data: profile, error } = await (userClient as unknown as ProfileLookup)
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+    if (error) {
+        return NextResponse.json({ error: "Profil nicht gefunden" }, { status: 403 });
+    }
+    const rolle = profile?.role;
+    if (rolle !== "admin" && rolle !== "regionalmanager") {
+        return NextResponse.json({ error: "Diese Aktion ist nur für Admins und Regionalmanager erlaubt." }, { status: 403 });
+    }
+    const admin = await createServerAdminClient();
+    return { adminClient: admin as unknown as AdminAuthClient, userId: user.id, rolle };
+}
+
 export function origin(request: Request): string {
     return (
         request.headers.get("origin") ??

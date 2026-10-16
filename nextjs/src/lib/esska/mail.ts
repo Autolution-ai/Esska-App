@@ -12,6 +12,8 @@ export async function sendeMail(optionen: {
     an: string;
     betreff: string;
     text: string;
+    /** Optionale HTML-Fassung; der Text bleibt fuer Mailprogramme ohne HTML. */
+    html?: string;
 }): Promise<void> {
     const smtpUser = process.env.SMTP_USER;
     const smtpPass = process.env.SMTP_PASS;
@@ -29,5 +31,6 @@ export async function sendeMail(optionen: {
         to: optionen.an,
         subject: optionen.betreff,
         text: optionen.text,
+        ...(optionen.html ? { html: optionen.html } : {}),
     });
 }

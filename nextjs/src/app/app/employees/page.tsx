@@ -217,7 +217,7 @@ export default function EmployeesPage() {
                     <h1 className="text-2xl font-bold">Mitarbeiter</h1>
                     <p className="text-gray-500">Eingeladene und registrierte Personen verwalten.</p>
                 </div>
-                {role === "admin" && (
+                {(role === "admin" || role === "regionalmanager") && (
                     <div className="flex gap-2 flex-wrap">
                         <Link
                             href="/app/employees/invite"
@@ -226,6 +226,7 @@ export default function EmployeesPage() {
                             <UserPlus className="h-4 w-4 mr-2" />
                             Mitarbeiter anlegen
                         </Link>
+                        {role === "admin" && (
                         <button
                             onClick={versandOeffnen}
                             disabled={auswahl.size === 0}
@@ -235,6 +236,7 @@ export default function EmployeesPage() {
                             <Send className="h-4 w-4 mr-2" />
                             Stammdaten an Buchhaltung senden ({auswahl.size})
                         </button>
+                        )}
                     </div>
                 )}
             </div>
