@@ -29,7 +29,6 @@ export default function SalesEntryPage() {
     const [centerId, setCenterId] = useState("");
     const [datum, setDatum] = useState(isoDatum(new Date()));
     const [istAdmin, setIstAdmin] = useState(false);
-    const [notiz, setNotiz] = useState("");
     // U-9: Zeitfenster der Schicht
     const [zeitVon, setZeitVon] = useState("");
     const [zeitBis, setZeitBis] = useState("");
@@ -280,7 +279,7 @@ export default function SalesEntryPage() {
             ["Endbestand", endbestand, "bestand"],
             ["Ausgaben", ausgaben, "bestand"],
             ["Einlagen", einlagen, "bestand"],
-            ["In den Tresor gelegt", abschoepfung, "bestand"],
+            ["Abschöpfung", abschoepfung, "bestand"],
         ];
         for (const [label, wert, feld] of betragsFelder) {
             if (wert.trim() && parseEuro(wert) === null) {
@@ -328,7 +327,6 @@ export default function SalesEntryPage() {
             const { error: insErr } = await client.from("daily_sales").insert({
                 center_id: centerId,
                 datum,
-                notiz: notiz.trim() || null,
                 umsatz_start: zeitVon,
                 umsatz_ende: zeitBis,
                 startbestand_cent: euroToCent(startbestand),
@@ -348,7 +346,6 @@ export default function SalesEntryPage() {
                     ? "Korrektur gespeichert. Der ursprüngliche Eintrag bleibt zur Nachvollziehbarkeit erhalten."
                     : "Eintrag gespeichert. Er kann nicht mehr verändert werden."
             );
-            setNotiz("");
             setZeitVon("");
             setZeitBis("");
             setStartbestand("");
@@ -719,12 +716,12 @@ export default function SalesEntryPage() {
                                 </span>
                             </p>
                             <p className="text-xs text-gray-600 mt-1">
-                                Endbestand − Startbestand{ausgaben ? " + Ausgaben" : ""}
-                                {einlagen ? " − Einlagen" : ""}.
+                                Endbestand Minus Startbestand{ausgaben ? " Plus Ausgaben" : ""}
+                                {einlagen ? " Minus Einlagen" : ""}.
                                 <br />
                                 <span className="italic">
-                                    End balance − start balance{ausgaben ? " + expenses" : ""}
-                                    {einlagen ? " − cash added" : ""}.
+                                    End balance minus start balance{ausgaben ? " plus expenses" : ""}
+                                    {einlagen ? " minus cash added" : ""}.
                                 </span>
                             </p>
                             <label className={`flex items-start gap-2 mt-2 cursor-pointer text-sm rounded p-1 ${fehlerFeld === "bestaetigung" ? "bg-red-50 ring-1 ring-red-400" : ""}`}>
@@ -744,17 +741,12 @@ export default function SalesEntryPage() {
                         {/* U-4: Abschoepfung verstaendlich */}
                         <div>
                             <label className="block text-sm font-medium mb-1">
-                                4. In den Tresor gelegt (€)
-                                <span className="font-normal text-gray-500"> – früher &bdquo;Abschöpfung&ldquo;</span>
+                                4. Abschöpfung (€)
                             </label>
                             <p className="text-xs text-gray-500 mb-1.5">
-                                Wie viel Bargeld hast du nach dem Zählen aus der Kasse genommen und in den
-                                Tresor gelegt? Falls nichts entnommen wurde, leer lassen.
+                                Falls nichts entnommen wurde, leer lassen.
                                 <br />
-                                <span className="italic">
-                                    How much cash did you take out of the register after counting and put
-                                    into the safe? Leave empty if nothing was removed.
-                                </span>
+                                <span className="italic">Leave empty if nothing was removed.</span>
                             </p>
                             <input
                                 value={abschoepfung}
@@ -765,17 +757,6 @@ export default function SalesEntryPage() {
                             />
                         </div>
                     </div>
-                </div>
-
-                {/* Notiz */}
-                <div>
-                    <label className="block text-sm font-medium mb-1">Notiz (optional)</label>
-                    <textarea
-                        value={notiz}
-                        onChange={(e) => setNotiz(e.target.value)}
-                        rows={2}
-                        className="w-full border rounded-md px-3 py-2 text-sm"
-                    />
                 </div>
 
                 <div ref={fehlerRef}>

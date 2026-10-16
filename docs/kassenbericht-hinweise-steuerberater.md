@@ -40,7 +40,7 @@ Esska-App unter **Umsätze → Export für die Buchhaltung**.
 | Karteneinnahmen | nur in `Karte`-Zeilen | ja |
 | Gueltig | `ja` = maßgeblich, `nein` = ersetzt | ja (Unveränderbarkeit) |
 | Korrektur / Korrektur_Grund | Storno-Kennzeichnung | ja |
-| Notiz | frei | nein |
+| Notiz | frei (nur bei Meldungen vor Oktober 2026) | nein |
 
 ## Rechenweg (offene Ladenkasse)
 
@@ -64,8 +64,9 @@ Centers startet mit einem Anfangsbestand, den die Verwaltung hinterlegt.
 
 Folge für die Auswertung: Eine echte Kassendifferenz (z. B. 2 € fehlen beim
 nächsten Zählen) wird nicht als eigene Position ausgewiesen, sondern mindert
-die Einnahmen der Schicht, in der sie auffällt. Wer eine Differenz bemerkt,
-vermerkt das in der Spalte `Notiz`.
+die Einnahmen der Schicht, in der sie auffällt. Ein Freitextfeld für
+Anmerkungen gibt es bei der Meldung seit Oktober 2026 nicht mehr; Differenzen
+melden die Mitarbeiter der Verwaltung direkt.
 
 ## Was bewusst nicht in der CSV steht
 
