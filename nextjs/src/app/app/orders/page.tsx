@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { PackageOpen, Send, ShoppingCart } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
@@ -104,6 +104,27 @@ export default function OrdersPage() {
         load();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Aufeinanderfolgende Artikel derselben Gruppe bilden einen Block
+    // (z. B. "Mützen 14,99 €" mit Beanie, Schirm, Bommel); alle anderen
+    // stehen einzeln.
+    const bloecke = useMemo(() => {
+        const ergebnis: { schluessel: string; titel: string; gruppiert: boolean; liste: EsskaBestellArtikel[] }[] = [];
+        for (const a of artikel) {
+            const letzter = ergebnis[ergebnis.length - 1];
+            if (a.gruppe && letzter?.gruppiert && letzter.titel === a.gruppe) {
+                letzter.liste.push(a);
+            } else {
+                ergebnis.push({
+                    schluessel: a.gruppe ? `g:${a.gruppe}` : a.id,
+                    titel: a.gruppe ?? a.name,
+                    gruppiert: !!a.gruppe,
+                    liste: [a],
+                });
+            }
+        }
+        return ergebnis;
+    }, [artikel]);
 
     const positionenAusEingabe = () => {
         const positionen: { artikel_id: string; farbe: string | null; menge: number }[] = [];
@@ -248,61 +269,74 @@ export default function OrdersPage() {
                 {loading ? (
                     <p className="text-sm text-gray-500">Lädt…</p>
                 ) : (
-                    // Ein Block je Artikel, in der Reihenfolge der Verkaufsliste
-                    // (sortierung): Name als Ueberschrift, Packgroesse darunter.
-                    artikel.map((a) => (
-                        <div key={a.id} className="border-t pt-4">
-                            <h2 className="text-base font-semibold">{a.name}</h2>
-                            <p className="text-xs text-gray-500 mb-2">{a.einheit_label}</p>
-                            {a.farben.length === 0 ? (
-                                <div className="flex flex-wrap items-center gap-3">
-                                    <label className="flex items-center gap-2 text-sm">
-                                        <input
-                                            value={mengen[a.id] ?? ""}
-                                            onChange={(e) =>
-                                                setMengen((prev) => ({ ...prev, [a.id]: e.target.value }))
-                                            }
-                                            inputMode="numeric"
-                                            placeholder="0"
-                                            aria-label={`Anzahl ${a.name}`}
-                                            className="w-16 border rounded-md px-2 py-1.5 text-sm text-right"
-                                        />
-                                        Anzahl
-                                    </label>
-                                    <label className="flex flex-1 min-w-48 items-center gap-2 text-sm">
-                                        <span className="whitespace-nowrap text-gray-600">Farbe / Muster</span>
-                                        <input
-                                            value={wuensche[a.id] ?? ""}
-                                            onChange={(e) =>
-                                                setWuensche((prev) => ({ ...prev, [a.id]: e.target.value }))
-                                            }
-                                            placeholder="z. B. kein Weiß, viel Grau"
-                                            className="flex-1 border rounded-md px-2 py-1.5 text-sm"
-                                        />
-                                    </label>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {a.farben.map((farbe) => (
-                                        <div key={farbe} className="flex items-center gap-2">
-                                            <input
-                                                value={mengen[`${a.id}::${farbe}`] ?? ""}
-                                                onChange={(e) =>
-                                                    setMengen((prev) => ({
-                                                        ...prev,
-                                                        [`${a.id}::${farbe}`]: e.target.value,
-                                                    }))
-                                                }
-                                                inputMode="numeric"
-                                                placeholder="0"
-                                                aria-label={`Anzahl ${a.name} ${farbe}`}
-                                                className="w-14 border rounded-md px-2 py-1 text-sm text-right"
-                                            />
-                                            <span className="text-sm">{farbe}</span>
+                    // Ein Block je Artikel bzw. je Gruppe, in der Reihenfolge der
+                    // Verkaufsliste (sortierung): Ueberschrift, Packgroesse darunter.
+                    bloecke.map((b) => (
+                        <div key={b.schluessel} className="border-t pt-4">
+                            <h2 className="text-base font-semibold">{b.titel}</h2>
+                            <p className="text-xs text-gray-500 mb-2">{b.liste[0].einheit_label}</p>
+                            <div className="space-y-2">
+                                {b.liste.map((a) =>
+                                    a.farben.length === 0 ? (
+                                        <div key={a.id} className="flex flex-wrap items-center gap-3">
+                                            <label className="flex items-center gap-2 text-sm">
+                                                <input
+                                                    value={mengen[a.id] ?? ""}
+                                                    onChange={(e) =>
+                                                        setMengen((prev) => ({ ...prev, [a.id]: e.target.value }))
+                                                    }
+                                                    inputMode="numeric"
+                                                    placeholder="0"
+                                                    aria-label={`Anzahl ${a.name}`}
+                                                    className="w-16 border rounded-md px-2 py-1.5 text-sm text-right"
+                                                />
+                                                {b.gruppiert ? (
+                                                    <span className="w-24 font-medium">{a.variante ?? a.name}</span>
+                                                ) : (
+                                                    "Anzahl"
+                                                )}
+                                            </label>
+                                            <label className="flex flex-1 min-w-48 items-center gap-2 text-sm">
+                                                <span className="whitespace-nowrap text-gray-600">Farbe / Muster</span>
+                                                <input
+                                                    value={wuensche[a.id] ?? ""}
+                                                    onChange={(e) =>
+                                                        setWuensche((prev) => ({ ...prev, [a.id]: e.target.value }))
+                                                    }
+                                                    placeholder="z. B. kein Weiß, viel Grau"
+                                                    className="flex-1 border rounded-md px-2 py-1.5 text-sm"
+                                                />
+                                            </label>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    ) : (
+                                        <div key={a.id}>
+                                            {b.gruppiert && (
+                                                <p className="text-sm font-medium mb-1">{a.variante ?? a.name}</p>
+                                            )}
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                                {a.farben.map((farbe) => (
+                                                    <div key={farbe} className="flex items-center gap-2">
+                                                        <input
+                                                            value={mengen[`${a.id}::${farbe}`] ?? ""}
+                                                            onChange={(e) =>
+                                                                setMengen((prev) => ({
+                                                                    ...prev,
+                                                                    [`${a.id}::${farbe}`]: e.target.value,
+                                                                }))
+                                                            }
+                                                            inputMode="numeric"
+                                                            placeholder="0"
+                                                            aria-label={`Anzahl ${a.name} ${farbe}`}
+                                                            className="w-14 border rounded-md px-2 py-1 text-sm text-right"
+                                                        />
+                                                        <span className="text-sm">{farbe}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                )}
+                            </div>
                         </div>
                     ))
                 )}

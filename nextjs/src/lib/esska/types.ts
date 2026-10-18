@@ -274,6 +274,10 @@ export interface EsskaBestellArtikel {
     einheit_label: string;
     aktiv: boolean;
     sortierung: number;
+    // Mehrere Artikel unter einer Ueberschrift (z. B. "Mützen 14,99 €");
+    // variante ist die kurze Bezeichnung darin. Ohne gruppe: eigener Block.
+    gruppe: string | null;
+    variante: string | null;
 }
 
 export type EsskaBestellStatus = "offen" | "weitergeleitet" | "erledigt";
