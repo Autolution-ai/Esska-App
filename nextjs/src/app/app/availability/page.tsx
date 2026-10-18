@@ -12,7 +12,6 @@ import type {
     EsskaWunsch,
 } from "@/lib/esska/types";
 import {
-    SLOT_DEFAULT_ZEITEN,
     SLOT_LABELS,
     WUNSCH_ICON,
     WUNSCH_LABELS,
@@ -20,6 +19,7 @@ import {
     centerTagStatus,
     isoDatum,
     montagDerWoche,
+    slotZeitenFuerTag,
     sonderoeffnungLabel,
     tagKurz,
     zeitKurz,
@@ -177,6 +177,24 @@ export default function AvailabilityPage() {
         if (eigeneCenterIds.length === 0) return false;
         return eigeneCenterIds.every((cid) => !centerTagStatus(cid, datum, oeffnungen, sonder).offen);
     };
+    // Kopfzeile: Schichtzeiten aus den Oeffnungszeiten - nur wenn die Person
+    // genau einem Center zugeordnet ist und die Zeiten in der Woche gleich
+    // bleiben. Bei mehreren Centern gibt es keine einheitliche Zeit.
+    const kopfZeiten = (slot: EsskaShiftSlot): string | null => {
+        if (eigeneCenterIds.length !== 1) return null;
+        const cid = eigeneCenterIds[0];
+        const varianten = new Set(
+            tage
+                .map((t) => isoDatum(t))
+                .filter((d) => centerTagStatus(cid, d, oeffnungen, sonder).offen)
+                .map((d) => {
+                    const z = slotZeitenFuerTag(cid, d, oeffnungen, sonder)[slot];
+                    return `${zeitKurz(z.start)}–${zeitKurz(z.ende)}`;
+                })
+        );
+        return varianten.size === 1 ? `${[...varianten][0]} Uhr` : null;
+    };
+
     const sonderoeffnungAm = (datum: string): boolean =>
         eigeneCenterIds.some((cid) => !!centerTagStatus(cid, datum, oeffnungen, sonder).sonder);
 
@@ -316,9 +334,9 @@ export default function AvailabilityPage() {
                                         {SLOTS.map((s) => (
                                             <th key={s} className="px-3 py-2 text-center border">
                                                 {SLOT_LABELS[s]}
-                                                <div className="text-xs font-normal text-gray-500">
-                                                    {zeitKurz(SLOT_DEFAULT_ZEITEN[s].start)}–{zeitKurz(SLOT_DEFAULT_ZEITEN[s].ende)}
-                                                </div>
+                                                {kopfZeiten(s) && (
+                                                    <div className="text-xs font-normal text-gray-500">{kopfZeiten(s)}</div>
+                                                )}
                                             </th>
                                         ))}
                                     </tr>

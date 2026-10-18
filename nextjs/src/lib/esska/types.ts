@@ -470,6 +470,36 @@ export const SLOT_DEFAULT_ZEITEN: Record<EsskaShiftSlot, { start: string; ende: 
     nachmittag: { start: "15:00", ende: "20:30" },
 };
 
+// Schichtzeiten eines Tages aus den Oeffnungszeiten des Centers:
+// Vormittag ab Oeffnung, Nachmittag bis Schliessung, Wechsel um 15:00
+// (liegt 15:00 ausserhalb der Oeffnungszeit, in der Mitte, auf die
+// Viertelstunde gerundet). Reihenfolge der Quellen: verkaufsoffener
+// Sonntag/Sonderoeffnung mit Zeiten -> Zeiten des Wochentags -> Standard.
+export function slotZeitenFuerTag(
+    centerId: string,
+    datum: string,
+    oeffnungen: EsskaCenterOpeningHour[],
+    sonder: EsskaSonderoeffnung[]
+): Record<EsskaShiftSlot, { start: string; ende: string }> {
+    const so = sonder.find((x) => x.center_id === centerId && x.datum === datum);
+    const wochentag = (parseIsoDatum(datum).getDay() + 6) % 7;
+    const regel = oeffnungen.find((o) => o.center_id === centerId && o.wochentag === wochentag);
+    const von = (so?.oeffnet ?? (regel?.geoeffnet ? regel.oeffnet : null))?.slice(0, 5);
+    const bis = (so?.schliesst ?? (regel?.geoeffnet ? regel.schliesst : null))?.slice(0, 5);
+    if (!von || !bis || bis <= von) return SLOT_DEFAULT_ZEITEN;
+
+    const inMin = (t: string) => parseInt(t.slice(0, 2), 10) * 60 + parseInt(t.slice(3, 5), 10);
+    const alsZeit = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    let wechsel = 15 * 60;
+    if (wechsel <= inMin(von) || wechsel >= inMin(bis)) {
+        wechsel = Math.round((inMin(von) + inMin(bis)) / 2 / 15) * 15;
+    }
+    return {
+        vormittag: { start: von, ende: alsZeit(wechsel) },
+        nachmittag: { start: alsZeit(wechsel), ende: bis },
+    };
+}
+
 // Dreistufige Wunsch-Aussage des Mitarbeiters pro Tag/Slot
 export type EsskaWunsch = "kann_nicht" | "koennte" | "wuensche";
 

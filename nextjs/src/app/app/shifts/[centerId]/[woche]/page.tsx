@@ -19,7 +19,6 @@ import type {
     EsskaWunsch,
 } from "@/lib/esska/types";
 import {
-    SLOT_DEFAULT_ZEITEN,
     SLOT_LABELS,
     WUNSCH_ICON,
     addTage,
@@ -28,6 +27,7 @@ import {
     montagDerWoche,
     nettoStunden,
     parseIsoDatum,
+    slotZeitenFuerTag,
     sonderoeffnungLabel,
     tagKurz,
     zeitKurz,
@@ -106,6 +106,22 @@ export default function WocheEditorPage() {
     const [zeitOverride, setZeitOverride] = useState<Record<string, { start: string; ende: string }>>({});
 
     const cellKey = (datum: string, slot: EsskaShiftSlot) => `${datum}::${slot}`;
+
+    // Schichtzeiten je Tag aus den Oeffnungszeiten des Centers (nicht mehr
+    // fest 09:00-15:00 / 15:00-20:30).
+    const zeitenFuer = (datum: string) => slotZeitenFuerTag(params.centerId, datum, oeffnungen, sonder);
+    // Kopfzeile: Zeiten nur anzeigen, wenn sie an allen geoeffneten Tagen der
+    // Woche gleich sind - sonst stehen sie je Zelle.
+    const kopfZeiten = (slot: EsskaShiftSlot): string => {
+        const offen = tage
+            .map((t) => isoDatum(t))
+            .filter((d) => centerTagStatus(params.centerId, d, oeffnungen, sonder).offen);
+        const varianten = new Set(offen.map((d) => {
+            const z = zeitenFuer(d)[slot];
+            return `${z.start}–${z.ende}`;
+        }));
+        return varianten.size === 1 ? `${[...varianten][0]} Uhr` : "je nach Öffnungszeit";
+    };
 
     const reload = async () => {
         try {
@@ -300,7 +316,7 @@ export default function WocheEditorPage() {
             }
 
             const override = zeitOverride[cellKey(datum, slot)];
-            const std = SLOT_DEFAULT_ZEITEN[slot];
+            const std = zeitenFuer(datum)[slot];
 
             if (existing) {
                 const { data, error: e } = await client
@@ -467,7 +483,7 @@ export default function WocheEditorPage() {
                                             <th key={s} className="px-3 py-2 text-center border">
                                                 <div className="font-semibold">{SLOT_LABELS[s]}</div>
                                                 <div className="text-xs font-normal text-gray-500">
-                                                    Standard {SLOT_DEFAULT_ZEITEN[s].start.slice(0, 5)}–{SLOT_DEFAULT_ZEITEN[s].ende.slice(0, 5)}
+                                                    {kopfZeiten(s)}
                                                 </div>
                                             </th>
                                         ))}
@@ -513,6 +529,7 @@ export default function WocheEditorPage() {
                                                     return (
                                                         <SlotCell
                                                             key={s}
+                                                            standard={zeitenFuer(datum)[s]}
                                                             cellKey={ckey}
                                                             datum={datum}
                                                             slot={s}
@@ -547,6 +564,7 @@ export default function WocheEditorPage() {
 }
 
 function SlotCell({
+    standard,
     datum,
     slot,
     cellKey,
@@ -561,6 +579,8 @@ function SlotCell({
     onSetPerson,
     onUpdateZeit,
 }: {
+    /** Schichtzeit dieses Tages laut Oeffnungszeiten des Centers */
+    standard: { start: string; ende: string };
     datum: string;
     slot: EsskaShiftSlot;
     cellKey: string;
@@ -581,7 +601,7 @@ function SlotCell({
     onSetPerson: (pid: string | null) => void;
     onUpdateZeit: (start: string, ende: string) => void;
 }) {
-    const std = SLOT_DEFAULT_ZEITEN[slot];
+    const std = standard;
     const aktStart = (override?.start ?? shift?.start_zeit?.slice(0, 5)) ?? std.start;
     const aktEnde = (override?.ende ?? shift?.end_zeit?.slice(0, 5)) ?? std.ende;
 
