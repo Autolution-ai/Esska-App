@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { PackageOpen, Send, ShoppingCart } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
@@ -37,6 +37,9 @@ export default function OrdersPage() {
     const [centerId, setCenterId] = useState("");
     // Mengen ohne Farbe: artikelId -> Anzahl; mit Farbe: artikelId::farbe -> Anzahl
     const [mengen, setMengen] = useState<Record<string, string>>({});
+    // Freitext "Farbe / Muster" je Artikel ohne feste Farbliste
+    // (z. B. "kein Weiß, viel Grau") - landet in der Position als farbe.
+    const [wuensche, setWuensche] = useState<Record<string, string>>({});
     const [notiz, setNotiz] = useState("");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -102,21 +105,14 @@ export default function OrdersPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const kategorien = useMemo(() => {
-        const map = new Map<string, EsskaBestellArtikel[]>();
-        for (const a of artikel) {
-            const k = a.kategorie ?? "Sonstiges";
-            map.set(k, [...(map.get(k) ?? []), a]);
-        }
-        return [...map.entries()];
-    }, [artikel]);
-
     const positionenAusEingabe = () => {
         const positionen: { artikel_id: string; farbe: string | null; menge: number }[] = [];
         for (const a of artikel) {
             if (a.farben.length === 0) {
                 const wert = parseInt((mengen[a.id] ?? "").trim(), 10);
-                if (wert > 0) positionen.push({ artikel_id: a.id, farbe: null, menge: wert });
+                if (wert > 0) {
+                    positionen.push({ artikel_id: a.id, farbe: (wuensche[a.id] ?? "").trim() || null, menge: wert });
+                }
             } else {
                 for (const farbe of a.farben) {
                     const wert = parseInt((mengen[`${a.id}::${farbe}`] ?? "").trim(), 10);
@@ -178,6 +174,7 @@ export default function OrdersPage() {
 
             setInfo(`Bestellung gespeichert. ${mailHinweis}`);
             setMengen({});
+            setWuensche({});
             setNotiz("");
             await ladeBestellungen();
         } catch (err) {
@@ -251,57 +248,61 @@ export default function OrdersPage() {
                 {loading ? (
                     <p className="text-sm text-gray-500">Lädt…</p>
                 ) : (
-                    kategorien.map(([kategorie, liste]) => (
-                        <div key={kategorie} className="border-t pt-4">
-                            <h2 className="text-base font-semibold mb-2">{kategorie}</h2>
-                            <div className="space-y-3">
-                                {liste.map((a) => (
-                                    <div key={a.id}>
-                                        {a.farben.length === 0 ? (
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    value={mengen[a.id] ?? ""}
-                                                    onChange={(e) =>
-                                                        setMengen((prev) => ({ ...prev, [a.id]: e.target.value }))
-                                                    }
-                                                    inputMode="numeric"
-                                                    placeholder="0"
-                                                    className="w-16 border rounded-md px-2 py-1.5 text-sm text-right"
-                                                />
-                                                <span className="text-sm">
-                                                    × {a.einheit_label} <strong>{a.name}</strong>
-                                                </span>
-                                            </div>
-                                        ) : (
-                                            <div>
-                                                <p className="text-sm mb-1.5">
-                                                    <strong>{a.name}</strong>{" "}
-                                                    <span className="text-gray-500">(je {a.einheit_label})</span>
-                                                </p>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                                    {a.farben.map((farbe) => (
-                                                        <div key={farbe} className="flex items-center gap-2">
-                                                            <input
-                                                                value={mengen[`${a.id}::${farbe}`] ?? ""}
-                                                                onChange={(e) =>
-                                                                    setMengen((prev) => ({
-                                                                        ...prev,
-                                                                        [`${a.id}::${farbe}`]: e.target.value,
-                                                                    }))
-                                                                }
-                                                                inputMode="numeric"
-                                                                placeholder="0"
-                                                                className="w-14 border rounded-md px-2 py-1 text-sm text-right"
-                                                            />
-                                                            <span className="text-sm">{farbe}</span>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
+                    // Ein Block je Artikel, in der Reihenfolge der Verkaufsliste
+                    // (sortierung): Name als Ueberschrift, Packgroesse darunter.
+                    artikel.map((a) => (
+                        <div key={a.id} className="border-t pt-4">
+                            <h2 className="text-base font-semibold">{a.name}</h2>
+                            <p className="text-xs text-gray-500 mb-2">{a.einheit_label}</p>
+                            {a.farben.length === 0 ? (
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            value={mengen[a.id] ?? ""}
+                                            onChange={(e) =>
+                                                setMengen((prev) => ({ ...prev, [a.id]: e.target.value }))
+                                            }
+                                            inputMode="numeric"
+                                            placeholder="0"
+                                            aria-label={`Anzahl ${a.name}`}
+                                            className="w-16 border rounded-md px-2 py-1.5 text-sm text-right"
+                                        />
+                                        Anzahl
+                                    </label>
+                                    <label className="flex flex-1 min-w-48 items-center gap-2 text-sm">
+                                        <span className="whitespace-nowrap text-gray-600">Farbe / Muster</span>
+                                        <input
+                                            value={wuensche[a.id] ?? ""}
+                                            onChange={(e) =>
+                                                setWuensche((prev) => ({ ...prev, [a.id]: e.target.value }))
+                                            }
+                                            placeholder="z. B. kein Weiß, viel Grau"
+                                            className="flex-1 border rounded-md px-2 py-1.5 text-sm"
+                                        />
+                                    </label>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {a.farben.map((farbe) => (
+                                        <div key={farbe} className="flex items-center gap-2">
+                                            <input
+                                                value={mengen[`${a.id}::${farbe}`] ?? ""}
+                                                onChange={(e) =>
+                                                    setMengen((prev) => ({
+                                                        ...prev,
+                                                        [`${a.id}::${farbe}`]: e.target.value,
+                                                    }))
+                                                }
+                                                inputMode="numeric"
+                                                placeholder="0"
+                                                aria-label={`Anzahl ${a.name} ${farbe}`}
+                                                className="w-14 border rounded-md px-2 py-1 text-sm text-right"
+                                            />
+                                            <span className="text-sm">{farbe}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))
                 )}

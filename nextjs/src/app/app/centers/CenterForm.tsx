@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaCenterKategorie, EsskaCenterOpeningHour, EsskaCenterZeitraum, EsskaProfile } from "@/lib/esska/types";
-import StundenAuswahl from "@/components/esska/StundenAuswahl";
+import ZeitAuswahl from "@/components/esska/ZeitAuswahl";
 import { WOCHENTAG_LABELS, berechneCenterStatus, centToEuro, euroToCent } from "@/lib/esska/types";
 
 type FormState = {
@@ -94,6 +94,24 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
         notiz: center?.notiz ?? "",
     });
     const [oeffnung, setOeffnung] = useState<OeffnungState[]>(standardOeffnung());
+    // Einmal eingeben, fuer alle geoeffneten Tage uebernehmen - abweichende
+    // Tage lassen sich danach einzeln anpassen.
+    const [alleVon, setAlleVon] = useState("");
+    const [alleBis, setAlleBis] = useState("");
+    const [alleHinweis, setAlleHinweis] = useState<string | null>(null);
+    const aufAlleTageUebernehmen = () => {
+        if (!alleVon || !alleBis) {
+            setAlleHinweis("Bitte Öffnungs- und Schließzeit wählen.");
+            return;
+        }
+        if (alleBis <= alleVon) {
+            setAlleHinweis("Die Schließzeit muss nach der Öffnungszeit liegen.");
+            return;
+        }
+        setOeffnung((prev) => prev.map((o) => (o.geoeffnet ? { ...o, oeffnet: alleVon, schliesst: alleBis } : o)));
+        const anzahl = oeffnung.filter((o) => o.geoeffnet).length;
+        setAlleHinweis(`Für ${anzahl} geöffnete Tage übernommen. Abweichende Tage unten anpassen.`);
+    };
     const [zeitraeume, setZeitraeume] = useState<EsskaCenterZeitraum[]>([]);
     const [manager, setManager] = useState<Pick<EsskaProfile, "id" | "vorname" | "nachname" | "email">[]>([]);
     const [saving, setSaving] = useState(false);
@@ -444,6 +462,20 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                     Ohne Uhrzeiten gelten die Standard-Slotzeiten (09:00–15:00 / 15:00–20:30).
                     Geschlossene Tage sind im Verfügbarkeits- und Schichtplan nicht wählbar.
                 </p>
+                <div className="flex flex-wrap items-center gap-2 p-3 mb-3 bg-secondary-50 border border-secondary-200 rounded-md text-sm">
+                    <span className="font-medium">Zeiten für alle Tage:</span>
+                    <ZeitAuswahl value={alleVon} onChange={setAlleVon} ariaLabel="Öffnet um (alle Tage)" />
+                    <span>–</span>
+                    <ZeitAuswahl value={alleBis} onChange={setAlleBis} ariaLabel="Schließt um (alle Tage)" />
+                    <button
+                        type="button"
+                        onClick={aufAlleTageUebernehmen}
+                        className="px-3 py-1 rounded-md border bg-white hover:bg-gray-50"
+                    >
+                        Auf alle geöffneten Tage übernehmen
+                    </button>
+                    {alleHinweis && <span className="w-full text-xs text-gray-600">{alleHinweis}</span>}
+                </div>
                 <div className="space-y-2">
                     {oeffnung.map((o, i) => (
                         <div key={i} className="flex items-center gap-3 flex-wrap">
@@ -461,7 +493,7 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                             </label>
                             {o.geoeffnet ? (
                                 <div className="flex items-center gap-2 text-sm">
-                                    <StundenAuswahl
+                                    <ZeitAuswahl
                                         value={o.oeffnet}
                                         onChange={(w) =>
                                             setOeffnung((prev) =>
@@ -470,7 +502,7 @@ export default function CenterForm({ center }: { center?: EsskaCenter }) {
                                         }
                                     />
                                     <span>–</span>
-                                    <StundenAuswahl
+                                    <ZeitAuswahl
                                         value={o.schliesst}
                                         onChange={(w) =>
                                             setOeffnung((prev) =>

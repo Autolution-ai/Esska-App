@@ -122,13 +122,18 @@ export default function OnboardingPage() {
         return <div className="p-6 text-red-600 text-sm">{error ?? "Profil nicht gefunden."}</div>;
     }
 
-    // KuBe-Schritt: nur wenn Admin den User als 'kurzfristig' eingestuft hat.
+    // KuBe-Schritt (siehe brauchtKube unten).
     // O-16: Bei Sozialleistungsbezug ist die kurzfristige Beschaeftigung
     // ausgeschlossen - das Formular entfaellt, der Fall wird angezeigt und
     // muss vom Admin geklaert werden.
     const sozialleistungsAusschluss =
         profile.arbeitszeit_modell === "kurzfristig" && profile.sozialleistungen_bezug === true;
-    const brauchtKube = profile.arbeitszeit_modell === "kurzfristig" && !sozialleistungsAusschluss;
+    // Vorgabe Oktober 2026: Die KuBe-Erklaerung fuellen ALLE aus - unabhaengig
+    // vom (oft noch nicht eingetragenen) Arbeitszeit-Modell. Verwendet wird
+    // sie nur, falls die Person kurzfristig beschaeftigt wird; darauf weist
+    // der Schritt hin. Ausnahme bleibt der Sozialleistungsbezug bei bereits
+    // eingetragener kurzfristiger Beschaeftigung (dann unzulaessig).
+    const brauchtKube = !sozialleistungsAusschluss;
 
     // Ausweis Vorder- und Rueckseite: Pflicht bei allen
     const ausweisDa =
@@ -312,6 +317,15 @@ export default function OnboardingPage() {
             )}
 
             {schritt === "kube" && brauchtKube && (
+                <div className="space-y-3">
+                <div className="p-3 bg-secondary-50 border border-secondary-200 rounded-md text-sm text-gray-700">
+                    Diese Erklärung füllen alle aus. Wir verwenden sie nur, falls du als kurzfristig
+                    Beschäftigte*r angemeldet wirst.
+                    <span className="block italic text-xs mt-1">
+                        Everyone fills in this declaration. We only use it if you are registered for
+                        short-term employment.
+                    </span>
+                </div>
                 <KubeForm
                     profileId={profile.id}
                     saison={saison}
@@ -321,6 +335,7 @@ export default function OnboardingPage() {
                         naechsterSchritt();
                     }}
                 />
+                </div>
             )}
 
             {schritt === "dokumente" && (

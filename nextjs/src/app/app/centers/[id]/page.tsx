@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
-import StundenAuswahl from "@/components/esska/StundenAuswahl";
+import ZeitAuswahl from "@/components/esska/ZeitAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaCenter,
@@ -510,7 +510,7 @@ export default function CenterDetailPage() {
                                 </div>
                                 <div>
                                     <label htmlFor="so-von" className="block text-xs text-gray-500 mb-1">Von (optional)</label>
-                                    <StundenAuswahl
+                                    <ZeitAuswahl
                                         id="so-von"
                                         value={soVon}
                                         onChange={setSoVon}
@@ -520,7 +520,7 @@ export default function CenterDetailPage() {
                                 </div>
                                 <div>
                                     <label htmlFor="so-bis" className="block text-xs text-gray-500 mb-1">Bis (optional)</label>
-                                    <StundenAuswahl
+                                    <ZeitAuswahl
                                         id="so-bis"
                                         value={soBis}
                                         onChange={setSoBis}
