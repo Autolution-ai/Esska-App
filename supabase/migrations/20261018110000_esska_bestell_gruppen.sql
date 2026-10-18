@@ -18,10 +18,10 @@ alter table public.bestell_artikel
 update public.bestell_artikel a
 set gruppe = v.gruppe, variante = v.variante
 from (values
-    ('Mütze Beanie 14,99 €',      'Mützen 14,99 €', 'Beanie'),
-    ('Mütze Schirm 14,99 €',      'Mützen 14,99 €', 'Schirm'),
-    ('Mütze Bommel 14,99 €',      'Mützen 14,99 €', 'Bommel'),
-    ('Mütze ohne Bommel 24,99 €', 'Mützen 24,99 €', 'ohne Bommel'),
-    ('Mütze mit Bommel 24,99 €',  'Mützen 24,99 €', 'mit Bommel')
+    ('Mütze Beanie 14,99 €',      'Mütze 14,99€',   'Beanie'),
+    ('Mütze Schirm 14,99 €',      'Mütze 14,99€',   'Schirm'),
+    ('Mütze Bommel 14,99 €',      'Mütze 14,99€',   'Bommel'),
+    ('Mütze ohne Bommel 24,99 €', 'Mütze 24,99€',   'ohne Bommel'),
+    ('Mütze mit Bommel 24,99 €',  'Mütze 24,99€',   'mit Bommel')
 ) as v(name, gruppe, variante)
 where a.aktiv and a.name = v.name;
