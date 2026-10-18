@@ -5,7 +5,7 @@
 --   Handschuhe (Herren, Fell, Normal, Leder), Muetzen, Schals.
 -- - Namen und Packgroessen mit Umlauten, so wie sie in der App erscheinen
 --   ("10er-Buendel" -> "10er-Bündel").
--- - Muetzen: fuenf Varianten statt nur "Muetzen Bommel". Der Preis gehoert
+-- - Muetzen: fuenf Varianten (Beanie, Schirm, Bommel, ohne/mit Bommel) statt nur "Muetzen Bommel". Der Preis gehoert
 --   zum Namen, weil er die Variante unterscheidet (14,99 / 24,99).
 --
 -- Nur aktive Artikel werden angefasst; nichts wird geloescht, weil
@@ -37,10 +37,14 @@ insert into public.bestell_artikel (name, kategorie, farben, einheit_groesse, ei
 select v.name, 'Mützen', '{}'::text[], 1, 'Stück', v.pos
 from (values
     ('Mütze Beanie 14,99 €',      40),
-    ('Mütze Stürmer 14,99 €',     41),
+    ('Mütze Schirm 14,99 €',      41),
     ('Mütze ohne Bommel 24,99 €', 43),
     ('Mütze mit Bommel 24,99 €',  44)
 ) as v(name, pos)
 where not exists (
     select 1 from public.bestell_artikel a where a.name = v.name and a.aktiv
 );
+
+-- Korrektur 18.10.: die zweite Variante heisst "Schirm", nicht "Stuermer".
+update public.bestell_artikel set name = 'Mütze Schirm 14,99 €'
+where aktiv and name = 'Mütze Stürmer 14,99 €';
