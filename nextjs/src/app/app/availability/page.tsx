@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import { useGlobal } from "@/lib/context/GlobalContext";
 import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaAvailabilityRow,
@@ -74,7 +75,16 @@ type WocheState = Record<string, ZellenWert>;
 
 const key = (datum: string, slot: EsskaShiftSlot) => `${datum}::${slot}`;
 
+type Person = { id: string; vorname: string | null; nachname: string | null; email: string | null; role: string };
+
 export default function AvailabilityPage() {
+    const { role } = useGlobal();
+    // Admins und Regionalmanager koennen auch die Verfuegbarkeit ihres Teams
+    // ansehen und pflegen (Regionalmanager: nur Mitarbeiter ihrer Center).
+    const darfTeam = role === "admin" || role === "regionalmanager";
+    const [ichId, setIchId] = useState<string | null>(null);
+    const [personen, setPersonen] = useState<Person[]>([]);
+    // Wessen Verfuegbarkeit gerade angezeigt wird (Standard: die eigene)
     const [profileId, setProfileId] = useState<string | null>(null);
     // V-2: Oeffnungstage der zugeordneten Center - an Tagen, an denen ALLE
     // eigenen Center geschlossen sind, ist keine Eingabe noetig/moeglich.
@@ -99,12 +109,42 @@ export default function AvailabilityPage() {
                 const client = await getEsskaClient();
                 const { data: { user } } = await client.auth.getUser();
                 if (!user) throw new Error("Nicht angemeldet");
+                setIchId(user.id);
                 setProfileId(user.id);
+            } catch (err) {
+                setError(friendlyError(err, { aktion: "Anmeldung pruefen" }));
+            }
+        };
+        init();
+    }, []);
 
+    // Team fuer die Auswahl laden (planungsprofile liefert Regionalmanagern
+    // nur die eigenen Leute, Admins alle)
+    useEffect(() => {
+        if (!darfTeam) return;
+        const lade = async () => {
+            try {
+                const client = await getEsskaClient();
+                const { data } = await client.rpc("planungsprofile").order("nachname", { ascending: true });
+                setPersonen(((data as Person[]) ?? []).filter((p) => p.role !== "admin"));
+            } catch {
+                // Auswahl bleibt leer - die eigene Verfuegbarkeit geht trotzdem
+            }
+        };
+        lade();
+    }, [darfTeam]);
+
+    // Center und Oeffnungszeiten der angezeigten Person: Geschlossene Tage
+    // haengen an IHREN Centern, nicht an denen des Betrachters.
+    useEffect(() => {
+        if (!profileId) return;
+        const lade = async () => {
+            try {
+                const client = await getEsskaClient();
                 const { data: aData } = await client
                     .from("center_assignments")
                     .select("center_id")
-                    .eq("profile_id", user.id);
+                    .eq("profile_id", profileId);
                 const ids = ((aData as Array<{ center_id: string }>) ?? []).map((a) => a.center_id);
                 setEigeneCenterIds(ids);
                 if (ids.length > 0) {
@@ -120,13 +160,19 @@ export default function AvailabilityPage() {
                         .select("*")
                         .in("center_id", ids);
                     setSonder((soData as EsskaSonderoeffnung[]) ?? []);
+                } else {
+                    setOeffnungen([]);
+                    setSonder([]);
                 }
             } catch (err) {
-                setError(friendlyError(err, { aktion: "Anmeldung pruefen" }));
+                setError(friendlyError(err, { aktion: "Center laden" }));
             }
         };
-        init();
-    }, []);
+        lade();
+    }, [profileId]);
+
+    const angezeigt = personen.find((p) => p.id === profileId);
+    const fuerAndere = !!profileId && !!ichId && profileId !== ichId;
 
     useEffect(() => {
         if (!profileId) return;
@@ -249,7 +295,11 @@ export default function AvailabilityPage() {
                 .from("availabilities")
                 .upsert(payload, { onConflict: "profile_id,datum,slot" });
             if (e) throw e;
-            setInfo("Wochenplan gespeichert.");
+            setInfo(
+                fuerAndere && angezeigt
+                    ? `Wochenplan für ${`${angezeigt.vorname ?? ""} ${angezeigt.nachname ?? ""}`.trim() || angezeigt.email} gespeichert.`
+                    : "Wochenplan gespeichert."
+            );
         } catch (err) {
             setError(friendlyError(err, { aktion: "Speichern" }));
         } finally {
@@ -262,6 +312,38 @@ export default function AvailabilityPage() {
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
                     <h1 className="text-2xl font-bold">Wochenplan</h1>
+                    {darfTeam && personen.length > 0 && (
+                        <div className="mt-2 mb-1">
+                            <label htmlFor="verf-person" className="text-sm text-gray-600 mr-2">
+                                Verfügbarkeit von
+                            </label>
+                            <select
+                                id="verf-person"
+                                value={profileId ?? ""}
+                                onChange={(e) => {
+                                    setInfo(null);
+                                    setError(null);
+                                    setProfileId(e.target.value);
+                                }}
+                                className="border rounded-md px-2 py-1.5 text-sm"
+                            >
+                                {ichId && <option value={ichId}>mir selbst</option>}
+                                {personen
+                                    .filter((p) => p.id !== ichId)
+                                    .map((p) => (
+                                        <option key={p.id} value={p.id}>
+                                            {`${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || p.email}
+                                        </option>
+                                    ))}
+                            </select>
+                        </div>
+                    )}
+                    {fuerAndere && (
+                        <p className="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 my-1 inline-block">
+                            Du bearbeitest die Verfügbarkeit von{" "}
+                            {angezeigt ? `${angezeigt.vorname ?? ""} ${angezeigt.nachname ?? ""}`.trim() || angezeigt.email : "dieser Person"}.
+                        </p>
+                    )}
                     <p className="text-gray-500 text-sm">
                         Trage pro Vormittag/Nachmittag ein, ob du an dem Slot arbeiten kannst. Der Admin sieht das
                         beim Planen und kann nur Mitarbeiter einplanen, die das nicht ausgeschlossen haben.

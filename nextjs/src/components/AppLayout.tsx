@@ -47,6 +47,7 @@ const adminNavigation: NavItem[] = [
 const regionalmanagerNavigation: NavItem[] = [
     { name: 'Übersicht', href: '/app', icon: Home },
     { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
+    { name: 'Verfügbarkeit', href: '/app/availability', icon: CalendarDays },
     { name: 'Meine Schichten', href: '/app/my-shifts', icon: ClipboardList },
     { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
     { name: 'Umsatz melden', href: '/app/sales/new', icon: TrendingUp },
