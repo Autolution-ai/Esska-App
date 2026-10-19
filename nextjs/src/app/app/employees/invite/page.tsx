@@ -16,7 +16,7 @@ export default function InvitePage() {
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
     const [centerId, setCenterId] = useState("");
     const [rueckkehrer, setRueckkehrer] = useState(false);
-    const { role, user } = useGlobal();
+    const { role } = useGlobal();
     // Regionalmanager: nur eigene Center, Zuordnung ist Pflicht
     const istRegional = role === "regionalmanager";
     const [mailAn, setMailAn] = useState<string | null>(null);
@@ -30,14 +30,15 @@ export default function InvitePage() {
                     .select("*")
                     .in("status", ["aktiv", "geplant", "in_absprache"])
                     .order("name");
-                const alle = (data as EsskaCenter[]) ?? [];
-                setCenters(istRegional ? alle.filter((c) => c.manager_id === user?.id) : alle);
+                // Die Datenbank liefert Regionalmanagern ohnehin nur ihre eigenen
+                // Center (als Regionalmanager eingetragen oder zugeordnet).
+                setCenters((data as EsskaCenter[]) ?? []);
             } catch {
                 // Dropdown bleibt leer - Einladen funktioniert trotzdem
             }
         };
         load();
-    }, [istRegional, user?.id]);
+    }, [role]);
     const [sending, setSending] = useState(false);
     const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
     const [zugang, setZugang] = useState<Zugang | null>(null);

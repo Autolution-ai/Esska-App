@@ -93,14 +93,30 @@ export async function POST(request: Request) {
         const { data: profil } = await db.from("profiles").select("role").eq("id", user.id).maybeSingle();
         const rolle = (profil as { role?: string } | null)?.role;
         const istAdmin = rolle === "admin";
-        const istManagerDesCenters = daten.center?.manager_id === user.id;
+        // Zustaendige Regionalmanager: am Center eingetragen ODER dem Center
+        // zugeordnet (wie manages_center in der Datenbank).
+        const { data: zugeordneteRm } = await db
+            .from("center_assignments")
+            .select("profile_id, profiles!inner(email, role)")
+            .eq("center_id", daten.bestellung.center_id)
+            .eq("profiles.role", "regionalmanager");
+        const rmListe = ((zugeordneteRm as unknown) as Array<{ profile_id: string; profiles: { email: string | null } }>) ?? [];
+        const istManagerDesCenters =
+            daten.center?.manager_id === user.id || rmListe.some((r) => r.profile_id === user.id);
+        const rmMails = [
+            ...new Set(
+                [daten.manager?.email, ...rmListe.map((r) => r.profiles?.email)].filter(
+                    (e): e is string => !!e
+                )
+            ),
+        ];
         const istBesteller = daten.bestellung.besteller_id === user.id;
 
         if (aktion === "melden") {
             if (!istBesteller && !istAdmin && !istManagerDesCenters) {
                 return NextResponse.json({ error: "Keine Berechtigung für diese Bestellung." }, { status: 403 });
             }
-            const empfaenger = daten.manager?.email ?? process.env.SMTP_USER ?? null;
+            const empfaenger = rmMails.length > 0 ? rmMails.join(", ") : process.env.SMTP_USER ?? null;
             if (!empfaenger) {
                 return NextResponse.json({ error: "Kein Empfänger ermittelbar (weder Manager noch SMTP_USER)." }, { status: 500 });
             }
@@ -112,7 +128,7 @@ export async function POST(request: Request) {
             return NextResponse.json({
                 ok: true,
                 empfaenger,
-                hinweis: daten.manager?.email
+                hinweis: rmMails.length > 0
                     ? null
                     : "Diesem Center ist kein Regionalmanager zugeordnet – die Bestellung ging an das Esska-Postfach.",
             });

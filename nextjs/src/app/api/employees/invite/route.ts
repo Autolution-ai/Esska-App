@@ -31,15 +31,20 @@ export async function POST(request: Request) {
             if (!centerId) {
                 return NextResponse.json({ error: "Bitte ein Center auswählen." }, { status: 400 });
             }
-            const { data: c } = await db
-                .from("centers")
-                .select("id")
-                .eq("id", centerId)
-                .eq("manager_id", userId)
-                .maybeSingle();
-            if (!c) {
+            // Zustaendig ist er, wenn er am Center als Regionalmanager steht
+            // ODER dem Center zugeordnet ist (wie manages_center in der DB).
+            const [{ data: alsManager }, { data: alsZugeordnet }] = await Promise.all([
+                db.from("centers").select("id").eq("id", centerId).eq("manager_id", userId).maybeSingle(),
+                db
+                    .from("center_assignments")
+                    .select("center_id")
+                    .eq("center_id", centerId)
+                    .eq("profile_id", userId)
+                    .maybeSingle(),
+            ]);
+            if (!alsManager && !alsZugeordnet) {
                 return NextResponse.json(
-                    { error: "Du kannst nur Mitarbeiter für Center anlegen, bei denen du als Regionalmanager eingetragen bist." },
+                    { error: "Du kannst nur Mitarbeiter für deine eigenen Center anlegen." },
                     { status: 403 }
                 );
             }
