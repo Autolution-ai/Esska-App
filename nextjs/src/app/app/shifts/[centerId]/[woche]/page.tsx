@@ -150,6 +150,11 @@ export default function WocheEditorPage() {
             setCenter(cRes.data as EsskaCenter);
             if (ppRes.error) throw ppRes.error;
             const zugeordnet = new Set(((aRes.data as Array<{ profile_id: string }>) ?? []).map((r) => r.profile_id));
+            // Der Regionalmanager des Centers kann sich selbst einplanen, wenn er
+            // eine Schicht uebernimmt - er ist am Center als Manager eingetragen,
+            // nicht als zugeordneter Mitarbeiter.
+            const managerId = (cRes.data as EsskaCenter).manager_id;
+            if (managerId) zugeordnet.add(managerId);
             const peeps = ((ppRes.data as AssignedProfile[]) ?? []).filter((p) => zugeordnet.has(p.id));
             setPeople(peeps);
 
