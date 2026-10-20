@@ -121,12 +121,22 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
     };
 
     const handleDownload = async (doc: EsskaEmployeeDocument) => {
+        // Das Fenster SOFORT beim Klick oeffnen und den Link danach
+        // hineinladen: Safari/iPad blockieren ein window.open, das erst nach
+        // der Serverabfrage kommt, stumm als Popup ("passiert nix").
+        const fenster = window.open("", "_blank");
         try {
             const client = await getEsskaClient();
             const { data, error: e } = await client.storage.from(BUCKET).createSignedUrl(doc.storage_path, 60);
             if (e) throw e;
-            window.open(data.signedUrl, "_blank");
+            if (fenster) {
+                fenster.location.href = data.signedUrl;
+            } else {
+                // Popup ganz gesperrt: im selben Tab oeffnen
+                window.location.href = data.signedUrl;
+            }
         } catch (err) {
+            fenster?.close();
             setError(friendlyError(err, { aktion: "Download fehlgeschlagen" }));
         }
     };
