@@ -357,7 +357,7 @@ export default function EmployeesPage() {
                             auswahl={auswahl}
                             toggleAuswahl={toggleAuswahl}
                             toggleAlle={toggleAlle}
-                            verlinken={role === "admin"}
+                            verlinken={role === "admin" || role === "regionalmanager"}
                         />
                     )}
                     {sichtbar.length > 0 && gruppen !== null && (
@@ -375,7 +375,7 @@ export default function EmployeesPage() {
                                         auswahl={auswahl}
                                         toggleAuswahl={toggleAuswahl}
                                         toggleAlle={toggleAlle}
-                                        verlinken={role === "admin"}
+                                        verlinken={role === "admin" || role === "regionalmanager"}
                                     />
                                 </div>
                             ))}

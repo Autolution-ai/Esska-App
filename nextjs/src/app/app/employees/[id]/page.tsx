@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Edit, FileDown, KeyRound, Plus, Trash2, UserX } from "lucide-react";
 import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
+import { useGlobal } from "@/lib/context/GlobalContext";
 import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
@@ -22,6 +23,11 @@ type AssignmentRow = {
 };
 
 export default function EmployeeDetailPage() {
+    // Regionalmanager sehen die Personalakte ihrer Mitarbeiter, aendern aber
+    // nichts (Vorgabe 22.10.2026). Aendern, Loeschen, Passwort, Rolle und
+    // Center-Zuordnung bleiben beim Admin.
+    const { role: betrachterRolle } = useGlobal();
+    const istAdmin = betrachterRolle === "admin";
     const params = useParams<{ id: string }>();
     const router = useRouter();
     const [profile, setProfile] = useState<EsskaProfile | null>(null);
@@ -227,6 +233,7 @@ export default function EmployeeDetailPage() {
                     </h1>
                     <p className="text-gray-500">{profile.email}</p>
                 </div>
+                {istAdmin && (
                 <div className="flex flex-wrap gap-2">
                     <button
                         onClick={() => setEditStammdaten((v) => !v)}
@@ -257,6 +264,7 @@ export default function EmployeeDetailPage() {
                         Löschen
                     </button>
                 </div>
+                )}
             </div>
 
             {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
@@ -297,6 +305,7 @@ export default function EmployeeDetailPage() {
                     </CardHeader>
                     <CardContent className="space-y-3">
                         <Row label="Rolle">
+                            {istAdmin ? (
                             <select
                                 value={profile.role}
                                 onChange={(e) => handleRoleChange(e.target.value as EsskaRole)}
@@ -307,11 +316,24 @@ export default function EmployeeDetailPage() {
                                 <option value="regionalmanager">Regionalmanager</option>
                                 <option value="admin">Admin</option>
                             </select>
+                            ) : (
+                                <span>
+                                    {profile.role === "regionalmanager"
+                                        ? "Regionalmanager"
+                                        : profile.role === "admin"
+                                          ? "Admin"
+                                          : "Mitarbeiter"}
+                                </span>
+                            )}
                         </Row>
                         <Row label="Aktiv">
-                            <button onClick={handleAktivToggle} disabled={busy} className="text-sm underline">
-                                {profile.aktiv ? "aktiv – deaktivieren" : "inaktiv – aktivieren"}
-                            </button>
+                            {istAdmin ? (
+                                <button onClick={handleAktivToggle} disabled={busy} className="text-sm underline">
+                                    {profile.aktiv ? "aktiv – deaktivieren" : "inaktiv – aktivieren"}
+                                </button>
+                            ) : (
+                                <span>{profile.aktiv ? "aktiv" : "inaktiv"}</span>
+                            )}
                         </Row>
                         <Row label="Onboarding">
                             {profile.onboarding_abgeschlossen
@@ -426,7 +448,7 @@ export default function EmployeeDetailPage() {
                     </div>
                     <div className="border-t pt-4">
                         <p className="text-sm font-medium mb-2">Hochgeladene Dokumente</p>
-                        <DokumenteUpload profileId={profile.id} />
+                        <DokumenteUpload profileId={profile.id} nurLesen={!istAdmin} />
                     </div>
                 </CardContent>
             </Card>
@@ -444,11 +466,16 @@ export default function EmployeeDetailPage() {
                             {assignments.map((a) => (
                                 <li key={a.id} className="flex items-center justify-between border rounded-md p-3 text-sm">
                                     <div>
-                                        <Link href={`/app/centers/${a.center.id}`} className="font-medium text-primary-600 hover:underline">
-                                            {a.center.name}
-                                        </Link>{" "}
+                                        {istAdmin ? (
+                                            <Link href={`/app/centers/${a.center.id}`} className="font-medium text-primary-600 hover:underline">
+                                                {a.center.name}
+                                            </Link>
+                                        ) : (
+                                            <span className="font-medium">{a.center.name}</span>
+                                        )}{" "}
                                         <span className="text-gray-500">
-                                            ({a.center.kuerzel}) · Saison {a.center.saison} · {formatMoney(a.center.miete_eur_cent)}
+                                            ({a.center.kuerzel}) · Saison {a.center.saison}
+                                            {istAdmin ? ` · ${formatMoney(a.center.miete_eur_cent)}` : ""}
                                         </span>
                                         {a.rolle_im_center && (
                                             <span className="ml-2 text-xs bg-gray-100 px-2 py-0.5 rounded-full">
@@ -456,6 +483,7 @@ export default function EmployeeDetailPage() {
                                             </span>
                                         )}
                                     </div>
+                                    {istAdmin && (
                                     <button
                                         onClick={() => handleRemove(a.id)}
                                         disabled={busy}
@@ -464,12 +492,13 @@ export default function EmployeeDetailPage() {
                                     >
                                         <Trash2 className="h-4 w-4" />
                                     </button>
+                                    )}
                                 </li>
                             ))}
                         </ul>
                     )}
 
-                    {verfuegbareCenter.length > 0 && (
+                    {istAdmin && verfuegbareCenter.length > 0 && (
                         <div className="mt-4 border-t pt-4">
                             <p className="text-sm font-medium mb-2">Weiteres Center zuordnen</p>
                             <div className="flex flex-col md:flex-row gap-2">

@@ -65,9 +65,10 @@ gesetzlich erforderlichen hinausgehen.
 
 **Innerhalb des Unternehmens:**
 - Die **Geschäftsführung/Administration** sieht alle Daten.
-- **Regionalleitungen** sehen nur Name, Kontakt, Center-Zuordnung,
-  Verfügbarkeiten und Schichten der ihnen zugeordneten Mitarbeiter –
-  **keine** Steuer-, Sozialversicherungs- oder Gehaltsdaten.
+- **Regionalleitungen** sehen die Personalakte der Mitarbeiter ihrer eigenen
+  Center – Stammdaten, ausgefüllte Formulare und hochgeladene Nachweise –, um
+  Einsatz und Anmeldung vor Ort zu organisieren. Sie können diese Daten nur
+  ansehen, nicht ändern. Mitarbeiter anderer Center sehen sie nicht.
 - **Andere Mitarbeiter** sehen deine Personaldaten nicht.
 
 **Außerhalb des Unternehmens:**
@@ -133,4 +134,4 @@ Zuordnungen vor, die Entscheidung trifft aber immer ein Mensch.
 
 ---
 
-*Stand: 6. Oktober 2026 · Bei Änderungen informieren wir dich rechtzeitig.*
+*Stand: 23. Oktober 2026 · Bei Änderungen informieren wir dich rechtzeitig.*

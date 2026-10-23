@@ -202,11 +202,12 @@ Authentifizierung für Administrationskonten ist derzeit **nicht aktiviert**
 
 **Zugriffskontrolle:** Rollenmodell (Administration / Regionalleitung /
 Mitarbeitende) mit Durchsetzung auf Datenbankebene (Row Level Security), nicht
-nur in der Oberfläche. Regionalleitungen erhalten eine reduzierte Sicht ohne
-Steuer- und Sozialversicherungsdaten, beschränkt auf die
-Mitarbeiter ihrer eigenen Center und auf Datenbankebene durchgesetzt (die
-Profiltabelle ist für sie nicht direkt lesbar). Umsatzübersichten, Center-Pflege
-und Vertragsdaten sind Regionalleitungen nicht zugänglich. Mitarbeitende sehen ausschließlich die
+nur in der Oberfläche. Regionalleitungen haben seit 23.10.2026 auf Entscheidung
+des Inhabers Lesezugriff auf die Personalakte (Stammdaten inkl. Steuer- und
+Sozialversicherungsdaten, Formulare, Nachweise) der Mitarbeiter ihrer eigenen
+Center, auf Datenbankebene auf diese Center beschränkt; Ändern, Löschen,
+Passwörter und Rollen bleiben der Administration vorbehalten.
+Umsatzübersichten und Center-Pflege sind Regionalleitungen nicht zugänglich. Mitarbeitende sehen ausschließlich die
 eigenen Daten.
 
 **Weitergabekontrolle:** Übertragung ausschließlich über TLS-verschlüsselte

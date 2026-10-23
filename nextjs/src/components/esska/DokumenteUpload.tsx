@@ -17,9 +17,11 @@ type Props = {
     /** Dokumenttypen, die prominent als Pflicht angezeigt werden */
     pflicht?: EsskaDokumentTyp[];
     onChanged?: (docs: EsskaEmployeeDocument[]) => void;
+    /** Nur ansehen (Regionalmanager): kein Hochladen, kein Loeschen. */
+    nurLesen?: boolean;
 };
 
-export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorderseite", "ausweis_rueckseite"], onChanged }: Props) {
+export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorderseite", "ausweis_rueckseite"], onChanged, nurLesen = false }: Props) {
     const [docs, setDocs] = useState<EsskaEmployeeDocument[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploadTyp, setUploadTyp] = useState<EsskaDokumentTyp>("ausweis_vorderseite");
@@ -156,6 +158,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
                 </div>
             )}
 
+            {!nurLesen && (
             <div className="flex flex-col md:flex-row gap-2 items-stretch md:items-end">
                 <div className="flex-1">
                     <label className="block text-sm font-medium mb-1">Dokumenttyp</label>
@@ -207,6 +210,7 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
                     </label>
                 </div>
             </div>
+            )}
 
             {loading ? (
                 <p className="text-sm text-gray-500">Lädt…</p>
@@ -227,9 +231,11 @@ export default function DokumenteUpload({ profileId, pflicht = ["ausweis_vorders
                                 <button type="button" onClick={() => handleDownload(doc)} className="text-primary-600 hover:text-primary-800" title="Ansehen">
                                     <Download className="h-4 w-4" />
                                 </button>
-                                <button type="button" onClick={() => handleDelete(doc)} disabled={busy} className="text-red-600 hover:text-red-800" title="Löschen">
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
+                                {!nurLesen && (
+                                    <button type="button" onClick={() => handleDelete(doc)} disabled={busy} className="text-red-600 hover:text-red-800" title="Löschen">
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
+                                )}
                             </div>
                         </li>
                     ))}
