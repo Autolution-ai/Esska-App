@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { PackageOpen, Send, ShoppingCart } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaBestellArtikel,
@@ -245,18 +246,7 @@ export default function OrdersPage() {
                 <div>
                     <label className="block text-sm font-medium mb-1">Center</label>
                     {mehrereCenter ? (
-                        <select
-                            value={centerId}
-                            onChange={(e) => setCenterId(e.target.value)}
-                            required
-                            className="w-full border rounded-md px-3 py-2 text-sm"
-                        >
-                            {centers.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name} ({c.kuerzel}) · {c.stadt}
-                                </option>
-                            ))}
-                        </select>
+                        <CenterAuswahl centers={centers} value={centerId} onChange={setCenterId} />
                     ) : (
                         <div className="w-full border rounded-md px-3 py-2 text-sm bg-secondary-50">
                             {centers[0]

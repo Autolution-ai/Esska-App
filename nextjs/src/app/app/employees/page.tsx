@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, Send, UserPlus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaProfile } from "@/lib/esska/types";
 import { addTage, formatDate, isoDatum, montagDerWoche } from "@/lib/esska/types";
@@ -297,21 +298,15 @@ export default function EmployeesPage() {
                         className="w-full border rounded-md pl-9 pr-3 py-2 text-sm"
                     />
                 </div>
-                <div>
+                <div className="w-full sm:w-80">
                     <label className="block text-xs text-gray-500 mb-1">Center</label>
-                    <select
+                    <CenterAuswahl
+                        centers={centers}
                         value={centerFilter}
-                        onChange={(e) => setCenterFilter(e.target.value)}
-                        className="border rounded-md px-3 py-2 text-sm"
-                    >
-                        <option value="alle">Alle Center</option>
-                        {centers.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.name} ({c.kuerzel}) · {c.stadt}
-                            </option>
-                        ))}
-                        <option value="ohne">Ohne Center</option>
-                    </select>
+                        onChange={setCenterFilter}
+                        vorne={[{ value: "alle", label: "Alle Center" }]}
+                        hinten={[{ value: "ohne", label: "Ohne Center" }]}
+                    />
                 </div>
                 <div>
                     <label className="block text-xs text-gray-500 mb-1">Gruppieren nach</label>

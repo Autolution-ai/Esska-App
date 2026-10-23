@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import type { EsskaCenter } from "@/lib/esska/types";
 import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
@@ -108,18 +109,12 @@ export default function InvitePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                         {istRegional ? "Center" : "Center zuordnen (optional)"}
                     </label>
-                    <select
+                    <CenterAuswahl
+                        centers={centers}
                         value={centerId}
-                        onChange={(e) => setCenterId(e.target.value)}
-                        className="w-full border rounded-md px-3 py-2 text-sm"
-                    >
-                        <option value="">{istRegional ? "– bitte wählen –" : "– später zuordnen –"}</option>
-                        {centers.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.name} ({c.kuerzel}) · {c.stadt} · {c.saison}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={setCenterId}
+                        vorne={[{ value: "", label: istRegional ? "– bitte wählen –" : "– später zuordnen –" }]}
+                    />
                     <p className="text-xs text-gray-500 mt-1">
                         {istRegional
                             ? "Du kannst Mitarbeiter nur für deine eigenen Center anlegen."

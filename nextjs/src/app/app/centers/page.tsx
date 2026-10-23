@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { centerPasst } from "@/components/esska/CenterAuswahl";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaCenterZeitraum, EsskaProfile } from "@/lib/esska/types";
@@ -29,6 +30,8 @@ export default function CentersPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filterSaison, setFilterSaison] = useState<string>("");
+    // Suche nach Stadt, Kuerzel oder Name
+    const [suche, setSuche] = useState("");
     const [sortierung, setSortierung] = useState<"name" | "start" | "ende">("name");
     const [gruppierung, setGruppierung] = useState<"keine" | "status" | "manager">("keine");
 
@@ -79,7 +82,7 @@ export default function CentersPage() {
     const sichtbar = (filterSaison
         ? centers.filter((c) => c.saison === filterSaison)
         : centers
-    ).slice().sort((a, b) => {
+    ).filter((c) => centerPasst(c, suche)).slice().sort((a, b) => {
         if (sortierung === "start") return a.start_datum.localeCompare(b.start_datum);
         if (sortierung === "ende") return a.end_datum.localeCompare(b.end_datum);
         return 0; // Standard: Reihenfolge aus der Datenbank (Saison, Name)
@@ -120,6 +123,20 @@ export default function CentersPage() {
             </div>
 
             <div className="flex items-end gap-3 flex-wrap">
+                <div className="w-full sm:w-72">
+                    <label htmlFor="center-suche" className="block text-xs text-gray-500 mb-1">Suchen</label>
+                    <div className="relative">
+                        <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            id="center-suche"
+                            type="search"
+                            value={suche}
+                            onChange={(e) => setSuche(e.target.value)}
+                            placeholder="Stadt, Kürzel oder Name"
+                            className="w-full border rounded-md pl-9 pr-3 py-1.5 text-sm"
+                        />
+                    </div>
+                </div>
                 {saisonOptions.length > 1 && (
                     <div>
                         <label className="block text-xs text-gray-500 mb-1">Saison</label>
@@ -180,7 +197,12 @@ export default function CentersPage() {
                             {error}
                         </div>
                     )}
-                    {!loading && sichtbar.length === 0 && (
+                    {!loading && sichtbar.length === 0 && centers.length > 0 && (
+                        <div className="text-center py-10 text-gray-500">
+                            Kein Center passt zu den gewählten Filtern bzw. zur Suche.
+                        </div>
+                    )}
+                    {!loading && centers.length === 0 && (
                         <div className="text-center py-10 text-gray-500">
                             Noch keine Center angelegt.
                             <div className="mt-2">

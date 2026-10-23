@@ -8,6 +8,7 @@ import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import { getEsskaClient } from "@/lib/esska/client";
+import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaKubeDeclaration, EsskaProfile, EsskaRole } from "@/lib/esska/types";
 import { centToEuro, formatDate, formatMoney } from "@/lib/esska/types";
@@ -502,18 +503,14 @@ export default function EmployeeDetailPage() {
                         <div className="mt-4 border-t pt-4">
                             <p className="text-sm font-medium mb-2">Weiteres Center zuordnen</p>
                             <div className="flex flex-col md:flex-row gap-2">
-                                <select
-                                    value={selectedCenterId}
-                                    onChange={(e) => setSelectedCenterId(e.target.value)}
-                                    className="border rounded-md px-3 py-2 text-sm flex-1"
-                                >
-                                    <option value="">– Center wählen –</option>
-                                    {verfuegbareCenter.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name} ({c.kuerzel}) · {c.saison}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex-1">
+                                    <CenterAuswahl
+                                        centers={verfuegbareCenter}
+                                        value={selectedCenterId}
+                                        onChange={setSelectedCenterId}
+                                        vorne={[{ value: "", label: "– Center wählen –" }]}
+                                    />
+                                </div>
                                 <input
                                     value={rolleImCenter}
                                     onChange={(e) => setRolleImCenter(e.target.value)}

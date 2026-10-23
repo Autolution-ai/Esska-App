@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCardRevenue, EsskaCenter, EsskaCenterZeitraum } from "@/lib/esska/types";
 import { centToEuro, euroToCent, isoDatum, parseIsoDatum } from "@/lib/esska/types";
@@ -192,19 +193,9 @@ export default function CardRevenuesPage() {
             {info && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{info}</div>}
 
             <div className="flex flex-wrap items-end gap-3">
-                <div>
+                <div className="w-full sm:w-80">
                     <label className="block text-xs text-gray-500 mb-1">Center</label>
-                    <select
-                        value={centerId}
-                        onChange={(e) => setCenterId(e.target.value)}
-                        className="border rounded-md px-3 py-2 text-sm"
-                    >
-                        {centers.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.name} ({c.kuerzel}) · {c.saison}
-                            </option>
-                        ))}
-                    </select>
+                    <CenterAuswahl centers={centers} value={centerId} onChange={setCenterId} />
                 </div>
                 <div>
                     <label className="block text-xs text-gray-500 mb-1">Monat</label>

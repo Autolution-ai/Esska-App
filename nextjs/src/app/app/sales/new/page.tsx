@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaCenterZeitraum, EsskaDailySale } from "@/lib/esska/types";
 import { centToEuro, euroToCent, isoDatum, parseEuro, parseIsoDatum, zeitKurz } from "@/lib/esska/types";
@@ -409,22 +410,17 @@ export default function SalesEntryPage() {
                 <div>
                     <label className="block text-sm font-medium mb-1">Center</label>
                     {mehrereCenter || istAdmin ? (
-                        <select
+                        <CenterAuswahl
+                            centers={centers}
                             value={centerId}
-                            onChange={(e) => setCenterId(e.target.value)}
+                            onChange={setCenterId}
+                            vorne={[{ value: "", label: "– wählen –" }]}
+                            beschriftung={(c) =>
+                                `${c.name} (${c.kuerzel}) · ${c.stadt}` +
+                                (imZeitraum(c.id, datum) ? "" : " — außerhalb Mietzeitraum")
+                            }
                             className={`w-full border rounded-md px-3 py-2 text-sm ${fehlerFeld === "center" ? "border-red-500 bg-red-50" : ""}`}
-                        >
-                            <option value="">– wählen –</option>
-                            {centers.map((c) => {
-                                const offen = imZeitraum(c.id, datum);
-                                return (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name} ({c.kuerzel}) · {c.saison}
-                                        {!offen ? " — außerhalb Mietzeitraum" : ""}
-                                    </option>
-                                );
-                            })}
-                        </select>
+                        />
                     ) : (
                         <div className="w-full border rounded-md px-3 py-2 text-sm bg-secondary-50">
                             {centers[0]

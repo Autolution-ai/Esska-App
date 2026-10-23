@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Eye, Plus } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
+import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaCenter, EsskaShiftWeek } from "@/lib/esska/types";
 import { addTage, isoDatum, montagDerWoche, parseIsoDatum } from "@/lib/esska/types";
@@ -62,19 +63,9 @@ export default function ShiftsOverviewPage() {
             {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
 
             <div className="flex flex-wrap items-end gap-3">
-                <div>
+                <div className="w-full sm:w-80">
                     <label className="block text-xs text-gray-500 mb-1">Center</label>
-                    <select
-                        value={centerId}
-                        onChange={(e) => setCenterId(e.target.value)}
-                        className="border rounded-md px-3 py-2 text-sm"
-                    >
-                        {centers.map((c) => (
-                            <option key={c.id} value={c.id}>
-                                {c.name} ({c.kuerzel}) · {c.saison}
-                            </option>
-                        ))}
-                    </select>
+                    <CenterAuswahl centers={centers} value={centerId} onChange={setCenterId} />
                 </div>
                 <div>
                     <label className="block text-xs text-gray-500 mb-1">Woche (Montag)</label>

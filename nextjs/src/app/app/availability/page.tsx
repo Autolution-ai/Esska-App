@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { useGlobal } from "@/lib/context/GlobalContext";
+import { suchText } from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
 import type {
     EsskaAvailabilityRow,
@@ -77,6 +78,12 @@ const key = (datum: string, slot: EsskaShiftSlot) => `${datum}::${slot}`;
 
 type Person = { id: string; vorname: string | null; nachname: string | null; email: string | null; role: string };
 
+const personPasst = (p: Person, suche: string): boolean => {
+    const woerter = suchText(suche).split(/\s+/).filter(Boolean);
+    const heu = suchText(`${p.vorname ?? ""} ${p.nachname ?? ""} ${p.email ?? ""}`);
+    return woerter.every((w) => heu.includes(w));
+};
+
 export default function AvailabilityPage() {
     const { role } = useGlobal();
     // Admins und Regionalmanager koennen auch die Verfuegbarkeit ihres Teams
@@ -84,6 +91,7 @@ export default function AvailabilityPage() {
     const darfTeam = role === "admin" || role === "regionalmanager";
     const [ichId, setIchId] = useState<string | null>(null);
     const [personen, setPersonen] = useState<Person[]>([]);
+    const [personSuche, setPersonSuche] = useState("");
     // Wessen Verfuegbarkeit gerade angezeigt wird (Standard: die eigene)
     const [profileId, setProfileId] = useState<string | null>(null);
     // V-2: Oeffnungstage der zugeordneten Center - an Tagen, an denen ALLE
@@ -313,7 +321,27 @@ export default function AvailabilityPage() {
                 <div>
                     <h1 className="text-2xl font-bold">Wochenplan</h1>
                     {darfTeam && personen.length > 0 && (
-                        <div className="mt-2 mb-1">
+                        <div className="mt-2 mb-1 flex flex-wrap items-center gap-2">
+                            {personen.length > 6 && (
+                                <input
+                                    type="search"
+                                    value={personSuche}
+                                    onChange={(e) => {
+                                        const q = e.target.value;
+                                        setPersonSuche(q);
+                                        // Genau ein Treffer: direkt auswaehlen
+                                        const treffer = personen.filter((p) => personPasst(p, q) && p.id !== ichId);
+                                        if (q.trim().length >= 2 && treffer.length === 1) {
+                                            setInfo(null);
+                                            setError(null);
+                                            setProfileId(treffer[0].id);
+                                        }
+                                    }}
+                                    placeholder="Person suchen…"
+                                    aria-label="Person suchen"
+                                    className="border rounded-md px-2 py-1.5 text-sm w-44"
+                                />
+                            )}
                             <label htmlFor="verf-person" className="text-sm text-gray-600 mr-2">
                                 Verfügbarkeit von
                             </label>
@@ -329,7 +357,7 @@ export default function AvailabilityPage() {
                             >
                                 {ichId && <option value={ichId}>mir selbst</option>}
                                 {personen
-                                    .filter((p) => p.id !== ichId)
+                                    .filter((p) => p.id !== ichId && (personPasst(p, personSuche) || p.id === profileId))
                                     .map((p) => (
                                         <option key={p.id} value={p.id}>
                                             {`${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || p.email}
