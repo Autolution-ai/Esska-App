@@ -32,7 +32,10 @@ export default function CentersPage() {
     const [filterSaison, setFilterSaison] = useState<string>("");
     // Suche nach Stadt, Kuerzel oder Name
     const [suche, setSuche] = useState("");
-    const [sortierung, setSortierung] = useState<"name" | "start" | "ende">("start");
+    // Sortierung per Klick auf den Spaltenkopf; Standard: Startdatum aufsteigend
+    const [sort, setSort] = useState<{ spalte: SortSpalte; auf: boolean }>({ spalte: "start", auf: true });
+    const sortiereNach = (spalte: SortSpalte) =>
+        setSort((alt) => (alt.spalte === spalte ? { spalte, auf: !alt.auf } : { spalte, auf: true }));
     const [gruppierung, setGruppierung] = useState<"keine" | "status" | "manager">("keine");
 
     useEffect(() => {
@@ -83,9 +86,33 @@ export default function CentersPage() {
         ? centers.filter((c) => c.saison === filterSaison)
         : centers
     ).filter((c) => centerPasst(c, suche)).slice().sort((a, b) => {
-        if (sortierung === "start") return a.start_datum.localeCompare(b.start_datum);
-        if (sortierung === "ende") return a.end_datum.localeCompare(b.end_datum);
-        return 0; // Standard: Reihenfolge aus der Datenbank (Saison, Name)
+        const wert = (c: EsskaCenter): string | number | null => {
+            switch (sort.spalte) {
+                case "saison": return c.saison;
+                case "kuerzel": return c.kuerzel;
+                case "name": return c.name;
+                case "stadt": return c.stadt;
+                case "kategorie": return c.kategorie;
+                case "manager": return managerName(c.manager_id);
+                case "start": return c.start_datum;
+                case "ende": return c.end_datum;
+                case "flaeche": return c.flaeche_qm;
+                case "tage": return c.mietdauer_tage;
+                case "miete": return c.miete_eur_cent;
+                // Status in seinem Ablauf, nicht alphabetisch
+                case "status": return STATUS_REIHENFOLGE.indexOf(statusVon(c));
+            }
+        };
+        const wa = wert(a);
+        const wb = wert(b);
+        // Leere Werte immer ans Ende, egal in welche Richtung
+        if (wa === null || wa === "") return wb === null || wb === "" ? 0 : 1;
+        if (wb === null || wb === "") return -1;
+        const vergleich =
+            typeof wa === "number" && typeof wb === "number"
+                ? wa - wb
+                : String(wa).localeCompare(String(wb), "de", { numeric: true });
+        return sort.auf ? vergleich : -vergleich;
     });
 
     // C-3/C-6: Gruppierte Darstellung
@@ -155,18 +182,6 @@ export default function CentersPage() {
                     </div>
                 )}
                 <div>
-                    <label className="block text-xs text-gray-500 mb-1">Sortieren nach</label>
-                    <select
-                        value={sortierung}
-                        onChange={(e) => setSortierung(e.target.value as typeof sortierung)}
-                        className="border rounded-md px-3 py-1.5 text-sm"
-                    >
-                        <option value="name">Name</option>
-                        <option value="start">Startdatum</option>
-                        <option value="ende">Enddatum</option>
-                    </select>
-                </div>
-                <div>
                     <label className="block text-xs text-gray-500 mb-1">Gruppieren nach</label>
                     <select
                         value={gruppierung}
@@ -213,7 +228,7 @@ export default function CentersPage() {
                         </div>
                     )}
                     {sichtbar.length > 0 && gruppen === null && (
-                        <CenterTabelle rows={sichtbar} statusVon={statusVon} managerName={managerName} />
+                        <CenterTabelle rows={sichtbar} statusVon={statusVon} managerName={managerName} sort={sort} onSort={sortiereNach} />
                     )}
                     {sichtbar.length > 0 && gruppen !== null && (
                         <div className="space-y-6">
@@ -223,7 +238,7 @@ export default function CentersPage() {
                                         {schluessel}{" "}
                                         <span className="font-normal text-gray-400">({rows.length})</span>
                                     </h3>
-                                    <CenterTabelle rows={rows} statusVon={statusVon} managerName={managerName} />
+                                    <CenterTabelle rows={rows} statusVon={statusVon} managerName={managerName} sort={sort} onSort={sortiereNach} />
                                 </div>
                             ))}
                         </div>
@@ -234,32 +249,65 @@ export default function CentersPage() {
     );
 }
 
+type SortSpalte =
+    | "saison" | "kuerzel" | "name" | "stadt" | "kategorie" | "manager"
+    | "start" | "ende" | "flaeche" | "tage" | "miete" | "status";
+
+const STATUS_REIHENFOLGE = ["in_absprache", "geplant", "aktiv", "abgeschlossen"];
+
 function CenterTabelle({
     rows,
     statusVon,
     managerName,
+    sort,
+    onSort,
 }: {
     rows: EsskaCenter[];
     statusVon: (c: EsskaCenter) => keyof typeof statusFarben;
     managerName: (id: string | null) => string | null;
+    sort: { spalte: SortSpalte; auf: boolean };
+    onSort: (spalte: SortSpalte) => void;
 }) {
+    // Spaltenkopf als Knopf: Klick sortiert nach dieser Spalte, erneuter Klick
+    // dreht die Richtung. Das Dreieck zeigt Spalte und Richtung an.
+    const Kopf = ({ spalte, children, rechts = false }: { spalte: SortSpalte; children: React.ReactNode; rechts?: boolean }) => {
+        const aktiv = sort.spalte === spalte;
+        return (
+            <th
+                className="px-3 py-2 font-medium text-gray-700"
+                aria-sort={aktiv ? (sort.auf ? "ascending" : "descending") : "none"}
+            >
+                <button
+                    type="button"
+                    onClick={() => onSort(spalte)}
+                    className={`inline-flex items-center gap-1 whitespace-nowrap hover:text-gray-900 ${rechts ? "w-full justify-end" : ""}`}
+                    title={`Nach ${typeof children === "string" ? children : "dieser Spalte"} sortieren`}
+                >
+                    {children}
+                    <span className={`text-[10px] ${aktiv ? "text-primary-600" : "text-gray-300"}`}>
+                        {aktiv ? (sort.auf ? "▲" : "▼") : "▼"}
+                    </span>
+                </button>
+            </th>
+        );
+    };
     return (
         <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-left">
                     <tr>
-                        <Th>Saison</Th>
-                        <Th>Kürzel</Th>
-                        <Th>Center</Th>
-                        <Th>Stadt</Th>
-                        <Th>Kat.</Th>
-                        <Th>Manager</Th>
-                        <Th>Start</Th>
-                        <Th>Ende</Th>
-                        <Th className="text-right">Fläche</Th>
-                        <Th className="text-right">Tage</Th>
-                        <Th className="text-right">Miete</Th>
-                        <Th>Status</Th>
+                        <Kopf spalte="saison">Saison</Kopf>
+                        <Kopf spalte="kuerzel">Kürzel</Kopf>
+                        <Kopf spalte="name">Center</Kopf>
+                        <Kopf spalte="stadt">Stadt</Kopf>
+                        <Kopf spalte="kategorie">Kat.</Kopf>
+                        <Kopf spalte="manager">Manager</Kopf>
+                        <Kopf spalte="start">Start</Kopf>
+                        <Kopf spalte="ende">Ende</Kopf>
+                        <Kopf spalte="flaeche" rechts>Fläche</Kopf>
+                        <Kopf spalte="tage" rechts>Tage</Kopf>
+                        <Kopf spalte="miete" rechts>Miete</Kopf>
+                        <Kopf spalte="status">Status</Kopf>
                     </tr>
                 </thead>
                 <tbody>
@@ -301,9 +349,6 @@ function CenterTabelle({
     );
 }
 
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-    return <th className={`px-3 py-2 font-medium text-gray-700 ${className}`}>{children}</th>;
-}
 function Td({ children, className = "" }: { children: React.ReactNode; className?: string }) {
     return <td className={`px-3 py-2 ${className}`}>{children}</td>;
 }
