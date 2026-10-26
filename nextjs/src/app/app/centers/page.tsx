@@ -32,7 +32,7 @@ export default function CentersPage() {
     const [filterSaison, setFilterSaison] = useState<string>("");
     // Suche nach Stadt, Kuerzel oder Name
     const [suche, setSuche] = useState("");
-    const [sortierung, setSortierung] = useState<"name" | "start" | "ende">("name");
+    const [sortierung, setSortierung] = useState<"name" | "start" | "ende">("start");
     const [gruppierung, setGruppierung] = useState<"keine" | "status" | "manager">("keine");
 
     useEffect(() => {
