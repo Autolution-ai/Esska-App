@@ -30,6 +30,8 @@ export default function EmployeesPage() {
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState("");
     const [centerFilter, setCenterFilter] = useState<string>("alle");
+    // Admin: nach Regionalmanager filtern ("alle" | Profil-ID | "ohne")
+    const [managerFilter, setManagerFilter] = useState<string>("alle");
     const [gruppierung, setGruppierung] = useState<"keine" | "center" | "stadt">("keine");
     // Auswahl fuer den Sammel-Versand an die Buchhaltung
     const [auswahl, setAuswahl] = useState<Set<string>>(new Set());
@@ -109,10 +111,47 @@ export default function EmployeesPage() {
         return centers.filter((c) => ids.includes(c.id));
     };
 
+    // Regionalmanager und die Center, fuer die sie zustaendig sind - wie in
+    // der Datenbank: am Center eingetragen ODER dem Center zugeordnet.
+    const regionalmanager = useMemo(
+        () =>
+            profiles
+                .filter((p) => p.role === "regionalmanager")
+                .sort((a, b) => `${a.nachname ?? ""}${a.vorname ?? ""}`.localeCompare(`${b.nachname ?? ""}${b.vorname ?? ""}`, "de")),
+        [profiles]
+    );
+    const zustaendigFuer = useMemo(() => {
+        const map = new Map<string, Set<string>>();
+        for (const rm of regionalmanager) {
+            map.set(
+                rm.id,
+                new Set([
+                    ...centers.filter((c) => c.manager_id === rm.id).map((c) => c.id),
+                    ...assignments.filter((a) => a.profile_id === rm.id).map((a) => a.center_id),
+                ])
+            );
+        }
+        return map;
+    }, [regionalmanager, centers, assignments]);
+    const centerMitManager = useMemo(
+        () => new Set([...zustaendigFuer.values()].flatMap((ids) => [...ids])),
+        [zustaendigFuer]
+    );
+
     const sichtbar = profiles.filter((p) => {
         if (filter) {
             const text = `${p.vorname ?? ""} ${p.nachname ?? ""} ${p.email ?? ""}`.toLowerCase();
             if (!text.includes(filter.toLowerCase())) return false;
+        }
+        if (managerFilter !== "alle") {
+            const meineIds = centerVon(p.id).map((c) => c.id);
+            if (managerFilter === "ohne") {
+                // Kein einziges seiner Center hat einen Regionalmanager
+                if (meineIds.some((id) => centerMitManager.has(id))) return false;
+            } else {
+                const ids = zustaendigFuer.get(managerFilter) ?? new Set<string>();
+                if (!meineIds.some((id) => ids.has(id))) return false;
+            }
         }
         if (centerFilter === "alle") return true;
         const meine = centerVon(p.id);
@@ -308,6 +347,28 @@ export default function EmployeesPage() {
                         hinten={[{ value: "ohne", label: "Ohne Center" }]}
                     />
                 </div>
+                {role === "admin" && regionalmanager.length > 0 && (
+                    <div>
+                        <label htmlFor="manager-filter" className="block text-xs text-gray-500 mb-1">
+                            Regionalmanager
+                        </label>
+                        <select
+                            id="manager-filter"
+                            value={managerFilter}
+                            onChange={(e) => setManagerFilter(e.target.value)}
+                            className="border rounded-md px-3 py-2 text-sm"
+                        >
+                            <option value="alle">Alle Regionalmanager</option>
+                            {regionalmanager.map((rm) => (
+                                <option key={rm.id} value={rm.id}>
+                                    {`${rm.vorname ?? ""} ${rm.nachname ?? ""}`.trim() || rm.email}
+                                    {` (${zustaendigFuer.get(rm.id)?.size ?? 0} Center)`}
+                                </option>
+                            ))}
+                            <option value="ohne">Ohne Regionalmanager</option>
+                        </select>
+                    </div>
+                )}
                 <div>
                     <label className="block text-xs text-gray-500 mb-1">Gruppieren nach</label>
                     <select
