@@ -5,29 +5,22 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useGlobal } from "@/lib/context/GlobalContext";
-import { createSPASassClientAuthenticated as createSPASassClient } from "@/lib/supabase/client";
 import { getEsskaClient } from "@/lib/esska/client";
-import { friendlyError } from "@/lib/esska/errors";
-import { BookOpen, CheckCircle, ChevronRight, FileText, Key, Scale, Shield, Users } from "lucide-react";
+import { BookOpen, CheckCircle, ChevronRight, FileText, Scale, Shield, Users } from "lucide-react";
 import { MFASetup } from "@/components/MFASetup";
 import StammdatenForm from "@/components/esska/StammdatenForm";
 import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import type { EsskaProfile } from "@/lib/esska/types";
 
 export default function UserSettingsPage() {
-    const { user, role } = useGlobal();
-    // Mitarbeiter nutzen das gemeinsame Startpasswort (Vorgabe Oktober 2026)
-    // und legen kein eigenes fest. Admins und Regionalmanager behalten ein
-    // eigenes Passwort und die Zwei-Faktor-Anmeldung.
-    const eigenesPasswort = role === "admin" || role === "regionalmanager";
+    const { role } = useGlobal();
+    // Passwort aendern gibt es in der App nicht mehr (Vorgabe 26.10.2026).
+    // Admins und Regionalmanager behalten die Zwei-Faktor-Anmeldung.
+    const mitZweiFaktor = role === "admin" || role === "regionalmanager";
     const [profile, setProfile] = useState<EsskaProfile | null>(null);
     const [profileLoading, setProfileLoading] = useState(true);
     const [profileError, setProfileError] = useState<string | null>(null);
 
-    const [newPassword, setNewPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
     useEffect(() => {
@@ -52,30 +45,6 @@ export default function UserSettingsPage() {
         load();
     }, []);
 
-    const handlePasswordChange = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newPassword !== confirmPassword) {
-            setError("Die Passwörter stimmen nicht überein.");
-            return;
-        }
-        setLoading(true);
-        setError("");
-        setSuccess("");
-        try {
-            const supabase = await createSPASassClient();
-            const client = supabase.getSupabaseClient();
-            const { error: e } = await client.auth.updateUser({ password: newPassword });
-            if (e) throw e;
-            setSuccess("Passwort erfolgreich geändert.");
-            setNewPassword("");
-            setConfirmPassword("");
-        } catch (err) {
-            setError(friendlyError(err, { aktion: "Passwort konnte nicht geändert werden." }));
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
         <div className="space-y-6 p-2 md:p-6">
             <div>
@@ -90,11 +59,6 @@ export default function UserSettingsPage() {
                 </p>
             </div>
 
-            {error && (
-                <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
-            )}
             {success && (
                 <Alert>
                     <CheckCircle className="h-4 w-4" />
@@ -141,52 +105,8 @@ export default function UserSettingsPage() {
                 </CardContent>
             </Card>
 
-            {eigenesPasswort && (
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Key className="h-5 w-5" />
-                        Passwort ändern
-                    </CardTitle>
-                    <CardDescription>Angemeldet als {user?.email}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Neues Passwort</label>
-                            <input
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                required
-                                minLength={10}
-                                className="mt-1 block w-full rounded-md border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Passwort wiederholen</label>
-                            <input
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                required
-                                minLength={10}
-                                className="mt-1 block w-full rounded-md border px-3 py-2 text-sm"
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
-                        >
-                            {loading ? "Speichern…" : "Passwort ändern"}
-                        </button>
-                    </form>
-                </CardContent>
-            </Card>
-            )}
 
-            {eigenesPasswort && (
+            {mitZweiFaktor && (
                 <MFASetup
                     onStatusChange={() => {
                         setSuccess("Zwei-Faktor-Authentifizierung aktualisiert.");

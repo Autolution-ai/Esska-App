@@ -21,6 +21,7 @@ import {
     centerTagStatus,
     isoDatum,
     montagDerWoche,
+    parseIsoDatum,
     slotZeitenFuerTag,
     sonderoeffnungLabel,
     tagKurz,
@@ -118,7 +119,16 @@ export default function AvailabilityPage() {
                 const { data: { user } } = await client.auth.getUser();
                 if (!user) throw new Error("Nicht angemeldet");
                 setIchId(user.id);
-                setProfileId(user.id);
+                // Aufruf aus der Mitarbeiterliste: ?person=<id>&woche=<Montag>
+                // Welche Daten wirklich kommen, entscheidet die Datenbank
+                // (Regionalmanager: nur eigene Leute).
+                const params = new URLSearchParams(window.location.search);
+                const person = params.get("person");
+                const woche = params.get("woche");
+                setProfileId(person && /^[0-9a-f-]{36}$/i.test(person) ? person : user.id);
+                if (woche && /^\d{4}-\d{2}-\d{2}$/.test(woche)) {
+                    setWochenStart(montagDerWoche(parseIsoDatum(woche)));
+                }
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Anmeldung pruefen" }));
             }

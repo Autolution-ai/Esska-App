@@ -353,6 +353,7 @@ export default function EmployeesPage() {
                             toggleAuswahl={toggleAuswahl}
                             toggleAlle={toggleAlle}
                             verlinken={role === "admin" || role === "regionalmanager"}
+                            wochenStarts={wochenStarts}
                         />
                     )}
                     {sichtbar.length > 0 && gruppen !== null && (
@@ -371,6 +372,7 @@ export default function EmployeesPage() {
                                         toggleAuswahl={toggleAuswahl}
                                         toggleAlle={toggleAlle}
                                         verlinken={role === "admin" || role === "regionalmanager"}
+                                        wochenStarts={wochenStarts}
                                     />
                                 </div>
                             ))}
@@ -390,6 +392,7 @@ function MitarbeiterTabelle({
     toggleAuswahl,
     toggleAlle,
     verlinken,
+    wochenStarts,
 }: {
     personen: EsskaProfile[];
     centerVon: (id: string) => EsskaCenter[];
@@ -398,6 +401,8 @@ function MitarbeiterTabelle({
     toggleAuswahl: (id: string) => void;
     toggleAlle: (personen: EsskaProfile[]) => void;
     verlinken: boolean;
+    /** Montage der drei angezeigten Wochen - fuer die Links in die Verfuegbarkeit */
+    wochenStarts: Date[];
 }) {
     const alleGewaehlt = personen.length > 0 && personen.every((p) => auswahl.has(p.id));
     return (
@@ -472,19 +477,31 @@ function MitarbeiterTabelle({
                                         <span className="text-xs text-gray-400">—</span>
                                     ) : (
                                         <span className="inline-flex gap-1">
-                                            {wochen.map((ok, i) => (
-                                                <span
-                                                    key={i}
-                                                    title={`${WOCHEN_LABELS[i]}: ${ok ? "eingetragen" : "fehlt noch"}`}
-                                                    className={`px-1.5 py-0.5 rounded text-xs ${
-                                                        ok
-                                                            ? "bg-green-100 text-green-800"
-                                                            : "bg-red-50 text-red-700"
-                                                    }`}
-                                                >
-                                                    {["Diese", "Nächste", "Übern."][i]} {ok ? "✓" : "✕"}
-                                                </span>
-                                            ))}
+                                            {wochen.map((ok, i) => {
+                                                const klasse = `px-1.5 py-0.5 rounded text-xs ${
+                                                    ok ? "bg-green-100 text-green-800" : "bg-red-50 text-red-700"
+                                                }`;
+                                                const text = `${["Diese", "Nächste", "Übern."][i]} ${ok ? "✓" : "✕"}`;
+                                                // Klick oeffnet die Verfuegbarkeit genau dieser Person und Woche
+                                                return verlinken ? (
+                                                    <Link
+                                                        key={i}
+                                                        href={`/app/availability?person=${p.id}&woche=${isoDatum(wochenStarts[i])}`}
+                                                        title={`${WOCHEN_LABELS[i]}: ${ok ? "eingetragen – ansehen" : "fehlt noch – öffnen"}`}
+                                                        className={`${klasse} hover:ring-1 hover:ring-current`}
+                                                    >
+                                                        {text}
+                                                    </Link>
+                                                ) : (
+                                                    <span
+                                                        key={i}
+                                                        title={`${WOCHEN_LABELS[i]}: ${ok ? "eingetragen" : "fehlt noch"}`}
+                                                        className={klasse}
+                                                    >
+                                                        {text}
+                                                    </span>
+                                                );
+                                            })}
                                         </span>
                                     )}
                                 </Td>

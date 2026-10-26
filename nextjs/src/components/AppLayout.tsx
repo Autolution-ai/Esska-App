@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
     Home,
     User,
@@ -9,7 +9,6 @@ import {
     X,
     ChevronDown,
     LogOut,
-    Key,
     Store,
     Users,
     CalendarDays,
@@ -92,7 +91,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
     const [isUserDropdownOpen, setUserDropdownOpen] = useState(false);
     const pathname = usePathname();
-    const router = useRouter();
 
     const { user, role, onboardingAbgeschlossen } = useGlobal();
     const onboardingOffen = role === 'mitarbeiter' && onboardingAbgeschlossen === false;
@@ -104,10 +102,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error('Error logging out:', error);
         }
-    };
-
-    const handleChangePassword = async () => {
-        router.push('/app/user-settings');
     };
 
     const getInitials = (email: string) => {
@@ -227,19 +221,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                     </p>
                                 </div>
                                 <div className="py-1">
-                                    {/* Mitarbeiter nutzen das gemeinsame Startpasswort */}
-                                    {(role === 'admin' || role === 'regionalmanager') && (
-                                        <button
-                                            onClick={() => {
-                                                setUserDropdownOpen(false);
-                                                handleChangePassword();
-                                            }}
-                                            className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                        >
-                                            <Key className="mr-3 h-4 w-4 text-gray-400" />
-                                            Passwort ändern
-                                        </button>
-                                    )}
                                     <button
                                         onClick={() => {
                                             handleLogout();
