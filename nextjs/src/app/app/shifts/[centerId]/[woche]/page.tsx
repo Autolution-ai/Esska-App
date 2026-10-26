@@ -101,6 +101,7 @@ export default function WocheEditorPage() {
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [info, setInfo] = useState<string | null>(null);
 
     // Inline-Zeit-Override pro Zelle (lokaler Zwischenzustand bis Save)
     const [zeitOverride, setZeitOverride] = useState<Record<string, { start: string; ende: string }>>({});
@@ -237,7 +238,20 @@ export default function WocheEditorPage() {
 
     const veroeffentlichen = async () => {
         if (!week) return;
+        const wirdVeroeffentlicht = !week.veroeffentlicht;
+        const eingeplant = new Set(shifts.map((s) => s.profile_id)).size;
+        if (
+            wirdVeroeffentlicht &&
+            eingeplant > 0 &&
+            !window.confirm(
+                `Wochenplan veröffentlichen? ${eingeplant} eingeplante ${eingeplant === 1 ? "Person bekommt ihre" : "Personen bekommen ihre"} Schichten per E-Mail.`
+            )
+        ) {
+            return;
+        }
         setBusy(true);
+        setInfo(null);
+        setError(null);
         try {
             const client = await getEsskaClient();
             const { data: { user } } = await client.auth.getUser();
@@ -252,6 +266,29 @@ export default function WocheEditorPage() {
                 .single();
             if (e) throw e;
             setWeek(data as EsskaShiftWeek);
+
+            // Eingeplante per E-Mail informieren. Scheitert der Versand, bleibt
+            // der Plan trotzdem veroeffentlicht - die Meldung sagt, was fehlt.
+            if (wirdVeroeffentlicht && eingeplant > 0) {
+                const res = await fetch("/api/shifts/benachrichtigen", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ wocheId: week.id }),
+                });
+                const ergebnis = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    setError(
+                        `Veröffentlicht, aber die E-Mails konnten nicht verschickt werden: ${ergebnis.error ?? "unbekannter Fehler"}`
+                    );
+                } else {
+                    const teile = [`Veröffentlicht. ${ergebnis.verschickt} E-Mail${ergebnis.verschickt === 1 ? "" : "s"} verschickt.`];
+                    if (ergebnis.ohneEmail > 0) teile.push(`${ergebnis.ohneEmail} ohne E-Mail-Adresse.`);
+                    if (ergebnis.fehlgeschlagen?.length > 0) {
+                        teile.push(`Nicht zugestellt: ${ergebnis.fehlgeschlagen.join(", ")}.`);
+                    }
+                    setInfo(teile.join(" "));
+                }
+            }
         } catch (err) {
             setError(friendlyError(err, { aktion: "Veroeffentlichen" }));
         } finally {
@@ -400,6 +437,7 @@ export default function WocheEditorPage() {
             </div>
 
             {error && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>}
+            {info && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm">{info}</div>}
 
             {!week ? (
                 <div className="bg-white border rounded-lg p-6 text-center">
