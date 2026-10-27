@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { Mail } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import CenterAuswahl from "@/components/esska/CenterAuswahl";
+import VertragKonditionen, {
+    LEERE_KONDITIONEN,
+    konditionenPruefen,
+    type Konditionen,
+} from "@/components/esska/VertragKonditionen";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import type { EsskaCenter } from "@/lib/esska/types";
 import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
@@ -17,6 +22,15 @@ export default function InvitePage() {
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
     const [centerId, setCenterId] = useState("");
     const [rueckkehrer, setRueckkehrer] = useState(false);
+    // Vertragskonditionen (Beginn, Befristung, Stunden, Stundenlohn)
+    const [konditionen, setKonditionen] = useState<Konditionen>(LEERE_KONDITIONEN);
+    // Beim Waehlen eines Centers den Beginn mit dessen Startdatum vorbelegen,
+    // solange noch nichts eingetragen ist.
+    const centerWaehlen = (id: string) => {
+        setCenterId(id);
+        const c = centers.find((x) => x.id === id);
+        if (c && !konditionen.beginn) setKonditionen((k) => ({ ...k, beginn: c.start_datum }));
+    };
     const { role } = useGlobal();
     // Regionalmanager: nur eigene Center, Zuordnung ist Pflicht
     const istRegional = role === "regionalmanager";
@@ -50,6 +64,11 @@ export default function InvitePage() {
             setResult({ ok: false, message: "Bitte ein Center auswählen." });
             return;
         }
+        const geprueft = konditionenPruefen(konditionen);
+        if ("fehler" in geprueft) {
+            setResult({ ok: false, message: geprueft.fehler });
+            return;
+        }
         setSending(true);
         setResult(null);
         setZugang(null);
@@ -58,7 +77,13 @@ export default function InvitePage() {
             const res = await fetch("/api/employees/invite", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
-                body: JSON.stringify({ email, centerId: centerId || undefined, rueckkehrer }),
+                body: JSON.stringify({
+                    email,
+                    centerId: centerId || undefined,
+                    rueckkehrer,
+                    art: konditionen.art,
+                    vertrag: geprueft.werte,
+                }),
             });
             const data = await res.json();
             if (!res.ok) {
@@ -70,6 +95,7 @@ export default function InvitePage() {
                 if (data.zugang) setZugang(data.zugang as Zugang);
                 setEmail("");
                 setRueckkehrer(false);
+                setKonditionen(LEERE_KONDITIONEN);
             }
         } catch (err) {
             setResult({ ok: false, message: err instanceof Error ? err.message : "Netzwerkfehler" });
@@ -112,7 +138,7 @@ export default function InvitePage() {
                     <CenterAuswahl
                         centers={centers}
                         value={centerId}
-                        onChange={setCenterId}
+                        onChange={centerWaehlen}
                         vorne={[{ value: "", label: istRegional ? "– bitte wählen –" : "– später zuordnen –" }]}
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -121,6 +147,16 @@ export default function InvitePage() {
                             : "Kann jederzeit über die Mitarbeiter-Detailseite geändert oder ergänzt werden."}
                     </p>
                 </div>
+                <fieldset className="border rounded-md p-3 space-y-2">
+                    <legend className="px-1 text-sm font-medium text-gray-700">Arbeitsvertrag</legend>
+                    <p className="text-xs text-gray-500">
+                        Diese Angaben stehen später im Vertrag. Name, Anschrift und Arbeitsort ergänzt die App,
+                        sobald die Person ihren Personalfragebogen ausgefüllt hat; danach unterschreibt sie im
+                        Onboarding. Ohne Beginn wird noch kein Vertrag angelegt – das geht auch später in der
+                        Personalakte.
+                    </p>
+                    <VertragKonditionen wert={konditionen} onChange={setKonditionen} idPrefix="einl" />
+                </fieldset>
                 <label className="flex items-start gap-2 text-sm cursor-pointer">
                     <input
                         type="checkbox"

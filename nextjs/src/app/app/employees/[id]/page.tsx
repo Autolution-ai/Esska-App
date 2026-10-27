@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Edit, FileDown, KeyRound, Plus, Trash2, UserX } from "lucide-react";
 import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
 import { useGlobal } from "@/lib/context/GlobalContext";
-import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
+import ArbeitsvertragBereich from "@/components/esska/ArbeitsvertragBereich";
 import { getEsskaClient } from "@/lib/esska/client";
 import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
@@ -402,11 +402,16 @@ export default function EmployeeDetailPage() {
                     <CardHeader>
                         <CardTitle>Arbeitsvertrag</CardTitle>
                         <CardDescription>
-                            Vorlage zur eingetragenen Beschäftigungsart. Bestätigen kann nur der Mitarbeiter selbst.
+                            Konditionen und Vertrag. Unterschreiben kann nur der Mitarbeiter selbst.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ArbeitsvertragBox profileId={profile.id} modell={profile.arbeitszeit_modell} nurLesen />
+                        <ArbeitsvertragBereich
+                            profileId={profile.id}
+                            modell={profile.arbeitszeit_modell}
+                            modus="verwalten"
+                            darfModellSetzen={istAdmin}
+                        />
                     </CardContent>
                 </Card>
             )}

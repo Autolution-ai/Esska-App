@@ -13,7 +13,8 @@ import type {
     EsskaPensionExemption,
     EsskaProfile,
 } from "@/lib/esska/types";
-import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
+import ArbeitsvertragBereich from "@/components/esska/ArbeitsvertragBereich";
+import { vertragsschrittErledigt } from "@/lib/esska/vertragstatus";
 import StammdatenForm from "@/components/esska/StammdatenForm";
 import KubeForm from "@/components/esska/KubeForm";
 import DokumenteUpload from "@/components/esska/DokumenteUpload";
@@ -33,8 +34,8 @@ export default function OnboardingPage() {
     const [kube, setKube] = useState<EsskaKubeDeclaration | null>(null);
     const [pension, setPension] = useState<EsskaPensionExemption | null>(null);
     const [docs, setDocs] = useState<EsskaEmployeeDocument[]>([]);
-    // Arbeitsvertrag erledigt = bestaetigt ODER fuer die Beschaeftigungsart
-    // (noch) keine Vorlage hinterlegt. Die Box meldet Aenderungen zurueck.
+    // Arbeitsvertrag erledigt = unterschrieben (ausfuellbarer Vertrag) bzw.
+    // bestaetigt ODER (noch) keine Vorlage. Die Box meldet Aenderungen zurueck.
     const [vertragErledigt, setVertragErledigt] = useState(false);
     const [schritt, setSchritt] = useState<Schritt>("stammdaten");
     const [loading, setLoading] = useState(true);
@@ -85,29 +86,9 @@ export default function OnboardingPage() {
 
                 // Vertragsstatus schon beim Laden ermitteln, damit der Haken
                 // im Fortschritt stimmt, ohne dass der Schritt geoeffnet wurde.
-                const modell = (pRes.data as EsskaProfile).arbeitszeit_modell;
-                if (!modell) {
-                    setVertragErledigt(true);
-                } else {
-                    const { data: vData } = await client
-                        .from("vertragsvorlagen")
-                        .select("id")
-                        .eq("art", modell)
-                        .eq("aktiv", true)
-                        .maybeSingle();
-                    const vorlageId = (vData as { id: string } | null)?.id;
-                    if (!vorlageId) {
-                        setVertragErledigt(true);
-                    } else {
-                        const { data: bData } = await client
-                            .from("vertragsbestaetigungen")
-                            .select("id")
-                            .eq("profile_id", user.id)
-                            .eq("vorlage_id", vorlageId)
-                            .maybeSingle();
-                        setVertragErledigt(!!bData);
-                    }
-                }
+                setVertragErledigt(
+                    await vertragsschrittErledigt(client, user.id, (pRes.data as EsskaProfile).arbeitszeit_modell)
+                );
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -276,17 +257,18 @@ export default function OnboardingPage() {
                     <div className="bg-white border rounded-lg p-4">
                         <h3 className="text-base font-semibold mb-1">Arbeitsvertrag</h3>
                         <p className="text-sm text-gray-600">
-                            Bitte lies deinen Arbeitsvertrag und bestätige ihn. Du findest ihn danach jederzeit
-                            unter &bdquo;Stammdaten&ldquo; zum Ansehen und Herunterladen.
+                            Bitte lies deinen Arbeitsvertrag und bestätige bzw. unterschreibe ihn. Du findest
+                            ihn danach jederzeit unter &bdquo;Stammdaten&ldquo; zum Ansehen und Herunterladen.
                             <span className="block italic text-xs mt-1">
-                                Please read your employment contract and confirm it. You can view and download
-                                it any time under &bdquo;Stammdaten&ldquo;.
+                                Please read your employment contract and confirm or sign it. You can view and
+                                download it any time under &bdquo;Stammdaten&ldquo;.
                             </span>
                         </p>
                     </div>
-                    <ArbeitsvertragBox
+                    <ArbeitsvertragBereich
                         profileId={profile.id}
                         modell={profile.arbeitszeit_modell}
+                        modus="selbst"
                         onStatus={(erledigt) => setVertragErledigt(erledigt)}
                     />
                     {vertragErledigt && (

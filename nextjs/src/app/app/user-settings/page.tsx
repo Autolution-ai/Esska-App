@@ -9,7 +9,7 @@ import { getEsskaClient } from "@/lib/esska/client";
 import { BookOpen, CheckCircle, ChevronRight, FileText, Scale, Shield, Users } from "lucide-react";
 import { MFASetup } from "@/components/MFASetup";
 import StammdatenForm from "@/components/esska/StammdatenForm";
-import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
+import ArbeitsvertragBereich from "@/components/esska/ArbeitsvertragBereich";
 import type { EsskaProfile } from "@/lib/esska/types";
 
 export default function UserSettingsPage() {
@@ -66,7 +66,7 @@ export default function UserSettingsPage() {
                 </Alert>
             )}
 
-            {/* Arbeitsvertrag ansehen, herunterladen und - falls noch offen - bestaetigen */}
+            {/* Arbeitsvertrag ansehen, herunterladen und - falls noch offen - unterschreiben */}
             {profile && role !== "admin" && (
                 <Card>
                     <CardHeader>
@@ -76,7 +76,7 @@ export default function UserSettingsPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <ArbeitsvertragBox profileId={profile.id} modell={profile.arbeitszeit_modell} />
+                        <ArbeitsvertragBereich profileId={profile.id} modell={profile.arbeitszeit_modell} modus="selbst" />
                     </CardContent>
                 </Card>
             )}

@@ -37,6 +37,41 @@ export interface EsskaVertragsvorlage {
     aktiv: boolean;
 }
 
+// Konkreter Arbeitsvertrag einer Person: Konditionen beim Einladen,
+// Unterschrift (mit dem Finger) und fertiges PDF beim Unterschreiben.
+export interface EsskaArbeitsvertrag {
+    id: string;
+    profile_id: string;
+    art: EsskaArbeitszeitModell;
+    center_id: string | null;
+    beginn: string;
+    befristet_bis: string | null;
+    stunden_pro_woche: number | null;
+    stundenlohn_cent: number | null;
+    erstellt_von: string | null;
+    erstellt_am: string;
+    unterschrieben_am: string | null;
+    pdf_pfad: string | null;
+    angaben: Record<string, string> | null;
+    unterschrift_meta: Record<string, unknown> | null;
+}
+
+// Gesetzlicher Mindestlohn (Beschluss der Mindestlohnkommission 2025):
+// 13,90 EUR ab 01.01.2026, 14,60 EUR ab 01.01.2027.
+export const MINDESTLOHN: { ab: string; cent: number }[] = [
+    { ab: "2026-01-01", cent: 1390 },
+    { ab: "2027-01-01", cent: 1460 },
+];
+
+/** Hoechster Mindestlohn, der waehrend der Vertragslaufzeit gilt (in Cent),
+ *  samt Stichtag - fuer den Hinweis beim Eintragen des Stundenlohns. */
+export function mindestlohnWaehrend(beginn: string, ende: string | null): { cent: number; ab: string } | null {
+    const bis = ende || beginn;
+    const gueltig = MINDESTLOHN.filter((m) => m.ab <= bis);
+    if (gueltig.length === 0) return null;
+    return gueltig[gueltig.length - 1];
+}
+
 // Bestaetigung durch den Mitarbeiter (nur einfuegen, nie aendern)
 export interface EsskaVertragsbestaetigung {
     id: string;
