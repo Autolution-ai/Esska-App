@@ -32,8 +32,17 @@ export async function POST(request: Request) {
         const stunden = b?.stunden_pro_woche === null || b?.stunden_pro_woche === undefined ? null : Number(b.stunden_pro_woche);
         const lohn = b?.stundenlohn_cent === null || b?.stundenlohn_cent === undefined ? null : Number(b.stundenlohn_cent);
         const bis = b?.befristet_bis || null;
-        if (!profileId || profileId === user.id || !art || !istDatum(b?.beginn) || (bis !== null && (!istDatum(bis) || bis < b.beginn))) {
-            return NextResponse.json({ error: "Die Vertragsangaben sind unvollständig oder ungültig." }, { status: 400 });
+        if (profileId === user.id) {
+            return NextResponse.json(
+                { error: "Den eigenen Arbeitsvertrag kannst du nicht selbst zuweisen – das macht ein Admin." },
+                { status: 403 }
+            );
+        }
+        if (!profileId) return NextResponse.json({ error: "Mitarbeiter fehlt." }, { status: 400 });
+        if (!art) return NextResponse.json({ error: "Bitte „Kurzfristig“ oder „Minijob“ wählen." }, { status: 400 });
+        if (!istDatum(b?.beginn)) return NextResponse.json({ error: "Bitte den Beginn angeben." }, { status: 400 });
+        if (bis !== null && (!istDatum(bis) || bis < b.beginn)) {
+            return NextResponse.json({ error: "„Befristet bis“ ist ungültig oder liegt vor dem Beginn." }, { status: 400 });
         }
         if (BEFRISTETE_ARTEN.includes(art as EsskaArbeitszeitModell) && !bis) {
             return NextResponse.json({ error: "Für diese Beschäftigungsart bitte ein Enddatum angeben." }, { status: 400 });

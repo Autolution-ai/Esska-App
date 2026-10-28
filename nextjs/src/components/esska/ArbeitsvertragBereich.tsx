@@ -79,6 +79,8 @@ function konditionenAus(v: EsskaArbeitsvertrag | null, modell: EsskaArbeitszeitM
  *  Ohne das laeuft der einfache Weg (Vorlage ansehen + Haken). */
 export default function ArbeitsvertragBereich({ profileId, modell, modus, istAdmin = false, onStatus }: Props) {
     const [zustand, setZustand] = useState<Zustand>({ art: "laden" });
+    // Den eigenen Vertrag weist immer ein Admin zu (nicht man selbst)
+    const [eigeneId, setEigeneId] = useState<string | null>(null);
     const [fehler, setFehler] = useState<string | null>(null);
     const [erfolg, setErfolg] = useState<string | null>(null);
 
@@ -99,6 +101,8 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, istAdm
         setFehler(null);
         try {
             const client = await getEsskaClient();
+            const { data: { user } } = await client.auth.getUser();
+            setEigeneId(user?.id ?? null);
             const vertrag = await ladeAktuellenVertrag(client, profileId);
             setKonditionen(konditionenAus(vertrag, modell));
             if (modus === "verwalten") {
@@ -212,7 +216,9 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, istAdm
 
     // Admin/Regionalmanager: Konditionen anlegen oder (solange offen) aendern
     const verwaltung =
-        modus === "verwalten" ? (
+        modus === "verwalten" && eigeneId === profileId ? (
+            <p className="text-xs text-gray-500">Deinen eigenen Arbeitsvertrag weist ein Admin zu.</p>
+        ) : modus === "verwalten" ? (
             bearbeiten ? (
                 <div className="space-y-3 border rounded-lg p-4 bg-gray-50">
                     <div className="text-sm font-medium">{offen ? "Vertragskonditionen ändern" : "Arbeitsvertrag zuweisen"}</div>
