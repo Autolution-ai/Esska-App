@@ -101,15 +101,16 @@ export default function VertragKonditionen({
     const setze = <K extends keyof Konditionen>(feld: K, v: Konditionen[K]) => onChange({ ...wert, [feld]: v });
     const stundenAuswahl = minijobBegrenzt && wert.art === "minijob";
 
-    // Hinweis, wenn der Lohn ueber einen Jahreswechsel unter den dann
-    // geltenden Mindestlohn faellt (z. B. 14 EUR bis Januar 2027).
+    // Laeuft der Vertrag ins naechste Jahr, gilt dort ein hoeherer Mindestlohn
+    // (z. B. 14,60 EUR ab 2027). Kein Fehler: der Vertrag regelt die Erhoehung
+    // selbst ("Ab dem 01.01.2027 erhoeht sich der Stundenlohn auf 14,60 EUR").
     const lohn = wert.stundenlohn.trim() ? parseEuro(wert.stundenlohn) : null;
     const ml = wert.beginn ? mindestlohnWaehrend(wert.beginn, wert.befristet_bis || null) : null;
     const mindestlohnHinweis =
-        lohn !== null && ml && lohn < ml.cent
-            ? `Ab ${ml.ab.slice(8, 10)}.${ml.ab.slice(5, 7)}.${ml.ab.slice(0, 4)} gilt ein Mindestlohn von ${(ml.cent / 100)
+        lohn !== null && ml && lohn < ml.cent && ml.ab > wert.beginn
+            ? `In Ordnung: Ab ${ml.ab.slice(8, 10)}.${ml.ab.slice(5, 7)}.${ml.ab.slice(0, 4)} steigt der Lohn laut Vertrag automatisch auf ${(ml.cent / 100)
                   .toFixed(2)
-                  .replace(".", ",")} € – der Vertrag läuft bis in diesen Zeitraum.`
+                  .replace(".", ",")} €.`
             : null;
 
     const feldKlasse = "w-full border rounded-md px-3 py-2 text-sm";
@@ -186,12 +187,12 @@ export default function VertragKonditionen({
                     value={wert.stundenlohn}
                     onChange={(e) => setze("stundenlohn", e.target.value)}
                     inputMode="decimal"
-                    placeholder="z. B. 14,60"
+                    placeholder="z. B. 14"
                     className={feldKlasse}
                 />
             </div>
             {mindestlohnHinweis && (
-                <p className="sm:col-span-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md p-2">
+                <p className="sm:col-span-2 text-xs text-green-800 bg-green-50 border border-green-200 rounded-md p-2">
                     {mindestlohnHinweis}
                 </p>
             )}
