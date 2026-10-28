@@ -14,7 +14,7 @@ import type {
     EsskaProfile,
 } from "@/lib/esska/types";
 import ArbeitsvertragBereich from "@/components/esska/ArbeitsvertragBereich";
-import { vertragsschrittErledigt } from "@/lib/esska/vertragstatus";
+import { vertragsstand } from "@/lib/esska/vertragstatus";
 import StammdatenForm from "@/components/esska/StammdatenForm";
 import KubeForm from "@/components/esska/KubeForm";
 import DokumenteUpload from "@/components/esska/DokumenteUpload";
@@ -34,9 +34,11 @@ export default function OnboardingPage() {
     const [kube, setKube] = useState<EsskaKubeDeclaration | null>(null);
     const [pension, setPension] = useState<EsskaPensionExemption | null>(null);
     const [docs, setDocs] = useState<EsskaEmployeeDocument[]>([]);
-    // Arbeitsvertrag erledigt = unterschrieben (ausfuellbarer Vertrag) bzw.
-    // bestaetigt ODER (noch) keine Vorlage. Die Box meldet Aenderungen zurueck.
+    // Arbeitsvertrag: wird erst nach dem Onboarding von Admin/Regionalmanager
+    // zugewiesen. Der Schritt blockiert den Abschluss daher nicht; ist schon
+    // ein Vertrag da, kann er hier gleich unterschrieben werden.
     const [vertragErledigt, setVertragErledigt] = useState(false);
+    const [vertragZugewiesen, setVertragZugewiesen] = useState(false);
     const [schritt, setSchritt] = useState<Schritt>("stammdaten");
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -86,9 +88,9 @@ export default function OnboardingPage() {
 
                 // Vertragsstatus schon beim Laden ermitteln, damit der Haken
                 // im Fortschritt stimmt, ohne dass der Schritt geoeffnet wurde.
-                setVertragErledigt(
-                    await vertragsschrittErledigt(client, user.id, (pRes.data as EsskaProfile).arbeitszeit_modell)
-                );
+                const stand = await vertragsstand(client, user.id);
+                setVertragErledigt(stand.erledigt);
+                setVertragZugewiesen(stand.zugewiesen);
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -151,7 +153,8 @@ export default function OnboardingPage() {
         { key: "dokumente", titel: "Ausweis & Nachweise", erledigt: dokumentePflichtErfuellt },
     ];
 
-    const alleErledigt = schritte.every((s) => s.erledigt);
+    // Der Arbeitsvertrag zaehlt nicht mit (kommt ggf. erst spaeter)
+    const alleErledigt = schritte.every((s) => s.erledigt || s.key === "arbeitsvertrag");
 
     const handleFertig = async () => {
         if (!alleErledigt) {
@@ -257,11 +260,12 @@ export default function OnboardingPage() {
                     <div className="bg-white border rounded-lg p-4">
                         <h3 className="text-base font-semibold mb-1">Arbeitsvertrag</h3>
                         <p className="text-sm text-gray-600">
-                            Bitte lies deinen Arbeitsvertrag und bestätige bzw. unterschreibe ihn. Du findest
-                            ihn danach jederzeit unter &bdquo;Stammdaten&ldquo; zum Ansehen und Herunterladen.
+                            Deinen Arbeitsvertrag erstellt Esska für dich. Sobald er fertig ist, unterschreibst du
+                            ihn hier bzw. unter &bdquo;Stammdaten&ldquo; – dort kannst du ihn auch jederzeit ansehen
+                            und herunterladen.
                             <span className="block italic text-xs mt-1">
-                                Please read your employment contract and confirm or sign it. You can view and
-                                download it any time under &bdquo;Stammdaten&ldquo;.
+                                Esska prepares your employment contract. Once it is ready, you sign it here or under
+                                &bdquo;Stammdaten&ldquo;, where you can also view and download it any time.
                             </span>
                         </p>
                     </div>
@@ -271,15 +275,13 @@ export default function OnboardingPage() {
                         modus="selbst"
                         onStatus={(erledigt) => setVertragErledigt(erledigt)}
                     />
-                    {vertragErledigt && (
-                        <button
-                            type="button"
-                            onClick={naechsterSchritt}
-                            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-                        >
-                            Weiter
-                        </button>
-                    )}
+                    <button
+                        type="button"
+                        onClick={naechsterSchritt}
+                        className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+                    >
+                        {vertragErledigt || !vertragZugewiesen ? "Weiter" : "Später unterschreiben – weiter"}
+                    </button>
                 </div>
             )}
 
@@ -347,7 +349,7 @@ export default function OnboardingPage() {
                             <p className="font-medium mb-1">Noch zu erledigen:</p>
                             <ul className="list-disc pl-5 space-y-0.5">
                                 {schritte
-                                    .filter((s) => !s.erledigt)
+                                    .filter((s) => !s.erledigt && s.key !== "arbeitsvertrag")
                                     .map((s) => (
                                         <li key={s.key}>
                                             <button
@@ -364,6 +366,30 @@ export default function OnboardingPage() {
 
                     {error && (
                         <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm">{error}</div>
+                    )}
+
+                    {alleErledigt && !vertragErledigt && vertragZugewiesen && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
+                            Dein Arbeitsvertrag ist schon fertig, aber noch nicht unterschrieben. Du kannst das
+                            Onboarding trotzdem abschließen und ihn danach unter &bdquo;Stammdaten&ldquo; unterschreiben.
+                            <span className="block italic text-xs mt-1">
+                                Your contract is ready but not signed yet. You can sign it later under
+                                &bdquo;Stammdaten&ldquo;.
+                            </span>
+                        </div>
+                    )}
+
+                    {alleErledigt && !vertragZugewiesen && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
+                            <p className="font-medium mb-1">Dein Arbeitsvertrag wird gerade erstellt</p>
+                            Nach dem Abschluss erstellt Esska deinen Arbeitsvertrag. Sobald er fertig ist, bekommst
+                            du eine E-Mail und kannst ihn in der App unter &bdquo;Stammdaten&ldquo; prüfen und
+                            unterschreiben.
+                            <span className="block italic text-xs mt-1">
+                                Esska will now prepare your employment contract. You will get an email as soon as it
+                                is ready to be signed in the app under &bdquo;Stammdaten&ldquo;.
+                            </span>
+                        </div>
                     )}
 
                     {alleErledigt && (

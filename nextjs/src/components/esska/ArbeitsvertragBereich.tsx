@@ -5,7 +5,7 @@ import { CheckCircle2, Download, FileText, PenLine } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaArbeitsvertrag, EsskaArbeitszeitModell } from "@/lib/esska/types";
-import { ARBEITSZEIT_MODELL_LABELS } from "@/lib/esska/types";
+import { ARBEITSZEIT_MODELL_LABELS, BEFRISTETE_ARTEN } from "@/lib/esska/types";
 import { ladeAktuellenVertrag, unterschreibbar } from "@/lib/esska/vertragstatus";
 import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import Unterschriftsfeld from "@/components/esska/Unterschriftsfeld";
@@ -24,10 +24,11 @@ type Person = {
     geburtsdatum: string | null;
 };
 type Center = { name: string; stadt: string };
+type CenterOption = Center & { id: string };
 
 type Zustand =
     | { art: "laden" }
-    | { art: "einfach"; vertrag: EsskaArbeitsvertrag | null } // kein ausfuellbarer Vertrag -> Bestaetigen per Haken
+    | { art: "einfach"; vertrag: EsskaArbeitsvertrag | null } // kein (ausfuellbarer) Vertrag
     | { art: "vertrag"; vertrag: EsskaArbeitsvertrag; person: Person | null; center: Center | null };
 
 type Props = {
@@ -36,8 +37,8 @@ type Props = {
     /** selbst: die Person unterschreibt · lesen: nur ansehen ·
      *  verwalten: Admin/Regionalmanager pflegt die Konditionen */
     modus: "selbst" | "lesen" | "verwalten";
-    /** Nur Admin: Beschaeftigungsart im Profil mitziehen */
-    darfModellSetzen?: boolean;
+    /** Admin darf beim Minijob mehr als MINIJOB_MAX_STUNDEN eintragen */
+    istAdmin?: boolean;
     onStatus?: (erledigt: boolean) => void;
 };
 
@@ -73,7 +74,7 @@ function konditionenAus(v: EsskaArbeitsvertrag | null, modell: EsskaArbeitszeitM
 /** Arbeitsvertrag: mit hinterlegter, einmessener Vorlage wird er mit den
  *  Konditionen und Stammdaten ausgefuellt und mit dem Finger unterschrieben.
  *  Ohne das laeuft der einfache Weg (Vorlage ansehen + Haken). */
-export default function ArbeitsvertragBereich({ profileId, modell, modus, darfModellSetzen = false, onStatus }: Props) {
+export default function ArbeitsvertragBereich({ profileId, modell, modus, istAdmin = false, onStatus }: Props) {
     const [zustand, setZustand] = useState<Zustand>({ art: "laden" });
     const [fehler, setFehler] = useState<string | null>(null);
     const [erfolg, setErfolg] = useState<string | null>(null);
@@ -87,6 +88,8 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
     // Konditionen pflegen
     const [bearbeiten, setBearbeiten] = useState(false);
     const [konditionen, setKonditionen] = useState<Konditionen>(LEERE_KONDITIONEN);
+    const [centerId, setCenterId] = useState("");
+    const [centerOptionen, setCenterOptionen] = useState<CenterOption[]>([]);
     const [speichert, setSpeichert] = useState(false);
 
     const laden = useCallback(async () => {
@@ -95,9 +98,22 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
             const client = await getEsskaClient();
             const vertrag = await ladeAktuellenVertrag(client, profileId);
             setKonditionen(konditionenAus(vertrag, modell));
+            if (modus === "verwalten") {
+                // Center, die als Arbeitsort in Frage kommen: die zugeordneten
+                const { data: zu } = await client
+                    .from("center_assignments")
+                    .select("centers(id, name, stadt)")
+                    .eq("profile_id", profileId);
+                const optionen = ((zu as unknown as { centers: CenterOption | null }[]) ?? [])
+                    .map((z) => z.centers)
+                    .filter((c): c is CenterOption => !!c);
+                setCenterOptionen(optionen);
+                setCenterId(vertrag && !vertrag.unterschrieben_am && vertrag.center_id ? vertrag.center_id : optionen[0]?.id ?? "");
+            }
             if (!vertrag || !(await unterschreibbar(client, vertrag))) {
                 setZustand({ art: "einfach", vertrag });
-                // Status meldet in diesem Fall die ArbeitsvertragBox
+                // Noch kein Vertrag: blockiert nichts. Sonst meldet die ArbeitsvertragBox.
+                if (!vertrag) onStatus?.(true);
                 return;
             }
             const [{ data: p }, centerRes] = await Promise.all([
@@ -158,42 +174,32 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
     const konditionenSpeichern = async () => {
         setFehler(null);
         setErfolg(null);
-        const geprueftK = konditionenPruefen(konditionen);
+        const geprueftK = konditionenPruefen(konditionen, { minijobBegrenzt: !istAdmin });
         if ("fehler" in geprueftK) return setFehler(geprueftK.fehler);
         if (!geprueftK.werte) return setFehler("Bitte mindestens den Vertragsbeginn angeben.");
         const w = geprueftK.werte;
-        const offen = zustand.art !== "laden" && zustand.vertrag && !zustand.vertrag.unterschrieben_am ? zustand.vertrag : null;
         setSpeichert(true);
         try {
-            const client = await getEsskaClient();
-            const felder = {
-                art: w.art,
-                beginn: w.beginn,
-                befristet_bis: w.befristet_bis,
-                stunden_pro_woche: w.stunden_pro_woche,
-                stundenlohn_cent: w.stundenlohn_cent,
-            };
-            const { error } = offen
-                ? await client.from("arbeitsvertraege").update(felder).eq("id", offen.id)
-                : await client.from("arbeitsvertraege").insert({ ...felder, profile_id: profileId });
-            if (error) throw error;
-            if (darfModellSetzen && w.art !== modell) {
-                const { error: pErr } = await client
-                    .from("profiles")
-                    .update({ arbeitszeit_modell: w.art, ...(w.stunden_pro_woche ? { stunden_pro_woche: w.stunden_pro_woche } : {}) })
-                    .eq("id", profileId);
-                if (pErr) throw pErr;
-            }
+            const res = await fetch("/api/vertrag", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ ...w, profile_id: profileId, center_id: centerId || null }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(json.error || "Speichern fehlgeschlagen");
             setBearbeiten(false);
-            setErfolg("Vertragskonditionen gespeichert.");
+            setErfolg(
+                json.neu
+                    ? `Arbeitsvertrag zugewiesen.${json.hinweis ? ` ${json.hinweis}` : ""}`
+                    : "Vertragskonditionen gespeichert."
+            );
             await laden();
         } catch (err) {
-            setFehler(friendlyError(err, { aktion: "Vertrag speichern" }));
+            setFehler(err instanceof Error ? err.message : "Speichern fehlgeschlagen");
         } finally {
             setSpeichert(false);
         }
     };
-
     if (zustand.art === "laden") {
         return <div className="text-sm text-gray-500">{fehler ?? "Arbeitsvertrag wird geladen…"}</div>;
     }
@@ -206,11 +212,41 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
         modus === "verwalten" ? (
             bearbeiten ? (
                 <div className="space-y-3 border rounded-lg p-4 bg-gray-50">
-                    <div className="text-sm font-medium">{offen ? "Vertragskonditionen ändern" : "Neuen Vertrag anlegen"}</div>
-                    <VertragKonditionen wert={konditionen} onChange={setKonditionen} idPrefix={`vk-${profileId}`} />
+                    <div className="text-sm font-medium">{offen ? "Vertragskonditionen ändern" : "Arbeitsvertrag zuweisen"}</div>
+                    <VertragKonditionen
+                        wert={konditionen}
+                        onChange={setKonditionen}
+                        idPrefix={`vk-${profileId}`}
+                        minijobBegrenzt={!istAdmin}
+                    />
+                    <div>
+                        <label htmlFor={`vk-${profileId}-center`} className="block text-xs text-gray-500 mb-1">
+                            Arbeitsort (Center)
+                        </label>
+                        {centerOptionen.length === 0 ? (
+                            <p className="text-xs text-amber-700">
+                                Diesem Mitarbeiter ist noch kein Center zugeordnet – bitte zuerst unten ein Center
+                                zuordnen, sonst fehlt im Vertrag der Arbeitsort.
+                            </p>
+                        ) : (
+                            <select
+                                id={`vk-${profileId}-center`}
+                                value={centerId}
+                                onChange={(e) => setCenterId(e.target.value)}
+                                className="w-full border rounded-md px-3 py-2 text-sm"
+                            >
+                                {centerOptionen.map((c) => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.name}, {c.stadt}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div>
                     <p className="text-xs text-gray-500">
-                        Name, Anschrift und Arbeitsort kommen aus den Stammdaten und dem zugeordneten Center. Der
-                        Mitarbeiter sieht den Vertrag danach unter „Stammdaten“ und unterschreibt ihn dort.
+                        Name und Anschrift kommen aus dem Personalfragebogen, Ort und Datum setzt die App beim
+                        Unterschreiben ein.{" "}
+                        {offen ? "" : "Der Mitarbeiter bekommt eine E-Mail und unterschreibt den Vertrag in der App."}
                     </p>
                     <div className="flex flex-wrap gap-2">
                         <button
@@ -244,7 +280,7 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
                     className="inline-flex items-center px-3 py-2 rounded-md border hover:bg-gray-50 text-sm"
                 >
                     <PenLine className="h-4 w-4 mr-2" />
-                    {offen ? "Konditionen ändern" : vertrag ? "Neuen Vertrag anlegen" : "Vertrag anlegen"}
+                    {offen ? "Konditionen ändern" : vertrag ? "Neuen Vertrag zuweisen" : "Arbeitsvertrag zuweisen"}
                 </button>
             )
         ) : null;
@@ -255,6 +291,33 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
             {fehler && <div className="p-2 bg-red-50 text-red-700 rounded-md text-sm">{fehler}</div>}
         </>
     );
+
+    if (zustand.art === "einfach" && !vertrag) {
+        return (
+            <div className="space-y-3">
+                <div
+                    className={`p-4 border rounded-lg text-sm ${
+                        modus === "verwalten" ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-blue-50 border-blue-200 text-blue-900"
+                    }`}
+                >
+                    {modus === "verwalten" ? (
+                        "Arbeitsvertrag offen – noch nicht zugewiesen."
+                    ) : (
+                        <>
+                            Dein Arbeitsvertrag wird gerade von Esska erstellt. Sobald er fertig ist, bekommst du
+                            eine E-Mail und kannst ihn hier prüfen und unterschreiben.
+                            <span className="block italic text-xs mt-1">
+                                Esska is preparing your employment contract. You will get an email as soon as it is
+                                ready to sign here.
+                            </span>
+                        </>
+                    )}
+                </div>
+                {verwaltung}
+                {meldungen}
+            </div>
+        );
+    }
 
     if (zustand.art === "einfach") {
         return (
@@ -270,7 +333,7 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
                 )}
                 <ArbeitsvertragBox
                     profileId={profileId}
-                    modell={offen?.art ?? modell}
+                    modell={vertrag?.art ?? modell}
                     nurLesen={modus !== "selbst"}
                     onStatus={onStatus}
                 />
@@ -287,6 +350,12 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
     if (!person?.vorname || !person?.nachname) fehlt.push("Vor- und Nachname");
     if (!person?.anschrift_strasse || !person?.anschrift_plz || !person?.anschrift_ort) fehlt.push("Anschrift");
     if (!center) fehlt.push("Center (Arbeitsort)");
+    // Angaben, die Admin/Regionalmanager beim Zuweisen eintragen
+    const fehltKonditionen: string[] = [];
+    if (BEFRISTETE_ARTEN.includes(v.art) && !v.befristet_bis) fehltKonditionen.push("Enddatum der Befristung");
+    if (v.stunden_pro_woche === null) fehltKonditionen.push("Stunden je Woche");
+    if (v.stundenlohn_cent === null) fehltKonditionen.push("Stundenlohn");
+    fehlt.push(...fehltKonditionen);
     const mitVertretung = minderjaehrig(person?.geburtsdatum ?? null);
 
     const zeilen: [string, string][] = [
@@ -359,7 +428,10 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, darfMo
             ) : fehlt.length > 0 ? (
                 <div className="p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-900">
                     Im Vertrag fehlen noch Angaben: {fehlt.join(", ")}. Bitte ergänze zuerst deine Stammdaten
-                    {fehlt.includes("Center (Arbeitsort)") ? " bzw. melde dich bei deinem Ansprechpartner" : ""}.
+                    {fehlt.includes("Center (Arbeitsort)") || fehltKonditionen.length > 0
+                        ? " bzw. melde dich bei deinem Ansprechpartner"
+                        : ""}
+                    .
                 </div>
             ) : (
                 <div className="space-y-4 border-t pt-4">

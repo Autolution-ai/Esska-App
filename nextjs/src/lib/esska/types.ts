@@ -56,6 +56,13 @@ export interface EsskaArbeitsvertrag {
     unterschrift_meta: Record<string, unknown> | null;
 }
 
+// Minijob: mehr Wochenstunden darf ein Regionalmanager nicht eintragen
+// (nur ein Admin). Gilt auch in der Datenbank.
+export const MINIJOB_MAX_STUNDEN = 5;
+
+// Diese Vertragsarten sind immer befristet (Enddatum Pflicht)
+export const BEFRISTETE_ARTEN: EsskaArbeitszeitModell[] = ["kurzfristig", "minijob"];
+
 // Gesetzlicher Mindestlohn (Beschluss der Mindestlohnkommission 2025):
 // 13,90 EUR ab 01.01.2026, 14,60 EUR ab 01.01.2027.
 export const MINDESTLOHN: { ab: string; cent: number }[] = [

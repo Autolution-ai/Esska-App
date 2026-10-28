@@ -3,6 +3,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { EsskaArbeitsvertrag, EsskaVertragsvorlage } from "@/lib/esska/types";
+import { BEFRISTETE_ARTEN } from "@/lib/esska/types";
 import { layoutFuer, type VertragsLayout } from "@/lib/esska/vertragslayouts";
 import { betragDe, datumDe, stundenDe, type VertragsWerte } from "@/lib/esska/vertragpdf";
 
@@ -76,6 +77,9 @@ export function fehlendeAngaben(d: VertragsDaten): string[] {
     if (!d.person.vorname || !d.person.nachname) f.push("Vor- und Nachname");
     if (!d.person.anschrift_strasse || !d.person.anschrift_plz || !d.person.anschrift_ort) f.push("Anschrift");
     if (!d.center) f.push("Center (Arbeitsort)");
+    if (BEFRISTETE_ARTEN.includes(d.vertrag.art) && !d.vertrag.befristet_bis) f.push("Enddatum der Befristung");
+    if (d.vertrag.stunden_pro_woche === null) f.push("Stunden je Woche");
+    if (d.vertrag.stundenlohn_cent === null) f.push("Stundenlohn");
     return f;
 }
 

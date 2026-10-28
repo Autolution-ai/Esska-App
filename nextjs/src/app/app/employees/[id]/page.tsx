@@ -410,7 +410,7 @@ export default function EmployeeDetailPage() {
                             profileId={profile.id}
                             modell={profile.arbeitszeit_modell}
                             modus="verwalten"
-                            darfModellSetzen={istAdmin}
+                            istAdmin={istAdmin}
                         />
                     </CardContent>
                 </Card>

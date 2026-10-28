@@ -2,7 +2,7 @@
 // ist der Vertragsschritt erledigt? (ohne pdf-lib, damit das Bundle klein bleibt)
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { EsskaArbeitsvertrag, EsskaArbeitszeitModell } from "@/lib/esska/types";
+import type { EsskaArbeitsvertrag } from "@/lib/esska/types";
 import { layoutFuer } from "@/lib/esska/vertragslayouts";
 
 /** Offener Vertrag, sonst der zuletzt unterschriebene, sonst null. */
@@ -34,31 +34,31 @@ export async function unterschreibbar(client: SupabaseClient, v: EsskaArbeitsver
     return !!data;
 }
 
-/** Vertragsschritt erledigt? Mit unterschreibbarem Vertrag: unterschrieben.
- *  Sonst wie bisher: Vorlage bestaetigt oder (noch) keine Vorlage. */
-export async function vertragsschrittErledigt(
+/** Stand des Arbeitsvertrags fuer den Mitarbeiter.
+ *  zugewiesen: Admin/Regionalmanager hat schon einen Vertrag angelegt.
+ *  erledigt: unterschrieben (ausfuellbarer Vertrag) bzw. bestaetigt (Vorlage
+ *  ohne Ausfuellen) - oder noch kein Vertrag zugewiesen bzw. keine Vorlage. */
+export async function vertragsstand(
     client: SupabaseClient,
-    profileId: string,
-    modell: EsskaArbeitszeitModell | null
-): Promise<boolean> {
+    profileId: string
+): Promise<{ zugewiesen: boolean; erledigt: boolean }> {
     const v = await ladeAktuellenVertrag(client, profileId);
-    if (await unterschreibbar(client, v)) return !!v?.unterschrieben_am;
+    if (!v) return { zugewiesen: false, erledigt: true };
+    if (await unterschreibbar(client, v)) return { zugewiesen: true, erledigt: !!v.unterschrieben_am };
 
-    const art = v?.art ?? modell;
-    if (!art) return true;
     const { data: vData } = await client
         .from("vertragsvorlagen")
         .select("id")
-        .eq("art", art)
+        .eq("art", v.art)
         .eq("aktiv", true)
         .maybeSingle();
     const vorlageId = (vData as { id: string } | null)?.id;
-    if (!vorlageId) return true;
+    if (!vorlageId) return { zugewiesen: true, erledigt: true };
     const { data: bData } = await client
         .from("vertragsbestaetigungen")
         .select("id")
         .eq("profile_id", profileId)
         .eq("vorlage_id", vorlageId)
         .maybeSingle();
-    return !!bData;
+    return { zugewiesen: true, erledigt: !!bData };
 }

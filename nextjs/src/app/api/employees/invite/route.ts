@@ -18,31 +18,6 @@ export async function POST(request: Request) {
         // Rueckkehrer aus der Vorsaison: verkuerzter Personalfragebogen.
         // Nur hier setzbar - der Mitarbeiter selbst kann es nicht (Trigger).
         const rueckkehrer = body?.rueckkehrer === true;
-        // Beschaeftigungsart und Vertragskonditionen (optional). Der Server
-        // prueft selbst nach - die Browser-Pruefung ist nur Komfort.
-        const ARTEN = ["minijob", "kurzfristig", "werkstudent", "teilzeit", "vollzeit"];
-        const art: string | null = ARTEN.includes(body?.art) ? body.art : null;
-        const v = body?.vertrag ?? null;
-        const istDatum = (x: unknown) => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x);
-        let vertrag: {
-            beginn: string;
-            befristet_bis: string | null;
-            stunden_pro_woche: number | null;
-            stundenlohn_cent: number | null;
-        } | null = null;
-        if (v && art) {
-            const stunden = v.stunden_pro_woche === null ? null : Number(v.stunden_pro_woche);
-            const lohn = v.stundenlohn_cent === null ? null : Number(v.stundenlohn_cent);
-            const ok =
-                istDatum(v.beginn) &&
-                (v.befristet_bis === null || (istDatum(v.befristet_bis) && v.befristet_bis >= v.beginn)) &&
-                (stunden === null || (Number.isFinite(stunden) && stunden > 0 && stunden <= 60)) &&
-                (lohn === null || (Number.isInteger(lohn) && lohn > 0));
-            if (!ok) {
-                return NextResponse.json({ error: "Die Vertragsangaben sind unvollständig oder ungültig." }, { status: 400 });
-            }
-            vertrag = { beginn: v.beginn, befristet_bis: v.befristet_bis, stunden_pro_woche: stunden, stundenlohn_cent: lohn };
-        }
         if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
             return NextResponse.json({ error: "Ungültige E-Mail-Adresse." }, { status: 400 });
         }
@@ -115,28 +90,6 @@ export async function POST(request: Request) {
             if (aErr) {
                 zuordnungHinweis = `Einladung verschickt, aber die Center-Zuordnung schlug fehl: ${aErr.message}`;
             }
-        }
-
-        // Beschaeftigungsart und Wochenstunden ans Profil, Vertrag anlegen
-        if (art && data.user?.id) {
-            const { error: pErr } = await db
-                .from("profiles")
-                .update({
-                    arbeitszeit_modell: art,
-                    ...(vertrag?.stunden_pro_woche ? { stunden_pro_woche: vertrag.stunden_pro_woche } : {}),
-                })
-                .eq("id", data.user.id);
-            if (pErr) zuordnungHinweis = `Zugang angelegt, aber die Beschäftigungsart wurde nicht gespeichert: ${pErr.message}`;
-        }
-        if (vertrag && art && data.user?.id) {
-            const { error: vErr } = await db.from("arbeitsvertraege").insert({
-                profile_id: data.user.id,
-                art,
-                center_id: centerId ?? null,
-                ...vertrag,
-                erstellt_von: userId,
-            });
-            if (vErr) zuordnungHinweis = `Zugang angelegt, aber der Vertrag wurde nicht gespeichert: ${vErr.message}`;
         }
 
         // Zugangsdaten per E-Mail an die neue Person. Scheitert der Versand,

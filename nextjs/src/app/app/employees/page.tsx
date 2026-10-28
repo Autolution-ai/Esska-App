@@ -26,6 +26,8 @@ export default function EmployeesPage() {
     const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
     // profile_id -> [dieseWoche, naechste, uebernaechste] eingetragen?
     const [verfuegbarkeit, setVerfuegbarkeit] = useState<Record<string, boolean[]>>({});
+    // profile_id -> Arbeitsvertrag: "offen" (wartet auf Unterschrift) | "unterschrieben"
+    const [vertraege, setVertraege] = useState<Record<string, "offen" | "unterschrieben">>({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState("");
@@ -67,7 +69,7 @@ export default function EmployeesPage() {
                     role === "admin"
                         ? client.from("profiles").select("*").order("nachname", { ascending: true, nullsFirst: false })
                         : client.rpc("planungsprofile").order("nachname", { ascending: true, nullsFirst: false });
-                const [pRes, cRes, aRes, vRes] = await Promise.all([
+                const [pRes, cRes, aRes, vRes, avRes] = await Promise.all([
                     profilAbfrage,
                     client.from("centers").select("*").order("saison", { ascending: false }).order("name"),
                     client.from("center_assignments").select("center_id, profile_id"),
@@ -76,6 +78,7 @@ export default function EmployeesPage() {
                         .select("profile_id, datum")
                         .gte("datum", von)
                         .lte("datum", bis),
+                    client.from("arbeitsvertraege").select("profile_id, unterschrieben_am"),
                 ]);
                 if (pRes.error) throw pRes.error;
                 if (cRes.error) throw cRes.error;
@@ -96,6 +99,14 @@ export default function EmployeesPage() {
                     map[row.profile_id] = arr;
                 }
                 setVerfuegbarkeit(map);
+
+                // Ein offener Vertrag zaehlt vor einem frueher unterschriebenen
+                const vmap: Record<string, "offen" | "unterschrieben"> = {};
+                for (const v of (avRes.data as Array<{ profile_id: string; unterschrieben_am: string | null }>) ?? []) {
+                    if (!v.unterschrieben_am) vmap[v.profile_id] = "offen";
+                    else if (!vmap[v.profile_id]) vmap[v.profile_id] = "unterschrieben";
+                }
+                setVertraege(vmap);
             } catch (err) {
                 setError(friendlyError(err, { aktion: "Fehler beim Laden" }));
             } finally {
@@ -410,6 +421,7 @@ export default function EmployeesPage() {
                             personen={sichtbar}
                             centerVon={centerVon}
                             verfuegbarkeit={verfuegbarkeit}
+                            vertraege={vertraege}
                             auswahl={auswahl}
                             toggleAuswahl={toggleAuswahl}
                             toggleAlle={toggleAlle}
@@ -429,6 +441,7 @@ export default function EmployeesPage() {
                                         personen={personen}
                                         centerVon={centerVon}
                                         verfuegbarkeit={verfuegbarkeit}
+                                        vertraege={vertraege}
                                         auswahl={auswahl}
                                         toggleAuswahl={toggleAuswahl}
                                         toggleAlle={toggleAlle}
@@ -449,6 +462,7 @@ function MitarbeiterTabelle({
     personen,
     centerVon,
     verfuegbarkeit,
+    vertraege,
     auswahl,
     toggleAuswahl,
     toggleAlle,
@@ -458,6 +472,7 @@ function MitarbeiterTabelle({
     personen: EsskaProfile[];
     centerVon: (id: string) => EsskaCenter[];
     verfuegbarkeit: Record<string, boolean[]>;
+    vertraege: Record<string, "offen" | "unterschrieben">;
     auswahl: Set<string>;
     toggleAuswahl: (id: string) => void;
     toggleAlle: (personen: EsskaProfile[]) => void;
@@ -531,6 +546,23 @@ function MitarbeiterTabelle({
                                     )}
                                     {p.rueckkehrer && (
                                         <span className="block text-xs text-gray-500">Rückkehrer</span>
+                                    )}
+                                    {p.role !== "admin" && (
+                                        <span
+                                            className={`block text-xs ${
+                                                vertraege[p.id] === "unterschrieben"
+                                                    ? "text-green-700"
+                                                    : vertraege[p.id] === "offen"
+                                                      ? "text-amber-700"
+                                                      : "text-red-700"
+                                            }`}
+                                        >
+                                            {vertraege[p.id] === "unterschrieben"
+                                                ? "Vertrag ✓"
+                                                : vertraege[p.id] === "offen"
+                                                  ? "Vertrag: wartet auf Unterschrift"
+                                                  : "Vertrag: noch zuweisen"}
+                                        </span>
                                     )}
                                 </Td>
                                 <Td>

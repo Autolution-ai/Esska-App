@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { EsskaArbeitszeitModell } from "@/lib/esska/types";
-import { ARBEITSZEIT_MODELL_LABELS, mindestlohnWaehrend, parseEuro } from "@/lib/esska/types";
+import { ARBEITSZEIT_MODELL_LABELS, BEFRISTETE_ARTEN, MINIJOB_MAX_STUNDEN, mindestlohnWaehrend, parseEuro } from "@/lib/esska/types";
 
 export type Konditionen = {
     art: EsskaArbeitszeitModell;
@@ -30,15 +30,21 @@ export type GepruefteKonditionen = {
 
 /** Prueft die Eingaben. Ergebnis: Fehlertext oder die umgerechneten Werte.
  *  Ohne Beginn wird (noch) kein Vertrag angelegt -> null. */
-export function konditionenPruefen(k: Konditionen): { fehler: string } | { werte: GepruefteKonditionen | null } {
+export function konditionenPruefen(
+    k: Konditionen,
+    o: { minijobBegrenzt?: boolean } = {}
+): { fehler: string } | { werte: GepruefteKonditionen | null } {
     if (!k.beginn) {
         if (k.befristet_bis || k.stunden || k.stundenlohn) {
             return { fehler: "Bitte den Vertragsbeginn angeben – oder die Vertragsfelder leer lassen." };
         }
         return { werte: null };
     }
-    if (k.art === "kurzfristig" && !k.befristet_bis) {
-        return { fehler: "Eine kurzfristige Beschäftigung braucht ein Enddatum („befristet bis“)." };
+    if (BEFRISTETE_ARTEN.includes(k.art) && !k.befristet_bis) {
+        return { fehler: `Für „${ARBEITSZEIT_MODELL_LABELS[k.art]}“ bitte das Enddatum („befristet bis“) angeben.` };
+    }
+    if (!k.stunden.trim() || !k.stundenlohn.trim()) {
+        return { fehler: "Bitte Stunden je Woche und Stundenlohn angeben – beides steht im Vertrag." };
     }
     if (k.befristet_bis && k.befristet_bis < k.beginn) {
         return { fehler: "„Befristet bis“ liegt vor dem Beginn." };
@@ -49,6 +55,9 @@ export function konditionenPruefen(k: Konditionen): { fehler: string } | { werte
         if (!Number.isFinite(stunden) || stunden <= 0 || stunden > 60) {
             return { fehler: "Bitte die Stunden je Woche als Zahl zwischen 1 und 60 angeben." };
         }
+    }
+    if (k.art === "minijob" && o.minijobBegrenzt && (stunden === null || stunden > MINIJOB_MAX_STUNDEN)) {
+        return { fehler: `Beim Minijob bitte höchstens ${MINIJOB_MAX_STUNDEN} Wochenstunden auswählen.` };
     }
     let lohn: number | null = null;
     if (k.stundenlohn.trim()) {
@@ -78,12 +87,16 @@ export default function VertragKonditionen({
     wert,
     onChange,
     idPrefix = "vk",
+    minijobBegrenzt = false,
 }: {
     wert: Konditionen;
     onChange: (k: Konditionen) => void;
     idPrefix?: string;
+    /** Regionalmanager: Minijob nur bis MINIJOB_MAX_STUNDEN Wochenstunden */
+    minijobBegrenzt?: boolean;
 }) {
     const setze = <K extends keyof Konditionen>(feld: K, v: Konditionen[K]) => onChange({ ...wert, [feld]: v });
+    const stundenAuswahl = minijobBegrenzt && wert.art === "minijob";
 
     // Hinweis, wenn der Lohn ueber einen Jahreswechsel unter den dann
     // geltenden Mindestlohn faellt (z. B. 14 EUR bis Januar 2027).
@@ -115,15 +128,33 @@ export default function VertragKonditionen({
                 </select>
             </div>
             <div>
-                <label htmlFor={`${idPrefix}-std`} className="block text-xs text-gray-500 mb-1">Stunden je Woche (ca.)</label>
-                <input
-                    id={`${idPrefix}-std`}
-                    value={wert.stunden}
-                    onChange={(e) => setze("stunden", e.target.value)}
-                    inputMode="decimal"
-                    placeholder="z. B. 15"
-                    className={feldKlasse}
-                />
+                <label htmlFor={`${idPrefix}-std`} className="block text-xs text-gray-500 mb-1">
+                    Stunden je Woche (ca.){stundenAuswahl ? ` – Minijob: max. ${MINIJOB_MAX_STUNDEN}` : ""}
+                </label>
+                {stundenAuswahl ? (
+                    <select
+                        id={`${idPrefix}-std`}
+                        value={wert.stunden}
+                        onChange={(e) => setze("stunden", e.target.value)}
+                        className={feldKlasse}
+                    >
+                        <option value="">– bitte wählen –</option>
+                        {Array.from({ length: MINIJOB_MAX_STUNDEN }, (_, i) => String(i + 1)).map((h) => (
+                            <option key={h} value={h}>
+                                {h} Std.
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    <input
+                        id={`${idPrefix}-std`}
+                        value={wert.stunden}
+                        onChange={(e) => setze("stunden", e.target.value)}
+                        inputMode="decimal"
+                        placeholder="z. B. 15"
+                        className={feldKlasse}
+                    />
+                )}
             </div>
             <div>
                 <label htmlFor={`${idPrefix}-beginn`} className="block text-xs text-gray-500 mb-1">Beginn</label>

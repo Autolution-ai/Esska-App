@@ -8,6 +8,7 @@ import { useGlobal } from "@/lib/context/GlobalContext";
 import type { EsskaArbeitszeitModell, EsskaVertragsvorlage } from "@/lib/esska/types";
 import { ARBEITSZEIT_MODELL_LABELS } from "@/lib/esska/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { layoutFuer } from "@/lib/esska/vertragslayouts";
 
 // Reihenfolge der Karten: die bei Esska ueblichen Arten zuerst
 const ARTEN: EsskaArbeitszeitModell[] = ["minijob", "kurzfristig", "werkstudent", "teilzeit", "vollzeit"];
@@ -157,6 +158,13 @@ export default function VertraegePage() {
                                     {v
                                         ? `Aktuell: ${v.titel} · hochgeladen am ${new Date(v.hochgeladen_am).toLocaleDateString("de-DE")}`
                                         : "Noch keine Vorlage hinterlegt."}
+                                    {layoutFuer(art) && (
+                                        <span className="block mt-1 text-xs text-gray-500">
+                                            Wird automatisch ausgefüllt und mit dem Finger unterschrieben – eingemessen
+                                            auf „{layoutFuer(art)?.titel}“. Eine neue Fassung mit anderem Layout bitte
+                                            vorher neu einmessen lassen.
+                                        </span>
+                                    )}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-3">
