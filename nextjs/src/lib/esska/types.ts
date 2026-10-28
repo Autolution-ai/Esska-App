@@ -56,8 +56,8 @@ export interface EsskaArbeitsvertrag {
     unterschrift_meta: Record<string, unknown> | null;
 }
 
-// Minijob: mehr Wochenstunden darf ein Regionalmanager nicht eintragen
-// (nur ein Admin). Gilt auch in der Datenbank.
+// Minijob: hoechstens so viele Wochenstunden (fuer alle, auch Admins).
+// Gilt auch in der Datenbank.
 export const MINIJOB_MAX_STUNDEN = 5;
 
 // Arten, fuer die Arbeitsvertraege zugewiesen werden (KuBe und Minijob)

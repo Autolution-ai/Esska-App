@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         if (stunden !== null && (!Number.isFinite(stunden) || stunden <= 0 || stunden > 60)) {
             return NextResponse.json({ error: "Ungültige Wochenstunden." }, { status: 400 });
         }
-        if (art === "minijob" && rolle !== "admin" && (stunden === null || stunden > MINIJOB_MAX_STUNDEN)) {
+        if (art === "minijob" && (stunden === null || stunden > MINIJOB_MAX_STUNDEN)) {
             return NextResponse.json(
                 { error: `Beim Minijob sind höchstens ${MINIJOB_MAX_STUNDEN} Wochenstunden möglich.` },
                 { status: 400 }

@@ -37,8 +37,6 @@ type Props = {
     /** selbst: die Person unterschreibt · lesen: nur ansehen ·
      *  verwalten: Admin/Regionalmanager pflegt die Konditionen */
     modus: "selbst" | "lesen" | "verwalten";
-    /** Admin darf beim Minijob mehr als MINIJOB_MAX_STUNDEN eintragen */
-    istAdmin?: boolean;
     onStatus?: (erledigt: boolean) => void;
 };
 
@@ -77,7 +75,7 @@ function konditionenAus(v: EsskaArbeitsvertrag | null, modell: EsskaArbeitszeitM
 /** Arbeitsvertrag: mit hinterlegter, einmessener Vorlage wird er mit den
  *  Konditionen und Stammdaten ausgefuellt und mit dem Finger unterschrieben.
  *  Ohne das laeuft der einfache Weg (Vorlage ansehen + Haken). */
-export default function ArbeitsvertragBereich({ profileId, modell, modus, istAdmin = false, onStatus }: Props) {
+export default function ArbeitsvertragBereich({ profileId, modell, modus, onStatus }: Props) {
     const [zustand, setZustand] = useState<Zustand>({ art: "laden" });
     // Den eigenen Vertrag weist immer ein Admin zu (nicht man selbst)
     const [eigeneId, setEigeneId] = useState<string | null>(null);
@@ -181,7 +179,7 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, istAdm
     const konditionenSpeichern = async () => {
         setFehler(null);
         setErfolg(null);
-        const geprueftK = konditionenPruefen(konditionen, { minijobBegrenzt: !istAdmin });
+        const geprueftK = konditionenPruefen(konditionen, { minijobBegrenzt: true });
         if ("fehler" in geprueftK) return setFehler(geprueftK.fehler);
         if (!geprueftK.werte) return setFehler("Bitte mindestens den Vertragsbeginn angeben.");
         const w = geprueftK.werte;
@@ -226,7 +224,7 @@ export default function ArbeitsvertragBereich({ profileId, modell, modus, istAdm
                         wert={konditionen}
                         onChange={setKonditionen}
                         idPrefix={`vk-${profileId}`}
-                        minijobBegrenzt={!istAdmin}
+                        minijobBegrenzt
                     />
                     <div>
                         <label htmlFor={`vk-${profileId}-center`} className="block text-xs text-gray-500 mb-1">
