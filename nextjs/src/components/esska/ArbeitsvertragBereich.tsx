@@ -5,7 +5,7 @@ import { CheckCircle2, Download, FileText, PenLine } from "lucide-react";
 import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import type { EsskaArbeitsvertrag, EsskaArbeitszeitModell } from "@/lib/esska/types";
-import { ARBEITSZEIT_MODELL_LABELS, BEFRISTETE_ARTEN } from "@/lib/esska/types";
+import { ARBEITSZEIT_MODELL_LABELS, BEFRISTETE_ARTEN, VERTRAGS_ARTEN } from "@/lib/esska/types";
 import { ladeAktuellenVertrag, unterschreibbar } from "@/lib/esska/vertragstatus";
 import ArbeitsvertragBox from "@/components/esska/ArbeitsvertragBox";
 import Unterschriftsfeld from "@/components/esska/Unterschriftsfeld";
@@ -61,7 +61,10 @@ function minderjaehrig(geburtsdatum: string | null): boolean {
 }
 
 function konditionenAus(v: EsskaArbeitsvertrag | null, modell: EsskaArbeitszeitModell | null): Konditionen {
-    if (!v || v.unterschrieben_am) return { ...LEERE_KONDITIONEN, art: v?.art ?? modell ?? LEERE_KONDITIONEN.art };
+    if (!v || v.unterschrieben_am) {
+        const vorschlag = v?.art ?? modell;
+        return { ...LEERE_KONDITIONEN, art: vorschlag && VERTRAGS_ARTEN.includes(vorschlag) ? vorschlag : LEERE_KONDITIONEN.art };
+    }
     return {
         art: v.art,
         beginn: v.beginn,

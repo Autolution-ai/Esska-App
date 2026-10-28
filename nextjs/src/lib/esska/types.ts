@@ -60,6 +60,9 @@ export interface EsskaArbeitsvertrag {
 // (nur ein Admin). Gilt auch in der Datenbank.
 export const MINIJOB_MAX_STUNDEN = 5;
 
+// Arten, fuer die Arbeitsvertraege zugewiesen werden (KuBe und Minijob)
+export const VERTRAGS_ARTEN: EsskaArbeitszeitModell[] = ["kurzfristig", "minijob"];
+
 // Diese Vertragsarten sind immer befristet (Enddatum Pflicht)
 export const BEFRISTETE_ARTEN: EsskaArbeitszeitModell[] = ["kurzfristig", "minijob"];
 

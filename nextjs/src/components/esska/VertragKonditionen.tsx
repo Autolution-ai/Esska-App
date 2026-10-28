@@ -2,7 +2,7 @@
 
 import React from "react";
 import type { EsskaArbeitszeitModell } from "@/lib/esska/types";
-import { ARBEITSZEIT_MODELL_LABELS, BEFRISTETE_ARTEN, MINIJOB_MAX_STUNDEN, mindestlohnWaehrend, parseEuro } from "@/lib/esska/types";
+import { ARBEITSZEIT_MODELL_LABELS, BEFRISTETE_ARTEN, VERTRAGS_ARTEN, MINIJOB_MAX_STUNDEN, mindestlohnWaehrend, parseEuro } from "@/lib/esska/types";
 
 export type Konditionen = {
     art: EsskaArbeitszeitModell;
@@ -34,6 +34,9 @@ export function konditionenPruefen(
     k: Konditionen,
     o: { minijobBegrenzt?: boolean } = {}
 ): { fehler: string } | { werte: GepruefteKonditionen | null } {
+    if (!VERTRAGS_ARTEN.includes(k.art)) {
+        return { fehler: "Bitte als Beschäftigungsart „Kurzfristig“ (KuBe) oder „Minijob“ wählen." };
+    }
     if (!k.beginn) {
         if (k.befristet_bis || k.stunden || k.stundenlohn) {
             return { fehler: "Bitte den Vertragsbeginn angeben – oder die Vertragsfelder leer lassen." };
@@ -120,7 +123,7 @@ export default function VertragKonditionen({
                     onChange={(e) => setze("art", e.target.value as EsskaArbeitszeitModell)}
                     className={feldKlasse}
                 >
-                    {(Object.keys(ARBEITSZEIT_MODELL_LABELS) as EsskaArbeitszeitModell[]).map((a) => (
+                    {VERTRAGS_ARTEN.map((a) => (
                         <option key={a} value={a}>
                             {ARBEITSZEIT_MODELL_LABELS[a]}
                         </option>

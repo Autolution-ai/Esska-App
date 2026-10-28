@@ -10,9 +10,8 @@ import { createServerAdminClient } from "@/lib/supabase/serverAdminClient";
 import { origin } from "@/lib/esska/server";
 import { sendeMail } from "@/lib/esska/mail";
 import { VERTRAGSMAIL_BETREFF, vertragsMailHtml, vertragsMailText } from "@/lib/esska/vertragsmail";
-import { BEFRISTETE_ARTEN, MINIJOB_MAX_STUNDEN, type EsskaArbeitszeitModell } from "@/lib/esska/types";
+import { BEFRISTETE_ARTEN, MINIJOB_MAX_STUNDEN, VERTRAGS_ARTEN, type EsskaArbeitszeitModell } from "@/lib/esska/types";
 
-const ARTEN = ["minijob", "kurzfristig", "werkstudent", "teilzeit", "vollzeit"];
 const istDatum = (x: unknown): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x);
 
 export async function POST(request: Request) {
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
 
         const b = await request.json().catch(() => null);
         const profileId = typeof b?.profile_id === "string" ? b.profile_id : null;
-        const art = ARTEN.includes(b?.art) ? (b.art as string) : null;
+        const art = VERTRAGS_ARTEN.includes(b?.art) ? (b.art as string) : null;
         const centerId = typeof b?.center_id === "string" && b.center_id ? b.center_id : null;
         const stunden = b?.stunden_pro_woche === null || b?.stunden_pro_woche === undefined ? null : Number(b.stunden_pro_woche);
         const lohn = b?.stundenlohn_cent === null || b?.stundenlohn_cent === undefined ? null : Number(b.stundenlohn_cent);
