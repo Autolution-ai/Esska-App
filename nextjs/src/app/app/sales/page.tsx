@@ -48,6 +48,14 @@ function plusTage(d: Date, t: number): Date {
  *    = + - @ beginnen. Ein Mitarbeiter koennte sonst ueber eine Notiz
  *    Formeln in die Buchhaltungs-Datei schmuggeln.
  */
+/** Endbestand NACH dem Einzahlen in den Tresor (= Startbestand des
+ *  naechsten Tages). Erfasst wird das gezaehlte Bargeld vor dem Tresor;
+ *  Steuerberater-Vorgabe: Startbestand, Einnahmen, In Tresor, Endbestand. */
+function endbestandNachTresor(s: { endbestand_cent: number | null; abschoepfung_cent: number | null } | null | undefined): number | null {
+    if (!s || s.endbestand_cent === null || s.endbestand_cent === undefined) return null;
+    return s.endbestand_cent - (s.abschoepfung_cent ?? 0);
+}
+
 function csvFeld(v: string | number | null | undefined): string {
     if (v === null || v === undefined) return '""';
     let text = String(v);
@@ -167,8 +175,8 @@ export default function SalesAdminPage() {
     ) => {
         const header = [
             "Datum", "Center", "Stadt", "Saison", "Art",
-            "Startbestand", "Einnahmen", "Ausgaben", "Einlagen", "Endbestand",
-            "In_Tresor", "Karteneinnahmen",
+            "Startbestand", "Einnahmen", "Ausgaben", "Einlagen", "In_Tresor",
+            "Endbestand", "Karteneinnahmen",
             "Gueltig", "Korrektur", "Korrektur_Grund", "Notiz",
         ];
         const rows: string[][] = [];
@@ -183,8 +191,8 @@ export default function SalesAdminPage() {
                 bargeld(e.sale.einnahmen_cent),
                 bargeld(e.sale.ausgaben_cent),
                 bargeld(e.sale.einlagen_cent),
-                bargeld(e.sale.endbestand_cent),
                 bargeld(e.sale.abschoepfung_cent),
+                bargeld(endbestandNachTresor(e.sale)),
                 "",
                 e.gueltig ? "ja" : "nein",
                 e.sale.korrigiert_eintrag_id ? "ja" : "nein",
@@ -528,8 +536,8 @@ function CenterTable({
                         <th className="px-3 py-2 font-medium text-right">Einnahmen</th>
                         <th className="px-3 py-2 font-medium text-right">Ausgaben</th>
                         <th className="px-3 py-2 font-medium text-right">Einlagen</th>
-                        <th className="px-3 py-2 font-medium text-right">Endbestand</th>
                         <th className="px-3 py-2 font-medium text-right">In Tresor</th>
+                        <th className="px-3 py-2 font-medium text-right">Endbestand</th>
                         <th className="px-3 py-2 font-medium text-right">Karte</th>
                         <th className="px-3 py-2 font-medium">Erfasst von</th>
                         <th className="px-3 py-2 font-medium">Notiz</th>
@@ -568,8 +576,8 @@ function CenterTable({
                                         <td className="px-3 py-2 text-right font-medium">{bargeld(e?.einnahmen_cent)}</td>
                                         <td className="px-3 py-2 text-right">{bargeld(e?.ausgaben_cent)}</td>
                                         <td className="px-3 py-2 text-right">{bargeld(e?.einlagen_cent)}</td>
-                                        <td className="px-3 py-2 text-right">{bargeld(e?.endbestand_cent)}</td>
                                         <td className="px-3 py-2 text-right">{bargeld(e?.abschoepfung_cent)}</td>
+                                        <td className="px-3 py-2 text-right">{bargeld(endbestandNachTresor(e))}</td>
                                         <td className="px-3 py-2 text-right">
                                             {idx === 0 ? bargeld(r.karte?.betrag_cent) : ""}
                                         </td>
@@ -588,8 +596,8 @@ function CenterTable({
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.einnahmen_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.ausgaben_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.einlagen_cent)}</td>
-                                            <td className="px-3 py-1.5 text-right">{bargeld(h.endbestand_cent)}</td>
                                             <td className="px-3 py-1.5 text-right">{bargeld(h.abschoepfung_cent)}</td>
+                                            <td className="px-3 py-1.5 text-right">{bargeld(endbestandNachTresor(h))}</td>
                                             <td className="px-3 py-1.5"></td>
                                             <td className="px-3 py-1.5">{erfasserName(h)}</td>
                                             <td className="px-3 py-1.5">{h.notiz ?? ""}</td>
