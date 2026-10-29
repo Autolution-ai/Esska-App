@@ -9,6 +9,8 @@ import type { EsskaCardRevenue, EsskaCenter, EsskaCenterZeitraum, EsskaDailySale
 import { isoDatum, parseIsoDatum, zeitKurz } from "@/lib/esska/types";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { generiereKassenberichtPdf, type KassenberichtZeile } from "@/lib/esska/kassenberichtpdf";
+import { pdfHerunterladen } from "@/lib/esska/pdf";
 
 /** daily_sales inkl. der erfassenden Person (fuer Anzeige und CSV). */
 type SaleMitErfasser = EsskaDailySale & {
@@ -226,11 +228,69 @@ export default function SalesAdminPage() {
         URL.revokeObjectURL(url);
     };
 
+    // Dieselben Zeilen als PDF (nicht ohne Weiteres bearbeitbar)
+    const pdfErzeugen = async (
+        kassenzeilen: Array<{ datum: string; center: EsskaCenter | null; sale: SaleMitErfasser; gueltig: boolean }>,
+        kartenzeilen: Array<{ datum: string; center: EsskaCenter | null; betrag_cent: number; notiz: string | null }>,
+        zeitraum: string,
+        dateiname: string
+    ) => {
+        const zeilen: KassenberichtZeile[] = [
+            ...kassenzeilen.map((e) => ({
+                datum: e.datum,
+                center: e.center?.name ?? "?",
+                stadt: e.center?.stadt ?? "?",
+                art: "Bargeld" as const,
+                startbestand: bargeld(e.sale.startbestand_cent),
+                einnahmen: bargeld(e.sale.einnahmen_cent),
+                ausgaben: bargeld(e.sale.ausgaben_cent),
+                einlagen: bargeld(e.sale.einlagen_cent),
+                tresor: bargeld(e.sale.abschoepfung_cent),
+                endbestand: bargeld(endbestandNachTresor(e.sale)),
+                karte: "",
+                gueltig: e.gueltig,
+                korrektur: !!e.sale.korrigiert_eintrag_id,
+                bemerkung: [e.sale.korrektur_grund ? `Korrektur: ${e.sale.korrektur_grund}` : "", e.sale.notiz ?? ""]
+                    .filter(Boolean)
+                    .join(" · "),
+            })),
+            ...kartenzeilen.map((k) => ({
+                datum: k.datum,
+                center: k.center?.name ?? "?",
+                stadt: k.center?.stadt ?? "?",
+                art: "Karte" as const,
+                startbestand: "",
+                einnahmen: "",
+                ausgaben: "",
+                einlagen: "",
+                tresor: "",
+                endbestand: "",
+                karte: bargeld(k.betrag_cent),
+                gueltig: true,
+                korrektur: false,
+                bemerkung: k.notiz ?? "",
+            })),
+        ].sort((a, b) => a.datum.localeCompare(b.datum) || a.center.localeCompare(b.center, "de") || a.art.localeCompare(b.art));
+        const gueltige = kassenzeilen.filter((e) => e.gueltig);
+        const summe = (xs: Array<number | null | undefined>) => xs.reduce<number>((s2, x) => s2 + (x ?? 0), 0);
+        const bytes = await generiereKassenberichtPdf({
+            zeitraum,
+            zeilen,
+            summen: {
+                einnahmenBar: bargeld(summe(gueltige.map((e) => e.sale.einnahmen_cent))),
+                karte: bargeld(summe(kartenzeilen.map((k) => k.betrag_cent))),
+                tresor: bargeld(summe(gueltige.map((e) => e.sale.abschoepfung_cent))),
+            },
+        });
+        pdfHerunterladen(bytes, dateiname);
+    };
+    const datumDe = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}`;
+
     // Hinweis: Diese Datei deckt genau die Center ab, die in der Tagesansicht
     // stehen (Status aktiv/geplant). Fuer eine vollstaendige Uebergabe an die
     // Buchhaltung immer den Zeitraum-Export nutzen - der beruecksichtigt auch
     // beendete Center.
-    const csvExport = () => {
+    const tagesExport = async (format: "csv" | "pdf") => {
         const kassen = status.flatMap((s) =>
             [...s.aktuelle.map((e) => ({ sale: e, gueltig: true })), ...s.historie.map((e) => ({ sale: e, gueltig: false }))]
                 .map((x) => ({ datum, center: s.center, ...x }))
@@ -238,10 +298,18 @@ export default function SalesAdminPage() {
         const kartenzeilen = status
             .filter((s) => s.karte)
             .map((s) => ({ datum, center: s.center, betrag_cent: s.karte!.betrag_cent, notiz: s.karte!.notiz }));
-        csvErzeugen(kassen, kartenzeilen, `Esska_Kassenbericht_${datum}.csv`);
+        if (format === "csv") {
+            csvErzeugen(kassen, kartenzeilen, `Esska_Kassenbericht_${datum}.csv`);
+            return;
+        }
+        try {
+            await pdfErzeugen(kassen, kartenzeilen, datumDe(datum), `Esska_Kassenbericht_${datum}.pdf`);
+        } catch (err) {
+            setError(friendlyError(err, { aktion: "PDF-Export" }));
+        }
     };
 
-    const zeitraumExport = async () => {
+    const zeitraumExport = async (format: "csv" | "pdf") => {
         if (!exportVon || !exportBis) {
             setError("Bitte Von- und Bis-Datum für den Export angeben.");
             return;
@@ -290,7 +358,16 @@ export default function SalesAdminPage() {
                 betrag_cent: k.betrag_cent,
                 notiz: k.notiz,
             }));
-            csvErzeugen(kassen, kartenzeilen, `Esska_Kassenbericht_${exportVon}_bis_${exportBis}.csv`);
+            if (format === "csv") {
+                csvErzeugen(kassen, kartenzeilen, `Esska_Kassenbericht_${exportVon}_bis_${exportBis}.csv`);
+            } else {
+                await pdfErzeugen(
+                    kassen,
+                    kartenzeilen,
+                    `${datumDe(exportVon)} – ${datumDe(exportBis)}`,
+                    `Esska_Kassenbericht_${exportVon}_bis_${exportBis}.pdf`
+                );
+            }
         } catch (err) {
             setError(friendlyError(err, { aktion: "Zeitraum-Export" }));
         } finally {
@@ -347,11 +424,18 @@ export default function SalesAdminPage() {
                         </Link>
                     )}
                     <button
-                        onClick={csvExport}
+                        onClick={() => tagesExport("csv")}
                         className="inline-flex items-center px-4 py-2 border rounded-md hover:bg-secondary-100"
                     >
                         <Download className="h-4 w-4 mr-2" />
                         CSV (Tag)
+                    </button>
+                    <button
+                        onClick={() => tagesExport("pdf")}
+                        className="inline-flex items-center px-4 py-2 border rounded-md hover:bg-secondary-100"
+                    >
+                        <Download className="h-4 w-4 mr-2" />
+                        PDF (Tag)
                     </button>
                 </div>
             </div>
@@ -387,8 +471,8 @@ export default function SalesAdminPage() {
                 <CardHeader>
                     <CardTitle>Export für die Buchhaltung</CardTitle>
                     <CardDescription>
-                        Alle Kasseneinträge und Karteneinnahmen eines Zeitraums als CSV – inklusive
-                        Korrekturhistorie. Öffnet sich direkt in Excel/Numbers.
+                        Alle Kasseneinträge und Karteneinnahmen eines Zeitraums – inklusive Korrekturhistorie.
+                        Als CSV für Excel/Numbers oder als PDF zum Weitergeben (nicht ohne Weiteres bearbeitbar).
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -414,12 +498,20 @@ export default function SalesAdminPage() {
                             />
                         </div>
                         <button
-                            onClick={zeitraumExport}
+                            onClick={() => zeitraumExport("csv")}
                             disabled={exporting}
                             className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
                         >
                             <Download className="h-4 w-4 mr-2" />
                             {exporting ? "Erstellt…" : "CSV für Zeitraum"}
+                        </button>
+                        <button
+                            onClick={() => zeitraumExport("pdf")}
+                            disabled={exporting}
+                            className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50"
+                        >
+                            <Download className="h-4 w-4 mr-2" />
+                            {exporting ? "Erstellt…" : "PDF für Zeitraum"}
                         </button>
                     </div>
                 </CardContent>
