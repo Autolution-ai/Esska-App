@@ -228,57 +228,38 @@ export default function SalesAdminPage() {
         URL.revokeObjectURL(url);
     };
 
-    // Dieselben Zeilen als PDF (nicht ohne Weiteres bearbeitbar)
+    // Dieselben Kassenzeilen als PDF (nicht ohne Weiteres bearbeitbar).
+    // Bewusst OHNE Karteneinnahmen - die werden zu oft falsch eingegeben.
     const pdfErzeugen = async (
         kassenzeilen: Array<{ datum: string; center: EsskaCenter | null; sale: SaleMitErfasser; gueltig: boolean }>,
-        kartenzeilen: Array<{ datum: string; center: EsskaCenter | null; betrag_cent: number; notiz: string | null }>,
         zeitraum: string,
         dateiname: string
     ) => {
-        const zeilen: KassenberichtZeile[] = [
-            ...kassenzeilen.map((e) => ({
+        const zeilen: KassenberichtZeile[] = kassenzeilen
+            .map((e) => ({
                 datum: e.datum,
                 center: e.center?.name ?? "?",
                 stadt: e.center?.stadt ?? "?",
-                art: "Bargeld" as const,
                 startbestand: bargeld(e.sale.startbestand_cent),
                 einnahmen: bargeld(e.sale.einnahmen_cent),
                 ausgaben: bargeld(e.sale.ausgaben_cent),
                 einlagen: bargeld(e.sale.einlagen_cent),
                 tresor: bargeld(e.sale.abschoepfung_cent),
                 endbestand: bargeld(endbestandNachTresor(e.sale)),
-                karte: "",
                 gueltig: e.gueltig,
                 korrektur: !!e.sale.korrigiert_eintrag_id,
                 bemerkung: [e.sale.korrektur_grund ? `Korrektur: ${e.sale.korrektur_grund}` : "", e.sale.notiz ?? ""]
                     .filter(Boolean)
                     .join(" · "),
-            })),
-            ...kartenzeilen.map((k) => ({
-                datum: k.datum,
-                center: k.center?.name ?? "?",
-                stadt: k.center?.stadt ?? "?",
-                art: "Karte" as const,
-                startbestand: "",
-                einnahmen: "",
-                ausgaben: "",
-                einlagen: "",
-                tresor: "",
-                endbestand: "",
-                karte: bargeld(k.betrag_cent),
-                gueltig: true,
-                korrektur: false,
-                bemerkung: k.notiz ?? "",
-            })),
-        ].sort((a, b) => a.datum.localeCompare(b.datum) || a.center.localeCompare(b.center, "de") || a.art.localeCompare(b.art));
+            }))
+            .sort((a, b) => a.datum.localeCompare(b.datum) || a.center.localeCompare(b.center, "de"));
         const gueltige = kassenzeilen.filter((e) => e.gueltig);
         const summe = (xs: Array<number | null | undefined>) => xs.reduce<number>((s2, x) => s2 + (x ?? 0), 0);
         const bytes = await generiereKassenberichtPdf({
             zeitraum,
             zeilen,
             summen: {
-                einnahmenBar: bargeld(summe(gueltige.map((e) => e.sale.einnahmen_cent))),
-                karte: bargeld(summe(kartenzeilen.map((k) => k.betrag_cent))),
+                einnahmen: bargeld(summe(gueltige.map((e) => e.sale.einnahmen_cent))),
                 tresor: bargeld(summe(gueltige.map((e) => e.sale.abschoepfung_cent))),
             },
         });
@@ -303,7 +284,7 @@ export default function SalesAdminPage() {
             return;
         }
         try {
-            await pdfErzeugen(kassen, kartenzeilen, datumDe(datum), `Esska_Kassenbericht_${datum}.pdf`);
+            await pdfErzeugen(kassen, datumDe(datum), `Esska_Kassenbericht_${datum}.pdf`);
         } catch (err) {
             setError(friendlyError(err, { aktion: "PDF-Export" }));
         }
@@ -363,7 +344,6 @@ export default function SalesAdminPage() {
             } else {
                 await pdfErzeugen(
                     kassen,
-                    kartenzeilen,
                     `${datumDe(exportVon)} – ${datumDe(exportBis)}`,
                     `Esska_Kassenbericht_${exportVon}_bis_${exportBis}.pdf`
                 );
@@ -472,7 +452,7 @@ export default function SalesAdminPage() {
                     <CardTitle>Export für die Buchhaltung</CardTitle>
                     <CardDescription>
                         Alle Kasseneinträge und Karteneinnahmen eines Zeitraums – inklusive Korrekturhistorie.
-                        Als CSV für Excel/Numbers oder als PDF zum Weitergeben (nicht ohne Weiteres bearbeitbar).
+                        Als CSV für Excel/Numbers oder als PDF zum Weitergeben (nicht ohne Weiteres bearbeitbar, nur Bargeld – ohne Karteneinnahmen).
                     </CardDescription>
                 </CardHeader>
                 <CardContent>

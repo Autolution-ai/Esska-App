@@ -1,5 +1,5 @@
 // Kassenbericht als PDF (zusaetzlich zur CSV) fuer Steuerberater und
-// Finanzamt. Gleiche Zeilen wie die CSV, A4 quer. Laeuft im Browser.
+// Finanzamt. Nur Bargeld-Kasse, ohne Karteneinnahmen. A4 quer, im Browser.
 
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 
@@ -18,14 +18,12 @@ export type KassenberichtZeile = {
     datum: string; // YYYY-MM-DD
     center: string;
     stadt: string;
-    art: "Bargeld" | "Karte";
     startbestand: string;
     einnahmen: string;
     ausgaben: string;
     einlagen: string;
     tresor: string;
     endbestand: string;
-    karte: string;
     gueltig: boolean;
     korrektur: boolean;
     bemerkung: string; // Korrekturgrund und Notiz
@@ -38,14 +36,12 @@ const datumDe = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.s
 const SPALTEN: Spalte[] = [
     { titel: "Datum", breite: 48, wert: (z) => datumDe(z.datum) },
     { titel: "Center", breite: 150, wert: (z) => `${z.center}, ${z.stadt}` },
-    { titel: "Art", breite: 36, wert: (z) => z.art },
     { titel: "Startbestand", breite: 52, rechts: true, wert: (z) => z.startbestand },
     { titel: "Einnahmen", breite: 50, rechts: true, wert: (z) => z.einnahmen },
     { titel: "Ausgaben", breite: 46, rechts: true, wert: (z) => z.ausgaben },
     { titel: "Einlagen", breite: 46, rechts: true, wert: (z) => z.einlagen },
     { titel: "In Tresor", breite: 46, rechts: true, wert: (z) => z.tresor },
     { titel: "Endbestand", breite: 52, rechts: true, wert: (z) => z.endbestand },
-    { titel: "Karte", breite: 46, rechts: true, wert: (z) => z.karte },
     { titel: "Gültig", breite: 40, wert: (z) => (z.gueltig ? "ja" : "ersetzt") },
     { titel: "Korr.", breite: 26, wert: (z) => (z.korrektur ? "ja" : "") },
     { titel: "Bemerkung", breite: 0, wert: (z) => z.bemerkung },
@@ -68,7 +64,7 @@ function sicher(font: PDFFont, text: string): string {
 export async function generiereKassenberichtPdf(o: {
     zeitraum: string; // z. B. "01.09.2026 – 30.09.2026"
     zeilen: KassenberichtZeile[];
-    summen: { einnahmenBar: string; karte: string; tresor: string };
+    summen: { einnahmen: string; tresor: string };
 }): Promise<Uint8Array> {
     const doc = await PDFDocument.create();
     const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -139,8 +135,7 @@ export async function generiereKassenberichtPdf(o: {
     seite.drawText("Summen (nur gültige Einträge)", { x: RAND, y, size: 9, font: fett, color: TEXT });
     y -= 14;
     for (const [k, v] of [
-        ["Einnahmen bar", o.summen.einnahmenBar],
-        ["Karteneinnahmen", o.summen.karte],
+        ["Einnahmen", o.summen.einnahmen],
         ["In Tresor gelegt", o.summen.tresor],
     ]) {
         seite.drawText(k, { x: RAND, y, size: 9, font, color: TEXT });
