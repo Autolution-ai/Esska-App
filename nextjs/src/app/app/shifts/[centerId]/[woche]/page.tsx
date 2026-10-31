@@ -104,6 +104,8 @@ export default function WocheEditorPage() {
     const [info, setInfo] = useState<string | null>(null);
 
     // Inline-Zeit-Override pro Zelle (lokaler Zwischenzustand bis Save)
+    // Im Zaehler angeklickte Person: deren Verfuegbarkeit der Woche aufklappen
+    const [detailPerson, setDetailPerson] = useState<string | null>(null);
     const [zeitOverride, setZeitOverride] = useState<Record<string, { start: string; ende: string }>>({});
 
     const cellKey = (datum: string, slot: EsskaShiftSlot) => `${datum}::${slot}`;
@@ -526,7 +528,7 @@ export default function WocheEditorPage() {
                             Verfuegbarkeit schon eingetragen ist */}
                         <div className="sticky top-0 z-10 bg-white border rounded-lg p-3 shadow-sm">
                             <div className="text-xs font-medium text-gray-500 mb-2">
-                                Schichten diese Woche · Verfügbarkeit eingetragen?
+                                Schichten diese Woche · Verfügbarkeit eingetragen? · Name antippen für Details
                             </div>
                             <div className="flex flex-wrap gap-1.5">
                                 {[...people]
@@ -537,17 +539,17 @@ export default function WocheEditorPage() {
                                         const anzahl = schichtenZaehlerWoche(p.id);
                                         const ok = hatEingetragen(p.id);
                                         const name = `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "?");
+                                        const offen = detailPerson === p.id;
                                         return (
-                                            <span
+                                            <button
+                                                type="button"
                                                 key={p.id}
-                                                title={
-                                                    ok
-                                                        ? "Verfügbarkeit für diese Woche eingetragen"
-                                                        : "Hat für diese Woche noch keine Verfügbarkeit eingetragen"
-                                                }
-                                                className={`inline-flex items-center gap-1.5 text-xs rounded-full border px-2 py-0.5 ${
+                                                onClick={() => setDetailPerson(offen ? null : p.id)}
+                                                aria-expanded={offen}
+                                                title="Verfügbarkeit dieser Woche anzeigen"
+                                                className={`inline-flex items-center gap-1.5 text-xs rounded-full border px-2 py-0.5 hover:shadow-sm ${
                                                     ok ? "bg-white border-gray-200" : "bg-amber-50 border-amber-300 text-amber-900"
-                                                }`}
+                                                } ${offen ? "ring-2 ring-primary-400" : ""}`}
                                             >
                                                 <span>{ok ? "✓" : "?"}</span>
                                                 <span>{name}</span>
@@ -559,10 +561,84 @@ export default function WocheEditorPage() {
                                                     {anzahl}
                                                     {p.max_schichten_pro_woche ? `/${p.max_schichten_pro_woche}` : ""}
                                                 </span>
-                                            </span>
+                                            </button>
                                         );
                                     })}
                             </div>
+                            {detailPerson && people.some((p) => p.id === detailPerson) && (() => {
+                                const p = people.find((x) => x.id === detailPerson)!;
+                                const name = `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "?");
+                                const zelle = (datum: string, slot: EsskaShiftSlot) => {
+                                    const a = availFor(p.id, datum, slot);
+                                    if (!a) return <span className="text-gray-400">? offen</span>;
+                                    if (a.wunsch === "kann_nicht") return <span className="text-red-700">✕ kann nicht</span>;
+                                    if (a.wunsch === "wuensche") {
+                                        const t =
+                                            slot === "vormittag" && a.abweichung_bis
+                                                ? `nur bis ${zeitKurz(a.abweichung_bis)}`
+                                                : slot === "nachmittag" && a.abweichung_ab
+                                                  ? `erst ab ${zeitKurz(a.abweichung_ab)}`
+                                                  : "eingeschränkt";
+                                        return <span className="text-amber-800">◐ {t}</span>;
+                                    }
+                                    return <span className="text-green-700">✓ kann</span>;
+                                };
+                                return (
+                                    <div className="mt-3 border-t pt-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-sm font-medium">Verfügbarkeit von {name}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setDetailPerson(null)}
+                                                className="text-xs text-gray-500 hover:text-gray-800"
+                                            >
+                                                schließen
+                                            </button>
+                                        </div>
+                                        {!hatEingetragen(p.id) ? (
+                                            <p className="text-xs text-amber-800">
+                                                Hat für diese Woche noch keine Verfügbarkeit eingetragen.
+                                            </p>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="text-xs border-collapse">
+                                                    <thead>
+                                                        <tr>
+                                                            <th className="px-2 py-1 text-left font-medium text-gray-500"></th>
+                                                            {tage.map((t) => (
+                                                                <th key={isoDatum(t)} className="px-2 py-1 text-left font-medium text-gray-500 whitespace-nowrap">
+                                                                    {tagKurz(t)} {t.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })}.
+                                                                </th>
+                                                            ))}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {SLOTS.map((sl) => (
+                                                            <tr key={sl} className="border-t">
+                                                                <td className="px-2 py-1 font-medium text-gray-600 whitespace-nowrap">{SLOT_LABELS[sl]}</td>
+                                                                {tage.map((t) => {
+                                                                    const d = isoDatum(t);
+                                                                    const eingeplant = shiftsWeekAll.some(
+                                                                        (sh) => sh.profile_id === p.id && sh.datum === d && sh.slot === sl
+                                                                    );
+                                                                    return (
+                                                                        <td key={d} className="px-2 py-1 whitespace-nowrap">
+                                                                            {zelle(d, sl)}
+                                                                            {eingeplant && (
+                                                                                <span className="ml-1 rounded bg-primary-100 text-primary-800 px-1">eingeplant</span>
+                                                                            )}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
                             {people.some((p) => !hatEingetragen(p.id)) && (
                                 <p className="text-xs text-amber-800 mt-2">
                                     „?“ = noch keine Verfügbarkeit für diese Woche eingetragen. Diese Personen stehen im
