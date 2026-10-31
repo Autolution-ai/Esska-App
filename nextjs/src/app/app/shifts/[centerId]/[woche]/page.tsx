@@ -300,6 +300,11 @@ export default function WocheEditorPage() {
         return availability.find((a) => a.profile_id === profileId && a.datum === datum && a.slot === slot);
     };
 
+    // Wer hat fuer diese Woche ueberhaupt schon Verfuegbarkeiten eingetragen?
+    // Ohne Eintrag gilt zwar "koennte", das ist aber keine echte Zusage.
+    const eingetragen = useMemo(() => new Set(availability.map((a) => a.profile_id)), [availability]);
+    const hatEingetragen = (profileId: string) => eingetragen.has(profileId);
+
     const wunschVon = (profileId: string, datum: string, slot: EsskaShiftSlot): EsskaWunsch => {
         return availFor(profileId, datum, slot)?.wunsch ?? "koennte";
     };
@@ -516,6 +521,56 @@ export default function WocheEditorPage() {
                             )}
                         </div>
                     ) : (
+                        <>
+                        {/* Zaehler: Schichten je Person in dieser Woche + ob die
+                            Verfuegbarkeit schon eingetragen ist */}
+                        <div className="sticky top-0 z-10 bg-white border rounded-lg p-3 shadow-sm">
+                            <div className="text-xs font-medium text-gray-500 mb-2">
+                                Schichten diese Woche · Verfügbarkeit eingetragen?
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                                {[...people]
+                                    .sort((a, b) =>
+                                        `${a.vorname ?? ""} ${a.nachname ?? ""}`.localeCompare(`${b.vorname ?? ""} ${b.nachname ?? ""}`, "de")
+                                    )
+                                    .map((p) => {
+                                        const anzahl = schichtenZaehlerWoche(p.id);
+                                        const ok = hatEingetragen(p.id);
+                                        const name = `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "?");
+                                        return (
+                                            <span
+                                                key={p.id}
+                                                title={
+                                                    ok
+                                                        ? "Verfügbarkeit für diese Woche eingetragen"
+                                                        : "Hat für diese Woche noch keine Verfügbarkeit eingetragen"
+                                                }
+                                                className={`inline-flex items-center gap-1.5 text-xs rounded-full border px-2 py-0.5 ${
+                                                    ok ? "bg-white border-gray-200" : "bg-amber-50 border-amber-300 text-amber-900"
+                                                }`}
+                                            >
+                                                <span>{ok ? "✓" : "?"}</span>
+                                                <span>{name}</span>
+                                                <span
+                                                    className={`font-semibold rounded-full px-1.5 ${
+                                                        anzahl > 0 ? "bg-primary-100 text-primary-800" : "bg-gray-100 text-gray-500"
+                                                    }`}
+                                                >
+                                                    {anzahl}
+                                                    {p.max_schichten_pro_woche ? `/${p.max_schichten_pro_woche}` : ""}
+                                                </span>
+                                            </span>
+                                        );
+                                    })}
+                            </div>
+                            {people.some((p) => !hatEingetragen(p.id)) && (
+                                <p className="text-xs text-amber-800 mt-2">
+                                    „?“ = noch keine Verfügbarkeit für diese Woche eingetragen. Diese Personen stehen im
+                                    Auswahlfeld unten mit „noch nichts eingetragen“ – sie haben nicht zugesagt, dass sie
+                                    können.
+                                </p>
+                            )}
+                        </div>
                         <div className="overflow-x-auto bg-white border rounded-lg">
                             <table className="min-w-full border-collapse text-sm">
                                 <thead>
@@ -579,6 +634,7 @@ export default function WocheEditorPage() {
                                                             shift={current}
                                                             people={people}
                                                             wunschVon={wunschVon}
+                                                            hatEingetragen={hatEingetragen}
                                                             availFor={availFor}
                                                             limitInfo={limitInfo}
                                                             busy={busy}
@@ -599,6 +655,7 @@ export default function WocheEditorPage() {
                                 </tbody>
                             </table>
                         </div>
+                        </>
                     )}
                 </>
             )}
@@ -614,6 +671,7 @@ function SlotCell({
     shift,
     people,
     wunschVon,
+    hatEingetragen,
     availFor,
     limitInfo,
     busy,
@@ -630,6 +688,7 @@ function SlotCell({
     shift: EsskaShift | undefined;
     people: AssignedProfile[];
     wunschVon: (id: string, datum: string, slot: EsskaShiftSlot) => EsskaWunsch;
+    hatEingetragen: (id: string) => boolean;
     availFor: (id: string, datum: string, slot: EsskaShiftSlot) => EsskaAvailabilityRow | undefined;
     limitInfo: (p: AssignedProfile, ignoreCellKey?: string) => {
         schichtenIst: number;
@@ -648,13 +707,13 @@ function SlotCell({
     const aktStart = (override?.start ?? shift?.start_zeit?.slice(0, 5)) ?? std.start;
     const aktEnde = (override?.ende ?? shift?.end_zeit?.slice(0, 5)) ?? std.ende;
 
-    // Mitarbeiter sortieren: wünsche zuerst, dann könnte, dann kann_nicht
-    const sortiert = [...people].sort((a, b) => {
-        const wa = wunschVon(a.id, datum, slot);
-        const wb = wunschVon(b.id, datum, slot);
-        const score = (w: EsskaWunsch) => (w === "wuensche" ? 0 : w === "koennte" ? 1 : 2);
-        return score(wa) - score(wb);
-    });
+    // Mitarbeiter sortieren: Abweichung, könnte, noch nichts eingetragen, kann nicht
+    const score = (id: string) => {
+        if (!hatEingetragen(id)) return 2;
+        const w = wunschVon(id, datum, slot);
+        return w === "wuensche" ? 0 : w === "koennte" ? 1 : 3;
+    };
+    const sortiert = [...people].sort((a, b) => score(a.id) - score(b.id));
 
     const aktivePerson = shift ? people.find((p) => p.id === shift.profile_id) : undefined;
     const aktivLimit = aktivePerson ? limitInfo(aktivePerson, cellKey) : null;
@@ -694,7 +753,8 @@ function SlotCell({
                         const wunsch = avail?.wunsch ?? "koennte";
                         const nichtWaehlbar = wunsch === "kann_nicht";
                         const info = limitInfo(p, cellKey);
-                        const label = `${WUNSCH_ICON[wunsch]} ${p.vorname ?? ""} ${p.nachname ?? ""}`.trim()
+                        const offen = !hatEingetragen(p.id);
+                        const label = `${offen ? "?" : WUNSCH_ICON[wunsch]} ${p.vorname ?? ""} ${p.nachname ?? ""}`.trim()
                             || (p.email ?? "?");
                         const limitText = info.schichtenLimit
                             ? ` (${info.schichtenIst}/${info.schichtenLimit})`
@@ -714,6 +774,7 @@ function SlotCell({
                                 {limitText}
                                 {abwText}
                                 {nichtWaehlbar ? " — kann nicht" : ""}
+                                {offen ? " — noch nichts eingetragen" : ""}
                             </option>
                         );
                     })}
