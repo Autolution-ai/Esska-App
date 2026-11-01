@@ -7,6 +7,11 @@
 //                          Umgebungsvariable LAGER_EMAIL und kann jederzeit
 //                          nachgereicht werden - bis dahin kommt eine klare
 //                          Fehlermeldung. Setzt den Status auf 'weitergeleitet'.
+//
+// Beide Bestell-Mails gehen ueber das Bestell-Postfach (BESTELL_SMTP_USER,
+// z. B. website.sk@gmail.com), sobald es in Vercel hinterlegt ist. Ist
+// LAGER_EMAIL dieselbe Adresse, wird die Bestellung von dieser Adresse an
+// sich selbst geschickt.
 
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -124,6 +129,7 @@ export async function POST(request: Request) {
                 an: empfaenger,
                 betreff: `Neue Warenbestellung – ${daten.center?.name ?? "?"} (${daten.center?.kuerzel ?? "?"})`,
                 text: mailText(daten),
+                konto: "bestellung",
             });
             return NextResponse.json({
                 ok: true,
@@ -149,6 +155,7 @@ export async function POST(request: Request) {
             an: lager,
             betreff: `Warenbestellung – ${daten.center?.name ?? "?"} (${daten.center?.kuerzel ?? "?"}), ${new Date(daten.bestellung.erstellt_am).toLocaleDateString("de-DE")}`,
             text: mailText(daten),
+            konto: "bestellung",
         });
         const { error: updErr } = await db
             .from("bestellungen")

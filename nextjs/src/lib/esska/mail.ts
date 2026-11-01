@@ -8,15 +8,25 @@ export function smtpKonfiguriert(): boolean {
     return !!(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
+/** Ist ein eigenes Absender-Postfach fuer Warenbestellungen hinterlegt? */
+export function bestellKontoKonfiguriert(): boolean {
+    return !!(process.env.BESTELL_SMTP_USER && process.env.BESTELL_SMTP_PASS);
+}
+
 export async function sendeMail(optionen: {
     an: string;
     betreff: string;
     text: string;
     /** Optionale HTML-Fassung; der Text bleibt fuer Mailprogramme ohne HTML. */
     html?: string;
+    /** "bestellung": ueber das eigene Bestell-Postfach senden
+     *  (BESTELL_SMTP_USER / BESTELL_SMTP_PASS), falls hinterlegt -
+     *  sonst ueber das normale App-Postfach. */
+    konto?: "standard" | "bestellung";
 }): Promise<void> {
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPass = process.env.SMTP_PASS;
+    const bestellKonto = optionen.konto === "bestellung" && bestellKontoKonfiguriert();
+    const smtpUser = bestellKonto ? process.env.BESTELL_SMTP_USER : process.env.SMTP_USER;
+    const smtpPass = bestellKonto ? process.env.BESTELL_SMTP_PASS : process.env.SMTP_PASS;
     if (!smtpUser || !smtpPass) {
         throw new Error("E-Mail-Versand ist nicht konfiguriert (SMTP_USER / SMTP_PASS fehlen in Vercel).");
     }
