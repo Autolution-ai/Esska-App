@@ -16,6 +16,7 @@ import {
     ClipboardList,
     ShoppingCart,
     FileSignature,
+    Clock,
 } from 'lucide-react';
 import { useGlobal } from "@/lib/context/GlobalContext";
 import { ROLE_LABELS } from "@/lib/esska/types";
@@ -32,6 +33,7 @@ const adminNavigation: NavItem[] = [
     { name: 'Center', href: '/app/centers', icon: Store },
     { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
     { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
+    { name: 'Monatsübersicht', href: '/app/monatsuebersicht', icon: Clock },
     { name: 'Umsätze', href: '/app/sales', icon: TrendingUp },
     { name: 'Ware bestellen', href: '/app/orders', icon: ShoppingCart },
     { name: 'Arbeitsverträge', href: '/app/vertraege', icon: FileSignature },
@@ -47,6 +49,7 @@ const regionalmanagerNavigation: NavItem[] = [
     { name: 'Übersicht', href: '/app', icon: Home },
     { name: 'Schichtplan', href: '/app/shifts', icon: CalendarDays },
     { name: 'Verfügbarkeit', href: '/app/availability', icon: CalendarDays },
+    { name: 'Monatsübersicht', href: '/app/monatsuebersicht', icon: Clock },
     { name: 'Meine Schichten', href: '/app/my-shifts', icon: ClipboardList },
     { name: 'Mitarbeiter', href: '/app/employees', icon: Users },
     { name: 'Umsatz melden', href: '/app/sales/new', icon: TrendingUp },
