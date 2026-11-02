@@ -9,7 +9,7 @@
 //                          Fehlermeldung. Setzt den Status auf 'weitergeleitet'.
 //
 // Beide Bestell-Mails gehen ueber das Bestell-Postfach (BESTELL_SMTP_USER,
-// z. B. website.sk@gmail.com), sobald es in Vercel hinterlegt ist. Ist
+// esska.website@gmail.com), sobald es in Vercel hinterlegt ist. Ist
 // LAGER_EMAIL dieselbe Adresse, wird die Bestellung von dieser Adresse an
 // sich selbst geschickt.
 
