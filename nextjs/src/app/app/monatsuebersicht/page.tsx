@@ -18,6 +18,9 @@ function stundenText(h: number): string {
     return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`;
 }
 
+const istSonntag = (datum: string) => new Date(`${datum}T12:00:00`).getDay() === 0;
+const dauer = (s: EsskaShift) => nettoStunden(zeitKurz(s.start_zeit), zeitKurz(s.end_zeit), s.pause_min ?? 0);
+
 const MONATE = [
     "Januar", "Februar", "März", "April", "Mai", "Juni",
     "Juli", "August", "September", "Oktober", "November", "Dezember",
@@ -95,17 +98,19 @@ export default function MonatsuebersichtPage() {
             .map(([pid, liste]) => {
                 const p = personen.find((x) => x.id === pid);
                 const name = p ? `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "?") : "Unbekannt";
-                const stunden = liste.reduce(
-                    (sum, s) => sum + nettoStunden(zeitKurz(s.start_zeit), zeitKurz(s.end_zeit), s.pause_min ?? 0),
-                    0
-                );
+                // Sonntagsschichten werden extra bezahlt -> getrennt ausweisen
+                const sonntag = liste.filter((s) => istSonntag(s.datum)).reduce((sum, s) => sum + dauer(s), 0);
+                const werktag = liste.filter((s) => !istSonntag(s.datum)).reduce((sum, s) => sum + dauer(s), 0);
+                const stunden = werktag + sonntag;
                 const centerNamen = [...new Set(liste.map((s) => centers.find((c) => c.id === s.center_id)?.kuerzel ?? "?"))];
-                return { pid, name, liste, stunden, centerNamen };
+                return { pid, name, liste, stunden, werktag, sonntag, centerNamen };
             })
             .sort((a, b) => a.name.localeCompare(b.name, "de"));
     }, [shifts, nurVeroeffentlicht, veroeffentlicht, personen, centers]);
 
     const gesamt = zeilen.reduce((s, z) => s + z.stunden, 0);
+    const gesamtWerktag = zeilen.reduce((s, z) => s + z.werktag, 0);
+    const gesamtSonntag = zeilen.reduce((s, z) => s + z.sonntag, 0);
     const entwuerfe = shifts.filter((s) => !veroeffentlicht.has(s.shift_week_id)).length;
 
     const monatWechseln = (delta: number) => {
@@ -120,7 +125,8 @@ export default function MonatsuebersichtPage() {
             <div>
                 <h1 className="text-2xl font-bold">Monatsübersicht</h1>
                 <p className="text-gray-600 text-sm">
-                    Gearbeitete Zeit je Mitarbeiter laut Wochenplänen (Schichtzeit abzüglich Pause).
+                    Gearbeitete Zeit je Mitarbeiter laut Wochenplänen (Schichtzeit abzüglich Pause), getrennt nach
+                    Montag–Samstag und Sonntag (Sonntagsschichten werden extra bezahlt).
                     {role === "regionalmanager" ? " Es zählen nur Schichten in deinen Centern." : ""}
                 </p>
             </div>
@@ -178,6 +184,8 @@ export default function MonatsuebersichtPage() {
                                         <th className="px-3 py-2 font-medium">Mitarbeiter</th>
                                         <th className="px-3 py-2 font-medium">Center</th>
                                         <th className="px-3 py-2 font-medium text-right">Schichten</th>
+                                        <th className="px-3 py-2 font-medium text-right">Mo–Sa</th>
+                                        <th className="px-3 py-2 font-medium text-right">Sonntag</th>
                                         <th className="px-3 py-2 font-medium text-right">Gesamtzeit</th>
                                     </tr>
                                 </thead>
@@ -200,6 +208,10 @@ export default function MonatsuebersichtPage() {
                                                 </td>
                                                 <td className="px-3 py-2 text-gray-600">{z.centerNamen.join(", ")}</td>
                                                 <td className="px-3 py-2 text-right">{z.liste.length}</td>
+                                                <td className="px-3 py-2 text-right">{stundenText(z.werktag)}</td>
+                                                <td className={`px-3 py-2 text-right ${z.sonntag > 0 ? "text-primary-700 font-medium" : "text-gray-400"}`}>
+                                                    {z.sonntag > 0 ? stundenText(z.sonntag) : "—"}
+                                                </td>
                                                 <td className="px-3 py-2 text-right font-semibold">{stundenText(z.stunden)}</td>
                                             </tr>
                                             {offen === z.pid &&
@@ -212,6 +224,9 @@ export default function MonatsuebersichtPage() {
                                                                 month: "2-digit",
                                                             })}{" "}
                                                             · {SLOT_LABELS[s.slot]}
+                                                            {istSonntag(s.datum) && (
+                                                                <span className="ml-1 rounded bg-primary-100 text-primary-800 px-1">Sonntag</span>
+                                                            )}
                                                             {!veroeffentlicht.has(s.shift_week_id) && (
                                                                 <span className="ml-1 text-amber-700">(Entwurf)</span>
                                                             )}
@@ -223,11 +238,8 @@ export default function MonatsuebersichtPage() {
                                                             {zeitKurz(s.start_zeit)}–{zeitKurz(s.end_zeit)}
                                                             {s.pause_min ? ` (−${s.pause_min} min Pause)` : ""}
                                                         </td>
-                                                        <td className="px-3 py-1.5 text-right">
-                                                            {stundenText(
-                                                                nettoStunden(zeitKurz(s.start_zeit), zeitKurz(s.end_zeit), s.pause_min ?? 0)
-                                                            )}
-                                                        </td>
+                                                        <td className="px-3 py-1.5 text-right" colSpan={2}></td>
+                                                        <td className="px-3 py-1.5 text-right">{stundenText(dauer(s))}</td>
                                                     </tr>
                                                 ))}
                                         </React.Fragment>
@@ -239,6 +251,8 @@ export default function MonatsuebersichtPage() {
                                         <td className="px-3 py-2 text-right">
                                             {zeilen.reduce((s, z) => s + z.liste.length, 0)}
                                         </td>
+                                        <td className="px-3 py-2 text-right">{stundenText(gesamtWerktag)}</td>
+                                        <td className="px-3 py-2 text-right">{gesamtSonntag > 0 ? stundenText(gesamtSonntag) : "—"}</td>
                                         <td className="px-3 py-2 text-right">{stundenText(gesamt)}</td>
                                     </tr>
                                 </tbody>
