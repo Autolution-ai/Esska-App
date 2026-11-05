@@ -2,7 +2,8 @@
 // setzt - falls vorhanden - die Unterschrift(en) als Bild ein.
 // Laeuft serverseitig (API-Routen); pdf-lib funktioniert aber auch im Browser.
 
-import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
+import { PDFDocument, rgb, type PDFFont } from "pdf-lib";
+import { schriftenEinbetten, type SchriftBytes } from "@/lib/esska/pdfschrift";
 import type { Rechteck, VertragsFeld, VertragsLayout } from "@/lib/esska/vertragslayouts";
 
 export type VertragsWerte = Partial<Record<VertragsFeld, string>>;
@@ -35,9 +36,11 @@ export async function fuelleVertrag(o: {
     vertreter?: Uint8Array | null;
     /** Kleiner Vermerk unten auf der letzten Seite (Nachweis der Unterschrift) */
     vermerk?: string;
+    /** Schrift mit vollem Zeichensatz (Namen mit z. B. "İ", "ş", "ć") */
+    schriften: SchriftBytes;
 }): Promise<Uint8Array> {
     const pdf = await PDFDocument.load(o.vorlage);
-    const font = await pdf.embedFont(StandardFonts.Helvetica);
+    const { normal: font } = await schriftenEinbetten(pdf, o.schriften);
     const seiten = pdf.getPages();
 
     for (const a of o.layout.abdecken ?? []) {

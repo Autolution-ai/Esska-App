@@ -1,7 +1,8 @@
 // Kassenbericht als PDF (zusaetzlich zur CSV) fuer Steuerberater und
 // Finanzamt. Nur Bargeld-Kasse, ohne Karteneinnahmen. A4 quer, im Browser.
 
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { ladeSchriftenBrowser, schriftenEinbetten } from "@/lib/esska/pdfschrift";
 
 const BREITE = 841.89; // A4 quer
 const HOEHE = 595.28;
@@ -67,8 +68,7 @@ export async function generiereKassenberichtPdf(o: {
     summen: { einnahmen: string; tresor: string };
 }): Promise<Uint8Array> {
     const doc = await PDFDocument.create();
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const fett = await doc.embedFont(StandardFonts.HelveticaBold);
+    const { normal: font, fett } = await schriftenEinbetten(doc, await ladeSchriftenBrowser());
     const erstellt = new Date().toLocaleString("de-DE", { timeZone: "Europe/Berlin" });
 
     // Restbreite fuer die Bemerkung

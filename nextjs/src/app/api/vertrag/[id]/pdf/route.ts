@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSSRClient } from "@/lib/supabase/server";
 import { createServerAdminClient } from "@/lib/supabase/serverAdminClient";
+import { ladeSchriftenServer } from "@/lib/esska/pdfschriftserver";
 import { fuelleVertrag } from "@/lib/esska/vertragpdf";
 import { heuteIso, ladeVertragsDaten, ladeVorlagePdf, vertragsWerte } from "@/lib/esska/vertragserver";
 
@@ -49,6 +50,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         const vorschau = await fuelleVertrag({
             vorlage: await ladeVorlagePdf(db, d.vorlage),
             layout: d.layout,
+            schriften: await ladeSchriftenServer(),
             werte: vertragsWerte(d, heuteIso()),
             vermerk: "VORSCHAU – noch nicht unterschrieben",
         });

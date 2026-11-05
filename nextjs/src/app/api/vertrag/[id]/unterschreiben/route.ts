@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createSSRClient } from "@/lib/supabase/server";
 import { createServerAdminClient } from "@/lib/supabase/serverAdminClient";
+import { ladeSchriftenServer } from "@/lib/esska/pdfschriftserver";
 import { fuelleVertrag, pngAusDataUrl } from "@/lib/esska/vertragpdf";
 import {
     fehlendeAngaben,
@@ -78,6 +79,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         const pdf = await fuelleVertrag({
             vorlage: await ladeVorlagePdf(db, d.vorlage),
             layout: d.layout,
+            schriften: await ladeSchriftenServer(),
             werte,
             unterschrift,
             vertreter,

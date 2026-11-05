@@ -2,7 +2,8 @@
 // aus docs/etappe-1-feinplanung.md). Laeuft komplett im Browser, keine
 // Daten verlassen den Client.
 
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, PDFFont, PDFPage, rgb } from "pdf-lib";
+import { ladeSchriftenBrowser, schriftenEinbetten } from "@/lib/esska/pdfschrift";
 import type { EsskaKubeDeclaration, EsskaProfile } from "@/lib/esska/types";
 import {
     KUBE_LEBENSUNTERHALT_LABELS,
@@ -29,8 +30,9 @@ class PdfBuilder {
     static async create(): Promise<PdfBuilder> {
         const b = new PdfBuilder();
         b.doc = await PDFDocument.create();
-        b.font = await b.doc.embedFont(StandardFonts.Helvetica);
-        b.fontBold = await b.doc.embedFont(StandardFonts.HelveticaBold);
+        const schriften = await schriftenEinbetten(b.doc, await ladeSchriftenBrowser());
+        b.font = schriften.normal;
+        b.fontBold = schriften.fett;
         b.neueSeite();
         return b;
     }
