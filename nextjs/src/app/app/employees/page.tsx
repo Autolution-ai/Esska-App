@@ -35,6 +35,10 @@ export default function EmployeesPage() {
     // Admin: nach Regionalmanager filtern ("alle" | Profil-ID | "ohne")
     const [managerFilter, setManagerFilter] = useState<string>("alle");
     const [gruppierung, setGruppierung] = useState<"keine" | "center" | "stadt">("keine");
+    // Sortierung per Klick auf den Spaltenkopf (wie in der Center-Liste)
+    const [sort, setSort] = useState<{ spalte: SortSpalte; auf: boolean }>({ spalte: "name", auf: true });
+    const sortiereNach = (spalte: SortSpalte) =>
+        setSort((alt) => (alt.spalte === spalte ? { spalte, auf: !alt.auf } : { spalte, auf: true }));
     // Auswahl fuer den Sammel-Versand an die Buchhaltung
     const [auswahl, setAuswahl] = useState<Set<string>>(new Set());
     const [versandDialog, setVersandDialog] = useState(false);
@@ -427,6 +431,8 @@ export default function EmployeesPage() {
                             toggleAlle={toggleAlle}
                             verlinken={role === "admin" || role === "regionalmanager"}
                             wochenStarts={wochenStarts}
+                            sort={sort}
+                            onSort={sortiereNach}
                         />
                     )}
                     {sichtbar.length > 0 && gruppen !== null && (
@@ -447,6 +453,8 @@ export default function EmployeesPage() {
                                         toggleAlle={toggleAlle}
                                         verlinken={role === "admin" || role === "regionalmanager"}
                                         wochenStarts={wochenStarts}
+                                        sort={sort}
+                                        onSort={sortiereNach}
                                     />
                                 </div>
                             ))}
@@ -458,6 +466,8 @@ export default function EmployeesPage() {
     );
 }
 
+type SortSpalte = "name" | "email" | "center" | "rolle" | "onboarding" | "verfuegbarkeit" | "status";
+
 function MitarbeiterTabelle({
     personen,
     centerVon,
@@ -468,6 +478,8 @@ function MitarbeiterTabelle({
     toggleAlle,
     verlinken,
     wochenStarts,
+    sort,
+    onSort,
 }: {
     personen: EsskaProfile[];
     centerVon: (id: string) => EsskaCenter[];
@@ -479,7 +491,59 @@ function MitarbeiterTabelle({
     verlinken: boolean;
     /** Montage der drei angezeigten Wochen - fuer die Links in die Verfuegbarkeit */
     wochenStarts: Date[];
+    sort: { spalte: SortSpalte; auf: boolean };
+    onSort: (spalte: SortSpalte) => void;
 }) {
+    // Sortierwert je Spalte
+    const vertragRang = (id: string) => (vertraege[id] === "unterschrieben" ? 2 : vertraege[id] === "offen" ? 1 : 0);
+    const wert = (p: EsskaProfile): string | number => {
+        switch (sort.spalte) {
+            case "name":
+                return `${p.nachname ?? ""} ${p.vorname ?? ""}`.trim().toLowerCase() || (p.email ?? "");
+            case "email":
+                return (p.email ?? "").toLowerCase();
+            case "center":
+                return centerVon(p.id).map((c) => c.kuerzel).sort().join(",") || "~";
+            case "rolle":
+                return p.role ?? "";
+            case "onboarding":
+                // offen zuerst, dann nach Vertragsstand
+                return (p.onboarding_abgeschlossen ? 10 : 0) + (p.role === "admin" ? 0 : vertragRang(p.id));
+            case "verfuegbarkeit":
+                return p.role === "admin" ? 99 : (verfuegbarkeit[p.id] ?? [false, false, false]).filter(Boolean).length;
+            case "status":
+                return p.aktiv ? 1 : 0;
+        }
+    };
+    const sortiert = [...personen].sort((a, b) => {
+        const wa = wert(a);
+        const wb = wert(b);
+        const r = typeof wa === "number" && typeof wb === "number" ? wa - wb : String(wa).localeCompare(String(wb), "de");
+        const name = `${a.nachname ?? ""}${a.vorname ?? ""}`.localeCompare(`${b.nachname ?? ""}${b.vorname ?? ""}`, "de");
+        return (sort.auf ? r : -r) || name;
+    });
+    // Spaltenkopf als Knopf: Klick sortiert, erneuter Klick dreht die Richtung
+    const Kopf = ({ spalte, children }: { spalte: SortSpalte; children: React.ReactNode }) => {
+        const aktiv = sort.spalte === spalte;
+        return (
+            <th
+                className="px-3 py-2 font-medium text-gray-700"
+                aria-sort={aktiv ? (sort.auf ? "ascending" : "descending") : "none"}
+            >
+                <button
+                    type="button"
+                    onClick={() => onSort(spalte)}
+                    className="inline-flex items-center gap-1 whitespace-nowrap hover:text-gray-900"
+                    title={`Nach ${typeof children === "string" ? children : "dieser Spalte"} sortieren`}
+                >
+                    {children}
+                    <span className={`text-[10px] ${aktiv ? "text-primary-600" : "text-gray-300"}`}>
+                        {aktiv ? (sort.auf ? "▲" : "▼") : "▼"}
+                    </span>
+                </button>
+            </th>
+        );
+    };
     const alleGewaehlt = personen.length > 0 && personen.every((p) => auswahl.has(p.id));
     return (
         <div className="overflow-x-auto">
@@ -494,17 +558,17 @@ function MitarbeiterTabelle({
                                 title="Alle in dieser Liste auswählen"
                             />
                         </th>
-                        <Th>Name</Th>
-                        <Th>E-Mail</Th>
-                        <Th>Center</Th>
-                        <Th>Rolle</Th>
-                        <Th>Onboarding</Th>
-                        <Th>Verfügbarkeit eingetragen</Th>
-                        <Th>Status</Th>
+                        <Kopf spalte="name">Name</Kopf>
+                        <Kopf spalte="email">E-Mail</Kopf>
+                        <Kopf spalte="center">Center</Kopf>
+                        <Kopf spalte="rolle">Rolle</Kopf>
+                        <Kopf spalte="onboarding">Onboarding</Kopf>
+                        <Kopf spalte="verfuegbarkeit">Verfügbarkeit eingetragen</Kopf>
+                        <Kopf spalte="status">Status</Kopf>
                     </tr>
                 </thead>
                 <tbody>
-                    {personen.map((p) => {
+                    {sortiert.map((p) => {
                         const meine = centerVon(p.id);
                         const wochen = verfuegbarkeit[p.id] ?? [false, false, false];
                         return (
@@ -614,9 +678,6 @@ function MitarbeiterTabelle({
     );
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-    return <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">{children}</th>;
-}
 function Td({ children }: { children: React.ReactNode }) {
     return <td className="px-3 py-2">{children}</td>;
 }
