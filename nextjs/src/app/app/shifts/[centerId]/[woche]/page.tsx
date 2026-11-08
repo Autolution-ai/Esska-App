@@ -104,6 +104,12 @@ export default function WocheEditorPage() {
     const [info, setInfo] = useState<string | null>(null);
 
     // Inline-Zeit-Override pro Zelle (lokaler Zwischenzustand bis Save)
+    // Bonus (+1 EUR je Stunde) je Schicht: shift_id -> Cent je Stunde.
+    // Nur Admin/Regionalmanager sehen und setzen das (Datenbankregel).
+    const [bonus, setBonus] = useState<Map<string, number>>(new Map());
+    // Wochenplan loeschen: zweistufig mit Bestaetigung
+    const [loeschenOffen, setLoeschenOffen] = useState(false);
+    const [loeschenVerstanden, setLoeschenVerstanden] = useState(false);
     // Im Zaehler angeklickte Person: deren Verfuegbarkeit der Woche aufklappen
     const [detailPerson, setDetailPerson] = useState<string | null>(null);
     const [zeitOverride, setZeitOverride] = useState<Record<string, { start: string; ende: string }>>({});
@@ -179,7 +185,24 @@ export default function WocheEditorPage() {
                     .order("datum")
                     .order("slot");
                 if (sErr) throw sErr;
-                setShifts((sData as EsskaShift[]) ?? []);
+                const wochenSchichten = (sData as EsskaShift[]) ?? [];
+                setShifts(wochenSchichten);
+                if (wochenSchichten.length > 0) {
+                    const { data: zData } = await client
+                        .from("schicht_zulagen")
+                        .select("shift_id, bonus_cent_pro_stunde")
+                        .in("shift_id", wochenSchichten.map((x) => x.id));
+                    setBonus(
+                        new Map(
+                            ((zData as Array<{ shift_id: string; bonus_cent_pro_stunde: number }>) ?? []).map((z) => [
+                                z.shift_id,
+                                Number(z.bonus_cent_pro_stunde),
+                            ])
+                        )
+                    );
+                } else {
+                    setBonus(new Map());
+                }
             } else {
                 setShifts([]);
             }
@@ -293,6 +316,60 @@ export default function WocheEditorPage() {
             }
         } catch (err) {
             setError(friendlyError(err, { aktion: "Veroeffentlichen" }));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const bonusUmschalten = async (shift: EsskaShift) => {
+        setBusy(true);
+        setError(null);
+        try {
+            const client = await getEsskaClient();
+            if (bonus.has(shift.id)) {
+                const { error: e } = await client.from("schicht_zulagen").delete().eq("shift_id", shift.id);
+                if (e) throw e;
+                setBonus((alt) => {
+                    const neu = new Map(alt);
+                    neu.delete(shift.id);
+                    return neu;
+                });
+            } else {
+                const { data, error: e } = await client
+                    .from("schicht_zulagen")
+                    .insert({ shift_id: shift.id })
+                    .select("shift_id, bonus_cent_pro_stunde")
+                    .single();
+                if (e) throw e;
+                const z = data as { shift_id: string; bonus_cent_pro_stunde: number };
+                setBonus((alt) => new Map(alt).set(z.shift_id, Number(z.bonus_cent_pro_stunde)));
+            }
+        } catch (err) {
+            setError(friendlyError(err, { aktion: "Bonus setzen" }));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const wocheLoeschen = async () => {
+        if (!week || !loeschenVerstanden) return;
+        setBusy(true);
+        setError(null);
+        setInfo(null);
+        try {
+            const client = await getEsskaClient();
+            const { error: e } = await client.from("shift_weeks").delete().eq("id", week.id);
+            if (e) throw e;
+            const ids = new Set(shifts.map((x) => x.id));
+            setShiftsWeekAll((alt) => alt.filter((x) => !ids.has(x.id)));
+            setShifts([]);
+            setBonus(new Map());
+            setWeek(null);
+            setLoeschenOffen(false);
+            setLoeschenVerstanden(false);
+            setInfo("Der Wochenplan wurde gelöscht.");
+        } catch (err) {
+            setError(friendlyError(err, { aktion: "Wochenplan löschen" }));
         } finally {
             setBusy(false);
         }
@@ -495,6 +572,70 @@ export default function WocheEditorPage() {
                                 </>
                             )}
                         </button>
+                    </div>
+
+                    <div className="flex justify-end">
+                        {!loeschenOffen ? (
+                            <button
+                                type="button"
+                                onClick={() => setLoeschenOffen(true)}
+                                disabled={busy}
+                                className="inline-flex items-center text-sm text-red-700 hover:text-red-900"
+                            >
+                                <Trash2 className="h-4 w-4 mr-1" />
+                                Wochenplan löschen
+                            </button>
+                        ) : (
+                            <div className="w-full p-4 bg-red-50 border border-red-300 rounded-lg text-sm space-y-3">
+                                <p className="font-semibold text-red-900">Wochenplan wirklich löschen?</p>
+                                <ul className="list-disc pl-5 text-red-900 space-y-1">
+                                    <li>
+                                        Alle {shifts.length} Schicht{shifts.length === 1 ? "" : "en"} dieser Woche
+                                        {bonus.size > 0 ? ` (inkl. ${bonus.size} Bonus)` : ""} werden endgültig gelöscht.
+                                    </li>
+                                    <li>
+                                        <strong>Achtung Lohn:</strong> Die Stunden und Löhne in der Monatsübersicht und
+                                        in der Personalakte werden neu berechnet – auch für Monate, die schon
+                                        abgerechnet sind.
+                                    </li>
+                                    {week.veroeffentlicht && (
+                                        <li>
+                                            Der Plan ist veröffentlicht – die Mitarbeiter haben ihre Schichten schon per
+                                            E-Mail bekommen und werden nicht automatisch informiert.
+                                        </li>
+                                    )}
+                                </ul>
+                                <label className="flex items-start gap-2 cursor-pointer text-red-900">
+                                    <input
+                                        type="checkbox"
+                                        checked={loeschenVerstanden}
+                                        onChange={(e) => setLoeschenVerstanden(e.target.checked)}
+                                        className="mt-1"
+                                    />
+                                    Ich habe geprüft, dass dieser Wochenplan gelöscht werden soll.
+                                </label>
+                                <div className="flex gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={wocheLoeschen}
+                                        disabled={busy || !loeschenVerstanden}
+                                        className="px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 disabled:opacity-50"
+                                    >
+                                        Endgültig löschen
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setLoeschenOffen(false);
+                                            setLoeschenVerstanden(false);
+                                        }}
+                                        className="px-4 py-2 border rounded-md hover:bg-white"
+                                    >
+                                        Abbrechen
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {(limitUnvollstaendig || rolle === "regionalmanager") && (
@@ -722,6 +863,8 @@ export default function WocheEditorPage() {
                                                             onUpdateZeit={(start, ende) =>
                                                                 current && updateZeit(current, start, ende)
                                                             }
+                                                            bonus={current ? bonus.has(current.id) : false}
+                                                            onBonus={() => current && bonusUmschalten(current)}
                                                         />
                                                     );
                                                 })}
@@ -755,6 +898,8 @@ function SlotCell({
     setOverride,
     onSetPerson,
     onUpdateZeit,
+    bonus,
+    onBonus,
 }: {
     /** Schichtzeit dieses Tages laut Oeffnungszeiten des Centers */
     standard: { start: string; ende: string };
@@ -778,6 +923,9 @@ function SlotCell({
     setOverride: (o: { start: string; ende: string }) => void;
     onSetPerson: (pid: string | null) => void;
     onUpdateZeit: (start: string, ende: string) => void;
+    /** Bonus +1 EUR je Stunde auf diese Schicht (nur Admin/Regionalmanager) */
+    bonus: boolean;
+    onBonus: () => void;
 }) {
     const std = standard;
     const aktStart = (override?.start ?? shift?.start_zeit?.slice(0, 5)) ?? std.start;
@@ -885,6 +1033,15 @@ function SlotCell({
                                 <Trash2 className="h-3.5 w-3.5" />
                             </button>
                         </div>
+                        <label
+                            className={`inline-flex items-center gap-1.5 text-xs cursor-pointer rounded px-1.5 py-0.5 w-fit ${
+                                bonus ? "bg-green-100 text-green-800" : "text-gray-500 hover:bg-gray-50"
+                            }`}
+                            title="Bonus: +1,00 € je Stunde auf diese Schicht (nur für Admins/Regionalmanager sichtbar)"
+                        >
+                            <input type="checkbox" checked={bonus} onChange={onBonus} disabled={busy} />
+                            Bonus +1 €/h
+                        </label>
                         {zeitWarnung && (
                             <div
                                 className={`text-xs rounded px-1.5 py-1 ${

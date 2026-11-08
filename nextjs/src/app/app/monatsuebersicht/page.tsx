@@ -7,19 +7,20 @@ import { getEsskaClient } from "@/lib/esska/client";
 import { friendlyError } from "@/lib/esska/errors";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import type { EsskaCenter, EsskaProfile, EsskaShift, EsskaShiftWeek } from "@/lib/esska/types";
-import { SLOT_LABELS, isoDatum, nettoStunden, zeitKurz } from "@/lib/esska/types";
+import { SLOT_LABELS, isoDatum, zeitKurz } from "@/lib/esska/types";
+import {
+    SONNTAGSZUSCHLAG_CENT,
+    euroText,
+    istSonntag,
+    lohnAuswerten,
+    schichtDauer as dauer,
+    stundenText,
+    stundenlohnMap,
+} from "@/lib/esska/lohn";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Person = Pick<EsskaProfile, "id" | "vorname" | "nachname" | "email">;
 
-/** 12,5 -> "12:30 h" */
-function stundenText(h: number): string {
-    const min = Math.round(h * 60);
-    return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, "0")} h`;
-}
-
-const istSonntag = (datum: string) => new Date(`${datum}T12:00:00`).getDay() === 0;
-const dauer = (s: EsskaShift) => nettoStunden(zeitKurz(s.start_zeit), zeitKurz(s.end_zeit), s.pause_min ?? 0);
 
 const MONATE = [
     "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -41,6 +42,9 @@ export default function MonatsuebersichtPage() {
     const [wochen, setWochen] = useState<EsskaShiftWeek[]>([]);
     const [personen, setPersonen] = useState<Person[]>([]);
     const [centers, setCenters] = useState<EsskaCenter[]>([]);
+    // Lohn: Stundenlohn je Person und Bonus je Schicht (nur Admin/Regionalmanager)
+    const [lohne, setLohne] = useState<Map<string, { cent: number; quelle: "profil" | "vertrag" }>>(new Map());
+    const [bonus, setBonus] = useState<Map<string, number>>(new Map());
     const [offen, setOffen] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -59,11 +63,35 @@ export default function MonatsuebersichtPage() {
             setError(null);
             try {
                 const client = await getEsskaClient();
-                const [sRes, pRes, cRes] = await Promise.all([
+                const [sRes, pRes, cRes, lRes, vRes, zRes] = await Promise.all([
                     client.from("shifts").select("*").gte("datum", von).lte("datum", bis).order("datum").order("slot"),
                     client.rpc("planungsprofile"),
                     client.from("centers").select("*"),
+                    client.from("mitarbeiter_lohn").select("profile_id, stundenlohn_cent"),
+                    client.from("arbeitsvertraege").select("profile_id, stundenlohn_cent, erstellt_am"),
+                    client
+                        .from("schicht_zulagen")
+                        .select("shift_id, bonus_cent_pro_stunde, shifts!inner(datum)")
+                        .gte("shifts.datum", von)
+                        .lte("shifts.datum", bis),
                 ]);
+                if (lRes.error) throw lRes.error;
+                if (vRes.error) throw vRes.error;
+                if (zRes.error) throw zRes.error;
+                setLohne(
+                    stundenlohnMap(
+                        (lRes.data as Array<{ profile_id: string; stundenlohn_cent: number }>) ?? [],
+                        (vRes.data as Array<{ profile_id: string; stundenlohn_cent: number | null; erstellt_am: string }>) ?? []
+                    )
+                );
+                setBonus(
+                    new Map(
+                        ((zRes.data as unknown as Array<{ shift_id: string; bonus_cent_pro_stunde: number }>) ?? []).map((z) => [
+                            z.shift_id,
+                            Number(z.bonus_cent_pro_stunde),
+                        ])
+                    )
+                );
                 if (sRes.error) throw sRes.error;
                 if (pRes.error) throw pRes.error;
                 if (cRes.error) throw cRes.error;
@@ -99,18 +127,29 @@ export default function MonatsuebersichtPage() {
                 const p = personen.find((x) => x.id === pid);
                 const name = p ? `${p.vorname ?? ""} ${p.nachname ?? ""}`.trim() || (p.email ?? "?") : "Unbekannt";
                 // Sonntagsschichten werden extra bezahlt -> getrennt ausweisen
-                const sonntag = liste.filter((s) => istSonntag(s.datum)).reduce((sum, s) => sum + dauer(s), 0);
-                const werktag = liste.filter((s) => !istSonntag(s.datum)).reduce((sum, s) => sum + dauer(s), 0);
-                const stunden = werktag + sonntag;
+                const lohn = lohne.get(pid) ?? null;
+                const l = lohnAuswerten(liste, lohn?.cent ?? null, bonus);
                 const centerNamen = [...new Set(liste.map((s) => centers.find((c) => c.id === s.center_id)?.kuerzel ?? "?"))];
-                return { pid, name, liste, stunden, werktag, sonntag, centerNamen };
+                return {
+                    pid,
+                    name,
+                    liste,
+                    stunden: l.stundenWerktag + l.stundenSonntag,
+                    werktag: l.stundenWerktag,
+                    sonntag: l.stundenSonntag,
+                    lohn,
+                    l,
+                    centerNamen,
+                };
             })
             .sort((a, b) => a.name.localeCompare(b.name, "de"));
-    }, [shifts, nurVeroeffentlicht, veroeffentlicht, personen, centers]);
+    }, [shifts, nurVeroeffentlicht, veroeffentlicht, personen, centers, lohne, bonus]);
 
     const gesamt = zeilen.reduce((s, z) => s + z.stunden, 0);
     const gesamtWerktag = zeilen.reduce((s, z) => s + z.werktag, 0);
     const gesamtSonntag = zeilen.reduce((s, z) => s + z.sonntag, 0);
+    const summe = (f: (z: (typeof zeilen)[number]) => number) => zeilen.reduce((s, z) => s + f(z), 0);
+    const ohneLohn = zeilen.filter((z) => z.l.ohneLohn).length;
     const entwuerfe = shifts.filter((s) => !veroeffentlicht.has(s.shift_week_id)).length;
 
     const monatWechseln = (delta: number) => {
@@ -125,8 +164,9 @@ export default function MonatsuebersichtPage() {
             <div>
                 <h1 className="text-2xl font-bold">Monatsübersicht</h1>
                 <p className="text-gray-600 text-sm">
-                    Gearbeitete Zeit je Mitarbeiter laut Wochenplänen (Schichtzeit abzüglich Pause), getrennt nach
-                    Montag–Samstag und Sonntag (Sonntagsschichten werden extra bezahlt).
+                    Gearbeitete Zeit und Lohn je Mitarbeiter laut Wochenplänen (Schichtzeit abzüglich Pause).
+                    Zulagen: Sonntag +{euroText(SONNTAGSZUSCHLAG_CENT)} je Stunde, Bonus-Schichten +1,00 € je Stunde.
+                    Nur für Admins und Regionalmanager sichtbar.
                     {role === "regionalmanager" ? " Es zählen nur Schichten in deinen Centern." : ""}
                 </p>
             </div>
@@ -187,6 +227,11 @@ export default function MonatsuebersichtPage() {
                                         <th className="px-3 py-2 font-medium text-right">Mo–Sa</th>
                                         <th className="px-3 py-2 font-medium text-right">Sonntag</th>
                                         <th className="px-3 py-2 font-medium text-right">Gesamtzeit</th>
+                                        <th className="px-3 py-2 font-medium text-right border-l">Stundenlohn</th>
+                                        <th className="px-3 py-2 font-medium text-right">Grundlohn</th>
+                                        <th className="px-3 py-2 font-medium text-right">So.-Zuschlag</th>
+                                        <th className="px-3 py-2 font-medium text-right">Bonus</th>
+                                        <th className="px-3 py-2 font-medium text-right">Lohn gesamt</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -213,6 +258,37 @@ export default function MonatsuebersichtPage() {
                                                     {z.sonntag > 0 ? stundenText(z.sonntag) : "—"}
                                                 </td>
                                                 <td className="px-3 py-2 text-right font-semibold">{stundenText(z.stunden)}</td>
+                                                <td className="px-3 py-2 text-right border-l whitespace-nowrap">
+                                                    {z.lohn ? (
+                                                        <>
+                                                            {euroText(z.lohn.cent)}
+                                                            {z.lohn.quelle === "vertrag" && (
+                                                                <span className="block text-[10px] text-gray-400">laut Vertrag</span>
+                                                            )}
+                                                        </>
+                                                    ) : (
+                                                        <span className="text-amber-700 text-xs">nicht hinterlegt</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2 text-right whitespace-nowrap">
+                                                    {z.l.ohneLohn ? "—" : euroText(z.l.grundCent)}
+                                                </td>
+                                                <td className="px-3 py-2 text-right whitespace-nowrap">
+                                                    {z.l.sonntagCent > 0 ? euroText(z.l.sonntagCent) : "—"}
+                                                </td>
+                                                <td className="px-3 py-2 text-right whitespace-nowrap">
+                                                    {z.l.bonusCent > 0 ? (
+                                                        <>
+                                                            {euroText(z.l.bonusCent)}
+                                                            <span className="block text-[10px] text-gray-400">{stundenText(z.l.stundenBonus)}</span>
+                                                        </>
+                                                    ) : (
+                                                        "—"
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                                                    {z.l.ohneLohn ? "—" : euroText(z.l.gesamtCent)}
+                                                </td>
                                             </tr>
                                             {offen === z.pid &&
                                                 z.liste.map((s) => (
@@ -227,6 +303,9 @@ export default function MonatsuebersichtPage() {
                                                             {istSonntag(s.datum) && (
                                                                 <span className="ml-1 rounded bg-primary-100 text-primary-800 px-1">Sonntag</span>
                                                             )}
+                                                            {bonus.has(s.id) && (
+                                                                <span className="ml-1 rounded bg-green-100 text-green-800 px-1">Bonus</span>
+                                                            )}
                                                             {!veroeffentlicht.has(s.shift_week_id) && (
                                                                 <span className="ml-1 text-amber-700">(Entwurf)</span>
                                                             )}
@@ -240,6 +319,7 @@ export default function MonatsuebersichtPage() {
                                                         </td>
                                                         <td className="px-3 py-1.5 text-right" colSpan={2}></td>
                                                         <td className="px-3 py-1.5 text-right">{stundenText(dauer(s))}</td>
+                                                        <td className="px-3 py-1.5 border-l" colSpan={5}></td>
                                                     </tr>
                                                 ))}
                                         </React.Fragment>
@@ -254,12 +334,25 @@ export default function MonatsuebersichtPage() {
                                         <td className="px-3 py-2 text-right">{stundenText(gesamtWerktag)}</td>
                                         <td className="px-3 py-2 text-right">{gesamtSonntag > 0 ? stundenText(gesamtSonntag) : "—"}</td>
                                         <td className="px-3 py-2 text-right">{stundenText(gesamt)}</td>
+                                        <td className="px-3 py-2 border-l"></td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap">{euroText(summe((z) => z.l.grundCent))}</td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap">{euroText(summe((z) => z.l.sonntagCent))}</td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap">{euroText(summe((z) => z.l.bonusCent))}</td>
+                                        <td className="px-3 py-2 text-right whitespace-nowrap">{euroText(summe((z) => z.l.gesamtCent))}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     )}
+                    {ohneLohn > 0 && (
+                        <p className="mt-3 text-xs text-amber-800">
+                            Bei {ohneLohn} Person{ohneLohn === 1 ? "" : "en"} ist kein Stundenlohn hinterlegt – bitte in
+                            der Personalakte unter „Lohn“ eintragen. Ohne Stundenlohn zählen nur die Stunden.
+                        </p>
+                    )}
                     <p className="mt-3 text-xs text-gray-500">
+                        Stundenlohn aus der Personalakte, sonst aus dem Arbeitsvertrag; mindestens der gesetzliche
+                        Mindestlohn am Schichttag (ab 01.01.2027: 14,60 €). Bruttobeträge, ohne Abzüge.
                         Grundlage sind die geplanten Schichten. Kurzfristige Änderungen (Krankheit, Tausch), die nicht im
                         Wochenplan nachgetragen wurden, sind nicht berücksichtigt.
                     </p>

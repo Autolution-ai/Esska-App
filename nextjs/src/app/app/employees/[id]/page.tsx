@@ -7,6 +7,7 @@ import { Edit, FileDown, KeyRound, Plus, Trash2, UserX } from "lucide-react";
 import Zugangsdaten, { type Zugang } from "@/components/esska/Zugangsdaten";
 import { useGlobal } from "@/lib/context/GlobalContext";
 import ArbeitsvertragBereich from "@/components/esska/ArbeitsvertragBereich";
+import LohnKarte from "@/components/esska/LohnKarte";
 import { getEsskaClient } from "@/lib/esska/client";
 import CenterAuswahl from "@/components/esska/CenterAuswahl";
 import { friendlyError } from "@/lib/esska/errors";
@@ -27,7 +28,7 @@ export default function EmployeeDetailPage() {
     // Regionalmanager sehen die Personalakte ihrer Mitarbeiter, aendern aber
     // nichts (Vorgabe 22.10.2026). Aendern, Loeschen, Passwort, Rolle und
     // Center-Zuordnung bleiben beim Admin.
-    const { role: betrachterRolle } = useGlobal();
+    const { role: betrachterRolle, user: betrachter } = useGlobal();
     const istAdmin = betrachterRolle === "admin";
     const params = useParams<{ id: string }>();
     const router = useRouter();
@@ -396,6 +397,23 @@ export default function EmployeeDetailPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Lohn: nur Admin/Regionalmanager, nie fuer das eigene Profil */}
+            {profile.role !== "admin" &&
+                (betrachterRolle === "admin" || betrachterRolle === "regionalmanager") &&
+                betrachter?.id !== profile.id && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Lohn</CardTitle>
+                            <CardDescription>
+                                Stundenlohn und Lohn je Monat laut Wochenplänen. Für den Mitarbeiter nicht sichtbar.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <LohnKarte profileId={profile.id} />
+                        </CardContent>
+                    </Card>
+                )}
 
             {profile.role !== "admin" && (
                 <Card>
