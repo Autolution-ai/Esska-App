@@ -265,18 +265,18 @@ export default function WocheEditorPage() {
         if (!week) return;
         const wirdVeroeffentlicht = !week.veroeffentlicht;
         const eingeplant = new Set(shifts.map((s) => s.profile_id)).size;
-        // Mails nur bei der ersten Veroeffentlichung
+        // Mails nur bei der ersten Veroeffentlichung, nie fuer vergangene
+        // Wochen - und nur, wenn man es beim Veroeffentlichen bestaetigt.
         const ersteVeroeffentlichung = !week.benachrichtigt_am;
-        if (
-            wirdVeroeffentlicht &&
-            ersteVeroeffentlichung &&
-            eingeplant > 0 &&
-            !window.confirm(
-                `Wochenplan veröffentlichen? ${eingeplant} eingeplante ${eingeplant === 1 ? "Person bekommt ihre" : "Personen bekommen ihre"} Schichten per E-Mail.`
-            )
-        ) {
-            return;
-        }
+        const wocheVorbei = isoDatum(addTage(wochenStart, 6)) < isoDatum(new Date());
+        const mailMoeglich = wirdVeroeffentlicht && ersteVeroeffentlichung && eingeplant > 0 && !wocheVorbei;
+        const mailSenden =
+            mailMoeglich &&
+            window.confirm(
+                `Sollen die ${eingeplant} eingeplanten ${eingeplant === 1 ? "Person ihre" : "Personen ihre"} Schichten per E-Mail bekommen?\n\n` +
+                    "OK = veröffentlichen und E-Mails senden\nAbbrechen = nur veröffentlichen, keine E-Mails\n\n" +
+                    "Danach werden für diese Woche keine E-Mails mehr verschickt."
+            );
         setBusy(true);
         setInfo(null);
         setError(null);
@@ -285,7 +285,13 @@ export default function WocheEditorPage() {
             const { data: { user } } = await client.auth.getUser();
             const payload = week.veroeffentlicht
                 ? { veroeffentlicht: false, veroeffentlicht_am: null, veroeffentlicht_von: null }
-                : { veroeffentlicht: true, veroeffentlicht_am: new Date().toISOString(), veroeffentlicht_von: user?.id ?? null };
+                : {
+                      veroeffentlicht: true,
+                      veroeffentlicht_am: new Date().toISOString(),
+                      veroeffentlicht_von: user?.id ?? null,
+                      // Ohne Mail veroeffentlicht: auch spaeter keine Mails mehr
+                      ...(!mailSenden && !week.benachrichtigt_am ? { benachrichtigt_am: new Date().toISOString() } : {}),
+                  };
             const { data, error: e } = await client
                 .from("shift_weeks")
                 .update(payload)
@@ -297,10 +303,10 @@ export default function WocheEditorPage() {
 
             // Eingeplante per E-Mail informieren. Scheitert der Versand, bleibt
             // der Plan trotzdem veroeffentlicht - die Meldung sagt, was fehlt.
-            if (wirdVeroeffentlicht && !ersteVeroeffentlichung) {
-                setInfo("Wieder veröffentlicht. Es wurden keine E-Mails verschickt (nur bei der ersten Veröffentlichung).");
+            if (wirdVeroeffentlicht && !mailSenden) {
+                setInfo("Veröffentlicht. Es wurden keine E-Mails verschickt.");
             }
-            if (wirdVeroeffentlicht && ersteVeroeffentlichung && eingeplant > 0) {
+            if (mailSenden) {
                 const res = await fetch("/api/shifts/benachrichtigen", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },

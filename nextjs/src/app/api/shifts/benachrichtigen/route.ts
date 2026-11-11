@@ -63,6 +63,13 @@ export async function POST(request: Request) {
         if (!woche.veroeffentlicht) {
             return NextResponse.json({ error: "Der Wochenplan ist nicht veröffentlicht." }, { status: 400 });
         }
+        // Vergangene Wochen nie per Mail
+        const wochenEnde = new Date(`${woche.woche_start}T12:00:00`);
+        wochenEnde.setDate(wochenEnde.getDate() + 6);
+        const heute = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(new Date());
+        if (wochenEnde.toISOString().slice(0, 10) < heute) {
+            return NextResponse.json({ ok: true, vorbei: true, verschickt: 0, ohneEmail: 0, fehlgeschlagen: [] });
+        }
         if (woche.benachrichtigt_am) {
             return NextResponse.json({ ok: true, bereitsBenachrichtigt: true, verschickt: 0, ohneEmail: 0, fehlgeschlagen: [] });
         }
