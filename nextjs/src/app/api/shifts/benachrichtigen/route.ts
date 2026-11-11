@@ -1,5 +1,7 @@
 // Nach dem Veroeffentlichen eines Wochenplans: jede eingeplante Person
-// bekommt ihre Schichten dieser Woche per E-Mail.
+// bekommt ihre Schichten dieser Woche per E-Mail - nur beim ERSTEN
+// Veroeffentlichen. Wird der Plan spaeter geaendert und erneut
+// veroeffentlicht, geht keine Mail mehr raus (benachrichtigt_am).
 // Aufruf nur durch Admin oder zustaendigen Regionalmanager.
 
 import { NextResponse } from "next/server";
@@ -10,7 +12,7 @@ import { origin } from "@/lib/esska/server";
 import { sendeMail, smtpKonfiguriert } from "@/lib/esska/mail";
 import { schichtMailBetreff, schichtMailHtml, schichtMailText, type SchichtZeile } from "@/lib/esska/schichtmail";
 
-type Woche = { id: string; center_id: string; woche_start: string; veroeffentlicht: boolean };
+type Woche = { id: string; center_id: string; woche_start: string; veroeffentlicht: boolean; benachrichtigt_am: string | null };
 type Schicht = { profile_id: string; datum: string; start_zeit: string; end_zeit: string };
 type Person = { id: string; vorname: string | null; email: string | null };
 
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
 
         const { data: wData } = await db
             .from("shift_weeks")
-            .select("id, center_id, woche_start, veroeffentlicht")
+            .select("id, center_id, woche_start, veroeffentlicht, benachrichtigt_am")
             .eq("id", wocheId)
             .maybeSingle();
         const woche = wData as Woche | null;
@@ -60,6 +62,9 @@ export async function POST(request: Request) {
 
         if (!woche.veroeffentlicht) {
             return NextResponse.json({ error: "Der Wochenplan ist nicht veröffentlicht." }, { status: 400 });
+        }
+        if (woche.benachrichtigt_am) {
+            return NextResponse.json({ ok: true, bereitsBenachrichtigt: true, verschickt: 0, ohneEmail: 0, fehlgeschlagen: [] });
         }
         if (!smtpKonfiguriert()) {
             return NextResponse.json({ error: "E-Mail-Versand ist nicht eingerichtet." }, { status: 500 });
@@ -116,6 +121,9 @@ export async function POST(request: Request) {
                 fehlgeschlagen.push(p.email);
             }
         }
+
+        // Ab jetzt keine Mails mehr fuer diese Woche
+        await db.from("shift_weeks").update({ benachrichtigt_am: new Date().toISOString() }).eq("id", woche.id);
 
         return NextResponse.json({ ok: true, verschickt, ohneEmail, fehlgeschlagen });
     } catch (err) {

@@ -584,6 +584,8 @@ export interface EsskaShiftWeek {
     woche_start: string;
     veroeffentlicht: boolean;
     veroeffentlicht_am: string | null;
+    /** Zeitpunkt der Schichtplan-Mails (nur bei der ersten Veroeffentlichung) */
+    benachrichtigt_am?: string | null;
     veroeffentlicht_von: string | null;
     notiz: string | null;
     created_at: string;

@@ -265,8 +265,11 @@ export default function WocheEditorPage() {
         if (!week) return;
         const wirdVeroeffentlicht = !week.veroeffentlicht;
         const eingeplant = new Set(shifts.map((s) => s.profile_id)).size;
+        // Mails nur bei der ersten Veroeffentlichung
+        const ersteVeroeffentlichung = !week.benachrichtigt_am;
         if (
             wirdVeroeffentlicht &&
+            ersteVeroeffentlichung &&
             eingeplant > 0 &&
             !window.confirm(
                 `Wochenplan veröffentlichen? ${eingeplant} eingeplante ${eingeplant === 1 ? "Person bekommt ihre" : "Personen bekommen ihre"} Schichten per E-Mail.`
@@ -294,7 +297,10 @@ export default function WocheEditorPage() {
 
             // Eingeplante per E-Mail informieren. Scheitert der Versand, bleibt
             // der Plan trotzdem veroeffentlicht - die Meldung sagt, was fehlt.
-            if (wirdVeroeffentlicht && eingeplant > 0) {
+            if (wirdVeroeffentlicht && !ersteVeroeffentlichung) {
+                setInfo("Wieder veröffentlicht. Es wurden keine E-Mails verschickt (nur bei der ersten Veröffentlichung).");
+            }
+            if (wirdVeroeffentlicht && ersteVeroeffentlichung && eingeplant > 0) {
                 const res = await fetch("/api/shifts/benachrichtigen", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -306,6 +312,7 @@ export default function WocheEditorPage() {
                         `Veröffentlicht, aber die E-Mails konnten nicht verschickt werden: ${ergebnis.error ?? "unbekannter Fehler"}`
                     );
                 } else {
+                    setWeek((w) => (w ? { ...w, benachrichtigt_am: new Date().toISOString() } : w));
                     const teile = [`Veröffentlicht. ${ergebnis.verschickt} E-Mail${ergebnis.verschickt === 1 ? "" : "s"} verschickt.`];
                     if (ergebnis.ohneEmail > 0) teile.push(`${ergebnis.ohneEmail} ohne E-Mail-Adresse.`);
                     if (ergebnis.fehlgeschlagen?.length > 0) {
@@ -548,6 +555,12 @@ export default function WocheEditorPage() {
                             {week.veroeffentlicht_am && (
                                 <span className="text-xs text-gray-500">
                                     seit {new Date(week.veroeffentlicht_am).toLocaleString("de-DE")}
+                                </span>
+                            )}
+                            {week.veroeffentlicht && (
+                                <span className="text-xs text-gray-500">
+                                    · Änderungen möglich: alle Mitarbeiter auswählbar, auch bei „kann nicht“ · keine
+                                    erneuten E-Mails
                                 </span>
                             )}
                         </div>
@@ -860,6 +873,7 @@ export default function WocheEditorPage() {
                                                                 setZeitOverride((prev) => ({ ...prev, [ckey]: o }))
                                                             }
                                                             onSetPerson={(pid) => setSlotPerson(datum, s, pid)}
+                                                            alleWaehlbar={week.veroeffentlicht}
                                                             onUpdateZeit={(start, ende) =>
                                                                 current && updateZeit(current, start, ende)
                                                             }
@@ -900,6 +914,7 @@ function SlotCell({
     onUpdateZeit,
     bonus,
     onBonus,
+    alleWaehlbar,
 }: {
     /** Schichtzeit dieses Tages laut Oeffnungszeiten des Centers */
     standard: { start: string; ende: string };
@@ -926,6 +941,9 @@ function SlotCell({
     /** Bonus +1 EUR je Stunde auf diese Schicht (nur Admin/Regionalmanager) */
     bonus: boolean;
     onBonus: () => void;
+    /** Veroeffentlichter Plan: spontane Aenderungen - auch wer "kann nicht"
+     *  eingetragen hat, ist auswaehlbar (mit Hinweis). */
+    alleWaehlbar: boolean;
 }) {
     const std = standard;
     const aktStart = (override?.start ?? shift?.start_zeit?.slice(0, 5)) ?? std.start;
@@ -975,7 +993,7 @@ function SlotCell({
                     {sortiert.map((p) => {
                         const avail = availFor(p.id, datum, slot);
                         const wunsch = avail?.wunsch ?? "koennte";
-                        const nichtWaehlbar = wunsch === "kann_nicht";
+                        const nichtWaehlbar = wunsch === "kann_nicht" && !alleWaehlbar;
                         const info = limitInfo(p, cellKey);
                         const offen = !hatEingetragen(p.id);
                         const label = `${offen ? "?" : WUNSCH_ICON[wunsch]} ${p.vorname ?? ""} ${p.nachname ?? ""}`.trim()
@@ -997,7 +1015,7 @@ function SlotCell({
                                 {label}
                                 {limitText}
                                 {abwText}
-                                {nichtWaehlbar ? " — kann nicht" : ""}
+                                {wunsch === "kann_nicht" ? " — kann nicht" : ""}
                                 {offen ? " — noch nichts eingetragen" : ""}
                             </option>
                         );
