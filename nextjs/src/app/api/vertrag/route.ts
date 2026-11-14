@@ -39,7 +39,7 @@ export async function POST(request: Request) {
             );
         }
         if (!profileId) return NextResponse.json({ error: "Mitarbeiter fehlt." }, { status: 400 });
-        if (!art) return NextResponse.json({ error: "Bitte „Kurzfristig“ oder „Minijob“ wählen." }, { status: 400 });
+        if (!art) return NextResponse.json({ error: "Bitte „Kurzfristig“, „Minijob“ oder „Teilzeit“ wählen." }, { status: 400 });
         if (!istDatum(b?.beginn)) return NextResponse.json({ error: "Bitte den Beginn angeben." }, { status: 400 });
         if (bis !== null && (!istDatum(bis) || bis < b.beginn)) {
             return NextResponse.json({ error: "„Befristet bis“ ist ungültig oder liegt vor dem Beginn." }, { status: 400 });

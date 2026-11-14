@@ -60,11 +60,11 @@ export interface EsskaArbeitsvertrag {
 // Gilt auch in der Datenbank.
 export const MINIJOB_MAX_STUNDEN = 5;
 
-// Arten, fuer die Arbeitsvertraege zugewiesen werden (KuBe und Minijob)
-export const VERTRAGS_ARTEN: EsskaArbeitszeitModell[] = ["kurzfristig", "minijob"];
+// Arten, fuer die Arbeitsvertraege zugewiesen werden (KuBe, Minijob, Teilzeit)
+export const VERTRAGS_ARTEN: EsskaArbeitszeitModell[] = ["kurzfristig", "minijob", "teilzeit"];
 
 // Diese Vertragsarten sind immer befristet (Enddatum Pflicht)
-export const BEFRISTETE_ARTEN: EsskaArbeitszeitModell[] = ["kurzfristig", "minijob"];
+export const BEFRISTETE_ARTEN: EsskaArbeitszeitModell[] = ["kurzfristig", "minijob", "teilzeit"];
 
 // Gesetzlicher Mindestlohn (Beschluss der Mindestlohnkommission 2025):
 // 13,90 EUR ab 01.01.2026, 14,60 EUR ab 01.01.2027.

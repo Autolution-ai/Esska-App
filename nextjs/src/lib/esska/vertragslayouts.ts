@@ -40,14 +40,14 @@ export type VertragsLayout = {
 // Seiten zaehlen ab 0.
 // Seite 1 und 2 sind bei Minijob und kurzfristiger Beschaeftigung gleich
 // aufgebaut, nur die Unterschriftenzeilen auf Seite 3 stehen verschieden hoch.
-function felderSeite1und2(arbeitsortX: number): VertragsLayout["felder"] {
+function felderSeite1und2(arbeitsortX: number, stundenX = 242): VertragsLayout["felder"] {
     return [
         { feld: "name", seite: 0, x: 60, y: 633.5, maxBreite: 480 },
         { feld: "anschrift", seite: 0, x: 104, y: 617.5, maxBreite: 436 },
         { feld: "beginn", seite: 0, x: 217, y: 494.8, maxBreite: 90 },
         { feld: "befristet_bis", seite: 0, x: 382, y: 494.8, maxBreite: 88 },
         { feld: "arbeitsort", seite: 0, x: arbeitsortX, y: 375.8, maxBreite: 540 - arbeitsortX },
-        { feld: "stunden", seite: 0, x: 242, y: 268.8, maxBreite: 27 },
+        { feld: "stunden", seite: 0, x: stundenX, y: 268.8, maxBreite: 27 },
         { feld: "stundenlohn", seite: 1, x: 284, y: 704.5, maxBreite: 44 },
     ];
 }
@@ -65,20 +65,22 @@ function schluss(ortZeileY: number): Pick<VertragsLayout, "unterschrift" | "vert
     };
 }
 
-function layout(titel: string, arbeitsortX: number, ortZeileY: number): VertragsLayout {
+function layout(titel: string, arbeitsortX: number, ortZeileY: number, stundenX?: number): VertragsLayout {
     const s = schluss(ortZeileY);
     return {
         titel,
-        felder: [...felderSeite1und2(arbeitsortX), ...s.felder],
+        felder: [...felderSeite1und2(arbeitsortX, stundenX), ...s.felder],
         unterschrift: s.unterschrift,
         vertreter: s.vertreter,
     };
 }
 
-// Seiten zaehlen ab 0. Vorlagen "Arbeitsvertrag 26/27" (KuBe und Minijob).
+// Seiten zaehlen ab 0. Vorlagen "Arbeitsvertrag 26/27" (KuBe, Minijob, Teilzeit).
 export const VERTRAGSLAYOUTS: Partial<Record<EsskaArbeitszeitModell, VertragsLayout>> = {
     kurzfristig: layout("Arbeitsvertrag kurzfristige Beschäftigung 2026/27", 187, 368.8),
     minijob: layout("Arbeitsvertrag Minijob 2026/27", 190, 305.4),
+    // Teilzeit: wie Minijob, nur "beträgt ____ Stunden" ohne "ca."
+    teilzeit: layout("Arbeitsvertrag Teilzeit 2026/27", 190, 305.4, 226),
 };
 
 export function layoutFuer(art: EsskaArbeitszeitModell | null | undefined): VertragsLayout | null {

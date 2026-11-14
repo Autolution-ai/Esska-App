@@ -144,7 +144,10 @@ export default function AvailabilityPage() {
             try {
                 const client = await getEsskaClient();
                 const { data } = await client.rpc("planungsprofile").order("nachname", { ascending: true });
-                setPersonen(((data as Person[]) ?? []).filter((p) => p.role !== "admin"));
+                // Deaktivierte Mitarbeiter werden nicht mehr eingeplant
+                setPersonen(
+                    ((data as Array<Person & { aktiv?: boolean }>) ?? []).filter((p) => p.role !== "admin" && p.aktiv !== false)
+                );
             } catch {
                 // Auswahl bleibt leer - die eigene Verfuegbarkeit geht trotzdem
             }

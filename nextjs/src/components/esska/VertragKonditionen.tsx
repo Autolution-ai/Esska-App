@@ -35,7 +35,7 @@ export function konditionenPruefen(
     o: { minijobBegrenzt?: boolean } = {}
 ): { fehler: string } | { werte: GepruefteKonditionen | null } {
     if (!VERTRAGS_ARTEN.includes(k.art)) {
-        return { fehler: "Bitte als Beschäftigungsart „Kurzfristig“ (KuBe) oder „Minijob“ wählen." };
+        return { fehler: "Bitte als Beschäftigungsart „Kurzfristig“ (KuBe), „Minijob“ oder „Teilzeit“ wählen." };
     }
     if (!k.beginn) {
         if (k.befristet_bis || k.stunden || k.stundenlohn) {

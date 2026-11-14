@@ -2,7 +2,15 @@
     "crons": [
         {
             "path": "/api/cron/availability-reminder",
-            "schedule": "0 9 * * 6"
+            "schedule": "0 19 * * 4"
+        },
+        {
+            "path": "/api/cron/availability-reminder",
+            "schedule": "0 18 * * 5"
+        },
+        {
+            "path": "/api/cron/availability-reminder",
+            "schedule": "0 10 * * 6"
         }
     ]
 }

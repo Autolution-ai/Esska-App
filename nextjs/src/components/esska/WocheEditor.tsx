@@ -76,7 +76,7 @@ function ZeitSelect({
 
 type AssignedProfile = Pick<
     EsskaProfile,
-    "id" | "vorname" | "nachname" | "email" | "arbeitszeit_modell" | "stunden_pro_woche" | "max_schichten_pro_woche"
+    "id" | "vorname" | "nachname" | "email" | "arbeitszeit_modell" | "stunden_pro_woche" | "max_schichten_pro_woche" | "aktiv"
 >;
 
 /** Wochenplan eines Centers bearbeiten. Eigene Seite (/app/shifts/[center]/[woche])
@@ -710,6 +710,8 @@ export default function WocheEditor({
                             </div>
                             <div className="flex flex-wrap gap-1.5">
                                 {[...people]
+                                    // Deaktivierte nur, wenn sie in dieser Woche noch Schichten haben
+                                    .filter((p) => p.aktiv !== false || schichtenZaehlerWoche(p.id) > 0)
                                     .sort((a, b) =>
                                         `${a.vorname ?? ""} ${a.nachname ?? ""}`.localeCompare(`${b.vorname ?? ""} ${b.nachname ?? ""}`, "de")
                                     )
@@ -817,7 +819,7 @@ export default function WocheEditor({
                                     </div>
                                 );
                             })()}
-                            {people.some((p) => !hatEingetragen(p.id)) && (
+                            {people.some((p) => p.aktiv !== false && !hatEingetragen(p.id)) && (
                                 <p className="text-xs text-amber-800 mt-2">
                                     „?“ = noch keine Verfügbarkeit für diese Woche eingetragen. Diese Personen stehen im
                                     Auswahlfeld unten mit „noch nichts eingetragen“ – sie haben nicht zugesagt, dass sie
@@ -1014,7 +1016,11 @@ function SlotCell({
                     className="w-full border rounded-md px-2 py-1 text-sm"
                 >
                     <option value="">– leer –</option>
-                    {sortiert.map((p) => {
+                    {sortiert
+                        // Deaktivierte Mitarbeiter nicht mehr einplanbar - nur die
+                        // bereits eingetragene Person bleibt sichtbar (Vergangenheit).
+                        .filter((p) => p.aktiv !== false || p.id === shift?.profile_id)
+                        .map((p) => {
                         const avail = availFor(p.id, datum, slot);
                         const wunsch = avail?.wunsch ?? "koennte";
                         const nichtWaehlbar = wunsch === "kann_nicht" && !alleWaehlbar;
@@ -1040,6 +1046,7 @@ function SlotCell({
                                 {limitText}
                                 {abwText}
                                 {wunsch === "kann_nicht" ? " — kann nicht" : ""}
+                                {p.aktiv === false ? " — deaktiviert" : ""}
                                 {offen ? " — noch nichts eingetragen" : ""}
                             </option>
                         );

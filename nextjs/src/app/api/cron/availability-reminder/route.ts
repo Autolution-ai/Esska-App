@@ -1,6 +1,9 @@
 // Automatische Erinnerung: Verfuegbarkeiten fuer die naechste Woche eintragen.
 //
-// Wird von Vercel Cron aufgerufen (Zeitplan in nextjs/vercel.json, samstags).
+// Wird von Vercel Cron aufgerufen (Zeitplan in nextjs/vercel.json, in UTC):
+// Donnerstag 20 Uhr, Freitag 19 Uhr und Samstag 11 Uhr deutscher Winterzeit.
+// Jedes Mal bekommen nur die, die fuer die naechste Woche noch nichts
+// eingetragen haben, eine Mail.
 // Ablauf:
 //   1. Naechste Woche bestimmen (Montag bis Sonntag).
 //   2. Alle aktiven Mitarbeiter mit abgeschlossenem Onboarding laden.
